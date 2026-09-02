@@ -366,6 +366,7 @@ export const AuthService = {
   loginCustomer: (payload: { email?: string; phone?: string; name?: string }) =>
     fetchApi('/auth/customer/login', { method: 'POST', body: JSON.stringify(payload) }),
   verifySession: () => fetchApi('/auth', { method: 'GET' }),
+  logout: () => fetchApi('/auth', { method: 'DELETE' }),
   logoutAdmin: () => fetchApi('/auth', { method: 'DELETE' }),
 };
 
