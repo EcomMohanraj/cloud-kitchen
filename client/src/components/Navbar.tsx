@@ -29,7 +29,7 @@ export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
 
-  const { cartItems, setIsCartOpen, customerName, setCustomerProfile } = useCartStore();
+  const { cartItems, setIsCartOpen, customerName, setCustomerProfile, logoutCustomer } = useCartStore();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'SIGN_IN' | 'SIGN_UP' | 'ADMIN'>('SIGN_IN');
@@ -60,13 +60,13 @@ export const Navbar: React.FC = () => {
   // Robust Admin Access Detection
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const isAdmin =
-        document.cookie.includes('yazhisai_admin_token') ||
-        localStorage.getItem('yazhisai_admin_active') === 'true' ||
-        (customerName && customerName.toLowerCase().includes('admin')) ||
-        pathname.startsWith('/admin');
+      const hasAdminCookie = document.cookie.includes('yazhisai_admin_token');
+      const hasAdminActiveStorage = localStorage.getItem('yazhisai_admin_active') === 'true';
+      const isCustomerAdmin = Boolean(customerName && customerName.toLowerCase().includes('admin'));
 
-      if (isAdmin) {
+      const isAdmin = hasAdminCookie || hasAdminActiveStorage || isCustomerAdmin;
+
+      if (isAdmin && !hasAdminActiveStorage) {
         document.cookie = 'yazhisai_admin_token=active_session; path=/; max-age=31536000; SameSite=Lax';
         localStorage.setItem('yazhisai_admin_active', 'true');
       }
@@ -98,7 +98,7 @@ export const Navbar: React.FC = () => {
       localStorage.removeItem('yazhisai_admin_active');
       document.cookie = 'yazhisai_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
-    setCustomerProfile('', '');
+    logoutCustomer();
     setIsAdminLoggedIn(false);
     router.push('/admin/login');
   };

@@ -26,7 +26,7 @@ import { useCartStore } from '@/store/cartStore';
 
 export default function AccountPage() {
   const router = useRouter();
-  const { customerName, customerPhone, setCustomerProfile } = useCartStore();
+  const { customerName, customerPhone, setCustomerProfile, logoutCustomer } = useCartStore();
 
   const [activeTab, setActiveTab] = useState<'ORDERS' | 'SLOTS' | 'ADDRESSES' | 'PROFILE'>('ORDERS');
 
@@ -94,8 +94,11 @@ export default function AccountPage() {
   };
 
   const handleLogout = () => {
-    setCustomerProfile('', '');
-    router.push('/');
+    logoutCustomer();
+    setEmail('');
+    setPassword('');
+    setName('');
+    setPhone('');
   };
 
   return (

@@ -23,6 +23,7 @@ interface CartStore {
   setSelectedSlot: (slot: string) => void;
   setIsCartOpen: (open: boolean) => void;
   setCustomerProfile: (name: string, phone: string, address?: string) => void;
+  logoutCustomer: () => void;
   addToCart: (item: any) => void;
   removeFromCart: (menuItemId: string) => void;
   updateQuantity: (menuItemId: string, quantity: number) => void;
@@ -61,17 +62,46 @@ export const useCartStore = create<CartStore>((set, get) => ({
   setCustomerProfile: (name: string, phone: string, address?: string) => {
     if (typeof window !== 'undefined') {
       try {
-        if (name) localStorage.setItem('yazhisai_user_name', name);
-        if (phone) localStorage.setItem('yazhisai_user_phone', phone);
-        if (address) localStorage.setItem('yazhisai_user_address', address);
+        if (name !== undefined) {
+          if (name) localStorage.setItem('yazhisai_user_name', name);
+          else localStorage.removeItem('yazhisai_user_name');
+        }
+        if (phone !== undefined) {
+          if (phone) localStorage.setItem('yazhisai_user_phone', phone);
+          else localStorage.removeItem('yazhisai_user_phone');
+        }
+        if (address !== undefined) {
+          if (address) localStorage.setItem('yazhisai_user_address', address);
+          else localStorage.removeItem('yazhisai_user_address');
+        }
       } catch (e) {
         console.error(e);
       }
     }
     set({
-      customerName: name || get().customerName,
-      customerPhone: phone || get().customerPhone,
-      deliveryAddress: address || get().deliveryAddress,
+      customerName: name !== undefined ? name : get().customerName,
+      customerPhone: phone !== undefined ? phone : get().customerPhone,
+      deliveryAddress: address !== undefined ? address : get().deliveryAddress,
+    });
+  },
+
+  logoutCustomer: () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('yazhisai_user_name');
+        localStorage.removeItem('yazhisai_user_phone');
+        localStorage.removeItem('yazhisai_user_address');
+        localStorage.removeItem('yazhisai_admin_active');
+        document.cookie = 'yazhisai_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      } catch (e) {
+        console.error(e);
+      }
+    }
+    set({
+      customerName: '',
+      customerPhone: '',
+      deliveryAddress: '',
+      cartItems: [],
     });
   },
 
