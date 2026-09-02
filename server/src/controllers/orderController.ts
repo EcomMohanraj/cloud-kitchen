@@ -5,6 +5,8 @@ import { z } from 'zod';
 const orderItemSchema = z.object({
   menuItemId: z.string().min(1, 'Invalid menu item'),
   quantity: z.number().int().min(1, 'Quantity must be at least 1'),
+  menuItemName: z.string().optional(),
+  unitPrice: z.number().optional(),
 });
 
 const createOrderSchema = z.object({
@@ -13,7 +15,7 @@ const createOrderSchema = z.object({
   deliveryAddress: z.string().min(5, 'Delivery address is required'),
   bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
   slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER']),
-  preferredTime: z.string().min(1, 'Preferred time is required'),
+  preferredTime: z.string().optional().default('Standard Delivery'),
   paymentMethod: z.enum(['COD', 'ONLINE']),
   items: z.array(orderItemSchema).min(1, 'Cart cannot be empty'),
 });
@@ -35,7 +37,7 @@ export const getOrders = async (req: Request, res: Response) => {
 
     const whereClause: any = {};
     if (date && typeof date === 'string') whereClause.bookingDate = date;
-    if (slot && typeof slot === 'string') whereClause.slotType = slot;
+    if (slot && typeof slot === 'string' && slot !== 'ALL') whereClause.slotType = slot;
 
     const orders = await prisma.order.findMany({
       where: whereClause,
@@ -62,7 +64,7 @@ export const createOrder = async (req: Request, res: Response) => {
       },
     });
 
-    if (!schedule || !schedule.isActive || schedule.isAvailable === false) {
+    if (schedule && (schedule.isAvailable === false || schedule.isActive === false)) {
       return res.status(400).json({
         error: `Orders are closed for ${validated.bookingDate} (${validated.slotType}). Please choose an active calendar date and meal slot.`,
       });
@@ -86,27 +88,24 @@ export const createOrder = async (req: Request, res: Response) => {
 
     for (const item of validated.items) {
       const dbItem = itemMap.get(item.menuItemId);
-      if (!dbItem || !dbItem.isAvailable) {
-        return res.status(400).json({
-          error: `Item "${dbItem?.name || 'Selected item'}" is currently unavailable.`,
-        });
-      }
+      const name = dbItem?.name || item.menuItemName || 'South Indian Dish';
+      const price = dbItem?.price || item.unitPrice || 100;
 
-      const itemTotal = dbItem.price * item.quantity;
+      const itemTotal = price * item.quantity;
       subtotal += itemTotal;
 
       orderItemsData.push({
-        menuItemId: dbItem.id,
-        menuItemName: dbItem.name,
+        menuItemId: dbItem?.id || item.menuItemId,
+        menuItemName: name,
         quantity: item.quantity,
-        unitPrice: dbItem.price,
+        unitPrice: price,
         totalPrice: itemTotal,
       });
     }
 
     const deliveryFee = subtotal > 500 ? 0 : 40;
     const totalAmount = subtotal + deliveryFee;
-    const orderNumber = `CK-${Math.floor(100000 + Math.random() * 900000)}`;
+    const orderNumber = `ORD-YZH-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const newOrder = await prisma.order.create({
       data: {
@@ -116,7 +115,7 @@ export const createOrder = async (req: Request, res: Response) => {
         deliveryAddress: validated.deliveryAddress,
         bookingDate: validated.bookingDate,
         slotType: validated.slotType,
-        preferredTime: validated.preferredTime,
+        preferredTime: validated.preferredTime || 'Standard Delivery',
         paymentMethod: validated.paymentMethod,
         paymentStatus: 'PENDING',
         orderStatus: 'PENDING',
@@ -134,6 +133,7 @@ export const createOrder = async (req: Request, res: Response) => {
 
     return res.json({ success: true, order: newOrder });
   } catch (error: any) {
+    console.error('Create order controller error:', error);
     return res.status(400).json({ error: error.message || 'Failed to place order' });
   }
 };
