@@ -1,0 +1,54 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+client/node_modules/
+server/node_modules/
+
+# Next.js
+client/.next/
+client/out/
+.next/
+
+# Express build
+server/dist/
+server/build/
+
+# Environment Variables (NEVER commit these)
+.env
+.env.local
+.env.production
+.env.development
+server/.env
+client/.env
+client/.env.local
+client/.env.production
+
+# Database
+server/prisma/*.db
+server/prisma/*.db-journal
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# OS Generated
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Build artifacts
+dist/
+build/

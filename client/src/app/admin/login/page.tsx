@@ -1,0 +1,137 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { ChefHat, Lock, Mail, ArrowRight, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { AuthService } from '@/services/api';
+import { useCartStore } from '@/store/cartStore';
+
+export default function AdminLoginPage() {
+  const router = useRouter();
+  const { setCustomerProfile } = useCartStore();
+
+  const [email, setEmail] = useState('admin@yazhisai.com');
+  const [password, setPassword] = useState('admin123');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
+    setSuccess(false);
+
+    try {
+      // 1. Attempt API auth with fallback for demo admin credentials
+      try {
+        await AuthService.login({ email, password });
+      } catch (apiErr) {
+        if (email === 'admin@yazhisai.com' && password === 'admin123') {
+          console.log('Demo Admin local authentication active.');
+        } else {
+          throw new Error('Invalid email or password credentials');
+        }
+      }
+
+      // 2. Set Admin Auth Cookies & LocalStorage
+      if (typeof window !== 'undefined') {
+        document.cookie = 'yazhisai_admin_token=active_session; path=/';
+        localStorage.setItem('yazhisai_admin_active', 'true');
+      }
+
+      setCustomerProfile('admin', '9876543210');
+      setSuccess(true);
+
+      setTimeout(() => {
+        router.push('/admin/orders');
+      }, 500);
+    } catch (err: any) {
+      setError(err.message || 'Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen bg-[#f8fafc] flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white border border-slate-200/80 rounded-3xl shadow-xl p-8 space-y-6 relative overflow-hidden text-slate-900">
+        
+        {/* Glow accent */}
+        <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-100/60 rounded-full blur-2xl pointer-events-none"></div>
+
+        {/* Brand Header */}
+        <div className="text-center space-y-2">
+          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-600 mx-auto flex items-center justify-center shadow-md shadow-emerald-600/25">
+            <ChefHat className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="text-2xl font-serif font-black text-slate-900 tracking-tight">Chef & Admin Portal</h1>
+          <p className="text-xs text-emerald-800 font-extrabold tracking-wide">
+            Yazhisai Cloud Kitchen Management Console
+          </p>
+        </div>
+
+        {/* Credentials Info Badge */}
+        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-3.5 text-xs text-emerald-900">
+          <div className="font-extrabold text-emerald-950 mb-0.5">Demo Admin Credentials:</div>
+          <div>Email: <span className="font-mono font-bold text-emerald-700">admin@yazhisai.com</span></div>
+          <div>Password: <span className="font-mono font-bold text-emerald-700">admin123</span></div>
+        </div>
+
+        {error && (
+          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+            <span>{error}</span>
+          </div>
+        )}
+
+        {success && (
+          <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2 font-bold">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
+            <span>Authenticated! Redirecting to Kitchen Matrix...</span>
+          </div>
+        )}
+
+        <form onSubmit={handleLogin} className="space-y-4 text-xs font-semibold">
+          <div>
+            <label className="block text-slate-700 font-bold mb-1 uppercase tracking-wider text-[10px]">Admin Email</label>
+            <div className="relative">
+              <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 font-semibold"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-bold mb-1 uppercase tracking-wider text-[10px]">Password</label>
+            <div className="relative">
+              <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 font-semibold"
+              />
+            </div>
+          </div>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 flex items-center justify-center space-x-2 transition-all"
+          >
+            <span>{loading ? 'Authenticating...' : 'Sign In to Portal'}</span>
+            <ArrowRight className="w-4 h-4" />
+          </button>
+        </form>
+
+      </div>
+    </div>
+  );
+}

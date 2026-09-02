@@ -1,0 +1,87 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  phone     String   @unique
+  name      String?
+  address   String?
+  orders    Order[]
+  createdAt DateTime @default(now())
+}
+
+model Admin {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+}
+
+model SlotsSchedule {
+  id            String   @id @default(uuid())
+  date          String   // Format: "YYYY-MM-DD"
+  slotType      String   // "BREAKFAST", "SNACKS", "LUNCH", "DINNER"
+  isAvailable   Boolean  @default(false)
+  isActive      Boolean  @default(false)
+  cutoffTime    String?  @default("09:00 AM")
+  maxOrders     Int      @default(50)
+  currentOrders Int      @default(0)
+
+  @@unique([date, slotType])
+}
+
+model MenuItem {
+  id              String      @id @default(uuid())
+  name            String
+  nameTamil       String?
+  description     String?
+  price           Float
+  slotCategory    String      // "BREAKFAST", "SNACKS", "LUNCH", "DINNER"
+  isAvailable     Boolean     @default(true)
+  imageUrl        String?
+  ingredients     String?
+  prepTimeMinutes Int         @default(20)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  orderItems      OrderItem[]
+}
+
+model Order {
+  id              String      @id @default(uuid())
+  orderNumber     String      @unique
+  customerName    String
+  customerPhone   String
+  deliveryAddress String
+  bookingDate     String      // Format: "YYYY-MM-DD"
+  slotType        String      // "BREAKFAST", "SNACKS", "LUNCH", "DINNER"
+  preferredTime   String
+  paymentMethod   String      // "COD" | "ONLINE"
+  paymentStatus   String      // "PENDING" | "PAID" | "FAILED"
+  paymentId       String?
+  orderStatus     String      @default("PENDING")
+  subtotal        Float
+  deliveryFee     Float
+  totalAmount     Float
+  createdAt       DateTime    @default(now())
+  userId          String?
+  user            User?       @relation(fields: [userId], references: [id])
+  items           OrderItem[]
+}
+
+model OrderItem {
+  id           Int      @id @default(autoincrement())
+  orderId      String
+  order        Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  menuItemId   String
+  menuItemName String
+  quantity     Int
+  unitPrice    Float
+  totalPrice   Float
+  menuItem     MenuItem @relation(fields: [menuItemId], references: [id])
+}
