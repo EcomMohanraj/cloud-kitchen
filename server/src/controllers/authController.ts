@@ -51,6 +51,73 @@ export const loginAdmin = async (req: Request, res: Response) => {
   }
 };
 
+export const registerCustomer = async (req: Request, res: Response) => {
+  try {
+    const { name, phone, email, address } = req.body;
+
+    if (!name || !phone) {
+      return res.status(400).json({ error: 'Name and valid phone number are required' });
+    }
+
+    const user = await prisma.user.upsert({
+      where: { phone: String(phone).trim() },
+      update: {
+        name: String(name).trim(),
+        address: address ? String(address).trim() : undefined,
+      },
+      create: {
+        phone: String(phone).trim(),
+        name: String(name).trim(),
+        address: address ? String(address).trim() : '',
+      },
+    });
+
+    console.log('✅ Customer account created/updated in PostgreSQL DB:', user);
+
+    return res.json({
+      success: true,
+      user,
+    });
+  } catch (error: any) {
+    console.error('❌ Customer registration database error:', error);
+    return res.status(500).json({ error: error.message || 'Customer registration failed' });
+  }
+};
+
+export const loginCustomer = async (req: Request, res: Response) => {
+  try {
+    const { email, phone, name } = req.body;
+
+    if (!phone && !email) {
+      return res.status(400).json({ error: 'Phone number or email is required' });
+    }
+
+    const userPhone = phone ? String(phone).trim() : '9876543210';
+    const userName = name || (email ? email.split('@')[0] : 'Valued Patron');
+
+    const user = await prisma.user.upsert({
+      where: { phone: userPhone },
+      update: {
+        name: userName,
+      },
+      create: {
+        phone: userPhone,
+        name: userName,
+      },
+    });
+
+    console.log('✅ Customer logged in and synced to PostgreSQL DB:', user);
+
+    return res.json({
+      success: true,
+      user,
+    });
+  } catch (error: any) {
+    console.error('❌ Customer login database error:', error);
+    return res.status(500).json({ error: error.message || 'Customer login failed' });
+  }
+};
+
 export const verifySession = async (req: Request, res: Response) => {
   try {
     const authHeader = req.headers.authorization || '';

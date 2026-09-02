@@ -1,8 +1,14 @@
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
 
+if (typeof window !== 'undefined') {
+  console.log(`🌐 [Yazhisai API Engine] Active API Base URL: ${API_BASE_URL}`);
+}
+
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_BASE_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
-  
+  const cleanBase = API_BASE_URL.replace(/\/$/, '');
+  const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
+  const url = `${cleanBase}${cleanEndpoint}`;
+
   const defaultHeaders: Record<string, string> = {
     'Content-Type': 'application/json',
   };
@@ -50,20 +56,20 @@ const FALLBACK_MENU_ITEMS = [
     slotCategory: 'BREAKFAST',
     isAvailable: true,
     imageUrl: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Dosa Batter, Pure Cow Ghee, Gunpowder Podi, Coconut Chutney',
-    prepTimeMinutes: 15,
+    ingredients: 'Fermented Batter, Cow Ghee, Gunpowder Podi, Sambar, Coconut Chutney',
+    prepTimeMinutes: 20,
     isVeg: true,
   },
   {
     id: 'b3',
-    name: 'Medhu Vada (2 Pcs)',
-    nameTamil: 'மெது வடை',
-    description: 'Crispy deep-fried golden lentil fritters spiced with black pepper, ginger, and curry leaves.',
+    name: 'Medhu Vada Platter (2 Pcs)',
+    nameTamil: 'மெது வடை பிளேட்டர்',
+    description: 'Crispy golden lentil fritters spiced with black pepper, ginger, and green chillies.',
     price: 50,
     slotCategory: 'BREAKFAST',
     isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Urad Dal, Black Pepper, Fresh Ginger, Curry Leaves, Coconut Chutney',
+    imageUrl: 'https://images.unsplash.com/photo-1630383249896-424e482df921?w=600&auto=format&fit=crop&q=80',
+    ingredients: 'Urad Dal, Black Pepper, Ginger, Curry Leaves, Coconut Chutney',
     prepTimeMinutes: 10,
     isVeg: true,
   },
@@ -71,27 +77,27 @@ const FALLBACK_MENU_ITEMS = [
     id: 'b4',
     name: 'Traditional Rava Kichadi',
     nameTamil: 'ரவா கிச்சடி',
-    description: 'Roasted semolina cooked with fresh green peas, carrots, cashews, and aromatic ghee.',
+    description: 'Semolina cooked with fresh vegetables, cashews, mustard seeds, and pure ghee.',
     price: 75,
     slotCategory: 'BREAKFAST',
     isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Rava, Vegetables, Cashews, Ghee, Mustard Seeds, Green Chilies',
+    imageUrl: 'https://images.unsplash.com/photo-1630383249896-424e482df921?w=600&auto=format&fit=crop&q=80',
+    ingredients: 'Rava, Vegetables, Cashews, Ghee, Mustard, Tomato Chutney',
     prepTimeMinutes: 15,
     isVeg: true,
   },
 
-  // SNACKS & BREAK
+  // SNACKS
   {
     id: 's1',
     name: 'Madurai Kara Murukku & Filter Coffee',
-    nameTamil: 'கார முறுக்கு & ஃபில்டர் காபி',
-    description: 'Crunchy traditional rice flour murukku paired with authentic Kumbakonam brass filter coffee.',
+    nameTamil: 'கார முறுக்கு & டிகிரி காபி',
+    description: 'Crunchy rice flour spiraled savouries paired with aromatic Kumbakonam filter coffee.',
     price: 90,
     slotCategory: 'SNACKS',
     isAvailable: true,
     imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Rice Flour, Sesame, Spices, Roasted Coffee Decoction, Fresh Milk',
+    ingredients: 'Rice Flour, Butter, Spices, Pure Milk Coffee Extract',
     prepTimeMinutes: 10,
     isVeg: true,
   },
@@ -99,39 +105,13 @@ const FALLBACK_MENU_ITEMS = [
     id: 's2',
     name: 'Crispy Onion Pakoda',
     nameTamil: 'வெங்காய பகோடா',
-    description: 'Thinly sliced crispy fried onion fritters seasoned with fennel seeds and curry leaves.',
+    description: 'Thin sliced shallots fried golden in spiced chickpea batter served with mint chutney.',
     price: 60,
     slotCategory: 'SNACKS',
     isAvailable: true,
     imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Onions, Besan, Rice Flour, Fennel, Green Chilies',
-    prepTimeMinutes: 15,
-    isVeg: true,
-  },
-  {
-    id: 's3',
-    name: 'Vazhaipoo Cutlet (Banana Flower Cutlet)',
-    nameTamil: 'வாழைப்பூ கட்லெட்',
-    description: 'Healthy minced banana blossom patties pan-fried to crispy golden perfection.',
-    price: 85,
-    slotCategory: 'SNACKS',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1541544741938-0af808871cc0?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Banana Flower, Potato, Fennel, Breadcrumbs, Spices',
-    prepTimeMinutes: 20,
-    isVeg: true,
-  },
-  {
-    id: 's4',
-    name: 'Chana Sundaal & Tea Combo',
-    nameTamil: 'சுண்டல் & டீ',
-    description: 'Spiced boiled chickpeas tempered with mustard, red chilies, and fresh grated coconut.',
-    price: 50,
-    slotCategory: 'SNACKS',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'White Chickpeas, Coconut, Mustard Seeds, Curry Leaves, Chai',
-    prepTimeMinutes: 10,
+    ingredients: 'Onions, Besan, Rice Flour, Chillies, Mint Chutney',
+    prepTimeMinutes: 12,
     isVeg: true,
   },
 
@@ -140,13 +120,13 @@ const FALLBACK_MENU_ITEMS = [
     id: 'l1',
     name: 'Kongu Naattu Kozhi Briyani',
     nameTamil: 'கொங்கு நாட்டுக்கோழி பிரியாணி',
-    description: 'Authentic Seeraga Samba rice briyani cooked with free-range country chicken and hand-pounded spices.',
+    description: 'Fragrant Seeraga Samba rice cooked with free-range country chicken and ground spices.',
     price: 240,
     slotCategory: 'LUNCH',
     isAvailable: true,
     imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Seeraga Samba Rice, Nattu Kozhi, Shallots, Ginger-Garlic, Mint, Ghee',
-    prepTimeMinutes: 25,
+    ingredients: 'Seeraga Samba Rice, Country Chicken, Cow Ghee, Onion Pachadi',
+    prepTimeMinutes: 30,
     isVeg: false,
   },
   {
@@ -174,19 +154,6 @@ const FALLBACK_MENU_ITEMS = [
     ingredients: 'Seer Fish, Tamarind, Shallots, Chettinad Spices, Steamed Rice',
     prepTimeMinutes: 25,
     isVeg: false,
-  },
-  {
-    id: 'l4',
-    name: 'Mushroom Biryani',
-    nameTamil: 'காளான் பிரியாணி',
-    description: 'Aromatic Seeraga Samba rice cooked with organic fresh mushrooms and fresh herbs.',
-    price: 180,
-    slotCategory: 'LUNCH',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1633945274405-b6c8069047b0?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Fresh Mushrooms, Seeraga Samba Rice, Mint, Whole Spices, Onion Raitha',
-    prepTimeMinutes: 20,
-    isVeg: true,
   },
 
   // DINNER
@@ -226,19 +193,6 @@ const FALLBACK_MENU_ITEMS = [
     isAvailable: true,
     imageUrl: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&auto=format&fit=crop&q=80',
     ingredients: 'Dosa Batter, Fish Gravy / Sambar, Coconut Chutney',
-    prepTimeMinutes: 15,
-    isVeg: true,
-  },
-  {
-    id: 'd4',
-    name: 'Idiyappam with Coconut Milk (4 Pcs)',
-    nameTamil: 'இடியாப்பம் தேங்காய்ப்பால்',
-    description: 'Steamed delicate string hoppers served with sweet cardamom infused fresh coconut milk.',
-    price: 90,
-    slotCategory: 'DINNER',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1626777552726-4a6b54c97e46?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Rice Flour, Fresh Coconut Milk, Cardamom, Sugar',
     prepTimeMinutes: 15,
     isVeg: true,
   },
@@ -295,13 +249,14 @@ export const MenuService = {
 };
 
 export const OrderService = {
-  getOrders: async (filters?: { id?: string; date?: string; slot?: string }) => {
+  getOrders: async (filters?: { id?: string; date?: string; slot?: string; phone?: string }) => {
     let apiOrders: any[] = [];
     try {
       const params = new URLSearchParams();
       if (filters?.id) params.append('id', filters.id);
       if (filters?.date) params.append('date', filters.date);
       if (filters?.slot && filters.slot !== 'ALL') params.append('slot', filters.slot);
+      if (filters?.phone) params.append('phone', filters.phone);
       const data = await fetchApi(`/orders?${params.toString()}`);
       if (data && data.orders) apiOrders = data.orders;
     } catch (error) {
@@ -328,6 +283,9 @@ export const OrderService = {
     }
     if (filters?.slot && filters.slot !== 'ALL') {
       result = result.filter((o) => o.slotType === filters.slot);
+    }
+    if (filters?.phone) {
+      result = result.filter((o) => o.customerPhone === filters.phone);
     }
 
     // Sort newest first
@@ -402,8 +360,13 @@ export const OrderService = {
 
 export const AuthService = {
   login: (credentials: any) => fetchApi('/auth', { method: 'POST', body: JSON.stringify(credentials) }),
+  loginAdmin: (credentials: any) => fetchApi('/auth', { method: 'POST', body: JSON.stringify(credentials) }),
+  registerCustomer: (payload: { name: string; phone: string; email?: string; address?: string }) =>
+    fetchApi('/auth/customer/register', { method: 'POST', body: JSON.stringify(payload) }),
+  loginCustomer: (payload: { email?: string; phone?: string; name?: string }) =>
+    fetchApi('/auth/customer/login', { method: 'POST', body: JSON.stringify(payload) }),
   verifySession: () => fetchApi('/auth', { method: 'GET' }),
-  logout: () => fetchApi('/auth', { method: 'DELETE' }),
+  logoutAdmin: () => fetchApi('/auth', { method: 'DELETE' }),
 };
 
 export const PaymentService = {

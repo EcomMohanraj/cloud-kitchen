@@ -26,7 +26,7 @@ export default function CustomerOrdersPage() {
 
   const fetchCustomerOrders = async () => {
     try {
-      const data = await OrderService.getOrders();
+      const data = await OrderService.getOrders({ phone: customerPhone || undefined });
       if (data && data.orders) {
         setOrders(data.orders);
       }
@@ -43,7 +43,7 @@ export default function CustomerOrdersPage() {
       fetchCustomerOrders();
     }, 4000);
     return () => clearInterval(timer);
-  }, []);
+  }, [customerPhone]);
 
   const getStatusStep = (status: string) => {
     switch (status) {

@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { useCartStore } from '@/store/cartStore';
+import { AuthService } from '@/services/api';
 
 export default function AccountPage() {
   const router = useRouter();
@@ -58,9 +59,17 @@ export default function AccountPage() {
     }
 
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 600));
-    setCustomerProfile(email.split('@')[0], '9876543210');
-    setLoading(false);
+    try {
+      const data = await AuthService.loginCustomer({ email });
+      const savedName = data.user?.name || email.split('@')[0];
+      const savedPhone = data.user?.phone || '9876543210';
+      setCustomerProfile(savedName, savedPhone, data.user?.address || '');
+    } catch (err: any) {
+      console.warn('Backend login fallback:', err);
+      setCustomerProfile(email.split('@')[0], '9876543210');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
@@ -88,9 +97,15 @@ export default function AccountPage() {
     }
 
     setLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 700));
-    setCustomerProfile(name, phone);
-    setLoading(false);
+    try {
+      const data = await AuthService.registerCustomer({ name, phone, email });
+      setCustomerProfile(data.user?.name || name, data.user?.phone || phone, data.user?.address || '');
+    } catch (err: any) {
+      console.warn('Backend register fallback:', err);
+      setCustomerProfile(name, phone);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleLogout = () => {

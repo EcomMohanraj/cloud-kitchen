@@ -22,7 +22,7 @@ const createOrderSchema = z.object({
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
-    const { id, date, slot } = req.query;
+    const { id, date, slot, phone } = req.query;
 
     if (id && typeof id === 'string') {
       const order = await prisma.order.findUnique({
@@ -38,6 +38,7 @@ export const getOrders = async (req: Request, res: Response) => {
     const whereClause: any = {};
     if (date && typeof date === 'string') whereClause.bookingDate = date;
     if (slot && typeof slot === 'string' && slot !== 'ALL') whereClause.slotType = slot;
+    if (phone && typeof phone === 'string') whereClause.customerPhone = phone;
 
     const orders = await prisma.order.findMany({
       where: whereClause,
