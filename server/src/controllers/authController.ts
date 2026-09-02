@@ -32,10 +32,12 @@ export const loginAdmin = async (req: Request, res: Response) => {
       { expiresIn: '7d' }
     );
 
+    const isProd = process.env.NODE_ENV === 'production';
+
     res.cookie('admin_token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      secure: isProd,
+      sameSite: isProd ? 'none' : 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
@@ -59,13 +61,18 @@ export const verifySession = async (req: Request, res: Response) => {
     }
 
     const decoded = jwt.verify(token, JWT_SECRET);
-    return res.json({ authenticated: true, user: decoded });
+    return res.json({ authenticated: true, admin: decoded });
   } catch (error) {
     return res.status(401).json({ authenticated: false });
   }
 };
 
 export const logoutAdmin = async (req: Request, res: Response) => {
-  res.clearCookie('admin_token');
-  return res.json({ success: true });
+  const isProd = process.env.NODE_ENV === 'production';
+  res.clearCookie('admin_token', {
+    httpOnly: true,
+    secure: isProd,
+    sameSite: isProd ? 'none' : 'lax',
+  });
+  return res.json({ success: true, message: 'Logged out successfully' });
 };
