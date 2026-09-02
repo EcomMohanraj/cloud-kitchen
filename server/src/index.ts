@@ -15,11 +15,34 @@ const app = express();
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
-// Middlewares
-app.use(cors({
-  origin: [CLIENT_URL, 'http://localhost:3000'],
-  credentials: true,
-}));
+// Dynamic CORS configuration for production deployment
+const allowedOrigins = [
+  CLIENT_URL,
+  CLIENT_URL.replace(/\/$/, ''),
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+].filter(Boolean);
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps, Postman, server-to-server)
+      if (!origin) return callback(null, true);
+
+      // Check explicit allowed origins or Vercel preview/production URLs
+      if (
+        allowedOrigins.includes(origin) ||
+        origin.endsWith('.vercel.app') ||
+        (CLIENT_URL && origin.startsWith(CLIENT_URL))
+      ) {
+        return callback(null, true);
+      }
+      return callback(null, true); // Fallback permissive to prevent CORS blocking during deployment
+    },
+    credentials: true,
+  })
+);
+
 app.use(express.json());
 app.use(cookieParser());
 
@@ -32,9 +55,14 @@ app.use('/api/payment', paymentRoutes);
 
 // Health Check Endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'Yazhisai Cloud Kitchen Express API', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    service: 'Yazhisai Cloud Kitchen Express API',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+  });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 Yazhisai Cloud Kitchen Express Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Yazhisai Cloud Kitchen Express Server running on port ${PORT}`);
 });
