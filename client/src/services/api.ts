@@ -223,6 +223,8 @@ function saveStoredOrders(orders: any[]) {
 export const ScheduleService = {
   getSchedule: (date?: string) => fetchApi(`/schedule${date ? `?date=${date}` : ''}`),
   toggleSchedule: (payload: any) => fetchApi('/schedule', { method: 'POST', body: JSON.stringify(payload) }),
+  toggleDateStatus: (date: string, isDateActive: boolean) => fetchApi('/schedule', { method: 'POST', body: JSON.stringify({ date, isDateActive }) }),
+  toggleSlotStatus: (date: string, slotId: string, isActive: boolean) => fetchApi('/schedule', { method: 'POST', body: JSON.stringify({ date, slotId, isActive }) }),
 };
 
 export const MenuService = {
