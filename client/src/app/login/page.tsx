@@ -11,22 +11,20 @@ import {
   Phone,
   CheckCircle2,
   AlertCircle,
-  ArrowRight,
   ShieldCheck,
   Leaf,
   Heart,
-  ShoppingBag
+  Loader2
 } from 'lucide-react';
-import { Navbar } from '@/components/Navbar';
 import { useCartStore } from '@/store/cartStore';
-import { AuthService } from '@/services/api';
+import { loginCustomer, registerCustomer } from '@/services/authService';
 
 export default function LoginPage() {
   const router = useRouter();
   const { setCustomerProfile } = useCartStore();
 
-  // Mode: 'SIGN_IN' | 'SIGN_UP' | 'VERIFICATION_SUCCESS'
-  const [mode, setMode] = useState<'SIGN_IN' | 'SIGN_UP' | 'VERIFICATION_SUCCESS'>('SIGN_IN');
+  // Mode: 'SIGN_IN' | 'SIGN_UP'
+  const [mode, setMode] = useState<'SIGN_IN' | 'SIGN_UP'>('SIGN_IN');
 
   // Sign In Form State
   const [signInEmail, setSignInEmail] = useState('');
@@ -41,11 +39,13 @@ export default function LoginPage() {
   // Status Alerts
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
-  // Handle Sign In Submit (Image 3)
+  // Handle Sign In Submit
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setSuccessMsg('');
 
     if (!signInEmail || !signInEmail.includes('@')) {
       setErrorMsg('Please enter a valid email address.');
@@ -60,25 +60,33 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      const data = await AuthService.loginCustomer({ email: signInEmail });
-      const userName = data.user?.name || signInEmail.split('@')[0];
-      const userPhone = data.user?.phone || '9876543210';
-      setCustomerProfile(userName, userPhone, data.user?.address || '');
-      router.push('/menu');
+      console.log('🌐 [Login Page] Executing Supabase Auth signInWithPassword...');
+      const data = await loginCustomer(signInEmail, signInPassword);
+
+      console.log('✅ [Login Page] Supabase Auth Response:', data);
+
+      const userName = data.user?.user_metadata?.full_name || signInEmail.split('@')[0];
+      const userPhone = data.user?.user_metadata?.phone || '';
+
+      setCustomerProfile(userName, userPhone);
+      setSuccessMsg('Signed in successfully! Redirecting to Storefront...');
+
+      setTimeout(() => {
+        router.push('/storefront');
+      }, 600);
     } catch (err: any) {
-      console.warn('Login fallback:', err);
-      const userName = signInEmail.split('@')[0];
-      setCustomerProfile(userName, '9876543210');
-      router.push('/menu');
+      console.error('❌ [Login Page] Authentication failed:', err);
+      setErrorMsg(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Sign Up Submit (Image 4)
+  // Handle Sign Up Submit
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setSuccessMsg('');
 
     if (!signUpName || signUpName.trim().length < 2) {
       setErrorMsg('Please enter your full name.');
@@ -95,25 +103,33 @@ export default function LoginPage() {
       return;
     }
 
-    if (!signUpPassword || signUpPassword.length < 4) {
-      setErrorMsg('Password must be at least 4 characters.');
+    if (!signUpPassword || signUpPassword.length < 6) {
+      setErrorMsg('Password must be at least 6 characters.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const data = await AuthService.registerCustomer({
-        name: signUpName,
-        phone: signUpPhone,
+      console.log('🌐 [Login Page] Executing Supabase Auth signUp...');
+      const data = await registerCustomer({
         email: signUpEmail,
+        password: signUpPassword,
+        fullName: signUpName,
+        phone: signUpPhone,
       });
-      setCustomerProfile(data.user?.name || signUpName, data.user?.phone || signUpPhone, data.user?.address || '');
-      setMode('VERIFICATION_SUCCESS');
-    } catch (err: any) {
-      console.warn('Register fallback:', err);
+
+      console.log('✅ [Login Page] Supabase Auth SignUp Success:', data);
+
       setCustomerProfile(signUpName, signUpPhone);
-      setMode('VERIFICATION_SUCCESS');
+      setSuccessMsg('Account created successfully! Redirecting to Storefront...');
+
+      setTimeout(() => {
+        router.push('/storefront');
+      }, 600);
+    } catch (err: any) {
+      console.error('❌ [Login Page] Sign Up failed:', err);
+      setErrorMsg(err.message || 'Registration failed. Please check your inputs.');
     } finally {
       setLoading(false);
     }
@@ -122,7 +138,7 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#fbf9f4] text-slate-900 font-sans flex flex-col justify-between">
       
-      {/* Full Top Site Header Bar (Matching milkymushroom.in style) */}
+      {/* Top Header Bar */}
       <header className="sticky top-0 z-40 bg-[#fbf9f4]/90 backdrop-blur-md border-b border-amber-900/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
@@ -139,17 +155,11 @@ export default function LoginPage() {
 
             {/* Navigation Links */}
             <nav className="hidden md:flex items-center space-x-8 text-sm font-bold text-slate-700">
-              <Link href="/" className="hover:text-[#059669] transition-colors">
-                Home
-              </Link>
-              <Link href="/" className="hover:text-[#059669] transition-colors">
-                Menu
+              <Link href="/storefront" className="hover:text-[#059669] transition-colors">
+                Storefront
               </Link>
               <Link href="/orders" className="hover:text-[#059669] transition-colors">
                 My Orders
-              </Link>
-              <Link href="/account" className="hover:text-[#059669] transition-colors">
-                Account
               </Link>
             </nav>
 
@@ -158,12 +168,13 @@ export default function LoginPage() {
               <button
                 onClick={() => {
                   setErrorMsg('');
+                  setSuccessMsg('');
                   setMode(mode === 'SIGN_IN' ? 'SIGN_UP' : 'SIGN_IN');
                 }}
                 className="px-5 py-2.5 rounded-full bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-xs shadow-md shadow-emerald-700/20 transition-all flex items-center gap-1.5"
               >
                 <User className="w-4 h-4" />
-                <span>{mode === 'SIGN_IN' ? 'Sign In' : 'Sign In'}</span>
+                <span>{mode === 'SIGN_IN' ? 'Create Account' : 'Sign In'}</span>
               </button>
             </div>
 
@@ -171,14 +182,14 @@ export default function LoginPage() {
         </div>
       </header>
 
-      {/* Main Centered Auth Card View (Matching Image 3, Image 4, Image 5) */}
+      {/* Main Centered Auth Card View */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 py-12">
         <div className="w-full max-w-[440px] bg-white border border-slate-200/70 rounded-[2rem] shadow-xl p-8 sm:p-10 space-y-6 text-center transition-all duration-300">
           
           {/* SECURE ACCESS Badge */}
           <div>
             <span className="inline-block font-black text-[11px] uppercase tracking-widest text-[#059669] mb-2">
-              SECURE ACCESS
+              SUPABASE SECURE AUTH
             </span>
 
             {mode === 'SIGN_IN' && (
@@ -187,7 +198,7 @@ export default function LoginPage() {
                   Welcome Back
                 </h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Sign in to manage addresses and orders
+                  Sign in to access your Yazhisai profile & orders
                 </p>
               </>
             )}
@@ -202,23 +213,9 @@ export default function LoginPage() {
                 </p>
               </>
             )}
-
-            {mode === 'VERIFICATION_SUCCESS' && (
-              <div className="space-y-3 pt-2">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#059669] flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-10 h-10" />
-                </div>
-                <h1 className="text-2xl font-serif font-black text-slate-900 tracking-tight">
-                  Simulating Verification Email
-                </h1>
-                <p className="text-xs text-slate-600 font-medium leading-relaxed max-w-xs mx-auto">
-                  Your account was created! Because this is a local test database environment, we have generated a simulated email verification link.
-                </p>
-              </div>
-            )}
           </div>
 
-          {/* Error Alert */}
+          {/* Alerts */}
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold text-left">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -226,7 +223,14 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* MODE 1: SIGN IN FORM (Matching Image 3) */}
+          {successMsg && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2 font-bold text-left">
+              <CheckCircle2 className="w-4 h-4 shrink-0 text-[#059669]" />
+              <span>{successMsg}</span>
+            </div>
+          )}
+
+          {/* MODE 1: SIGN IN FORM */}
           {mode === 'SIGN_IN' && (
             <form onSubmit={handleSignIn} className="space-y-4 text-left font-semibold">
               <div>
@@ -266,9 +270,16 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
+                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2 flex items-center justify-center space-x-2 disabled:opacity-70"
               >
-                {loading ? 'Signing In...' : 'Sign In'}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Signing In...</span>
+                  </>
+                ) : (
+                  <span>Sign In</span>
+                )}
               </button>
 
               <div className="pt-4 border-t border-slate-100 text-center text-xs font-semibold text-slate-600">
@@ -277,6 +288,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => {
                     setErrorMsg('');
+                    setSuccessMsg('');
                     setMode('SIGN_UP');
                   }}
                   className="text-[#059669] font-extrabold hover:underline"
@@ -287,7 +299,7 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* MODE 2: CREATE ACCOUNT FORM (Matching Image 4) */}
+          {/* MODE 2: CREATE ACCOUNT FORM */}
           {mode === 'SIGN_UP' && (
             <form onSubmit={handleSignUp} className="space-y-4 text-left font-semibold">
               <div>
@@ -333,10 +345,10 @@ export default function LoginPage() {
                   <input
                     type="tel"
                     required
-                    placeholder="Mobile number"
+                    placeholder="10-digit mobile number"
                     value={signUpPhone}
                     onChange={(e) => setSignUpPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#fffdfa] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] transition-colors"
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] transition-colors"
                   />
                 </div>
               </div>
@@ -350,10 +362,10 @@ export default function LoginPage() {
                   <input
                     type="password"
                     required
-                    placeholder="Min 4 characters"
+                    placeholder="Min 6 characters"
                     value={signUpPassword}
                     onChange={(e) => setSignUpPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#fffdfa] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] transition-colors"
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] transition-colors"
                   />
                 </div>
               </div>
@@ -361,9 +373,16 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
+                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2 flex items-center justify-center space-x-2 disabled:opacity-70"
               >
-                {loading ? 'Creating Account...' : 'Create Account'}
+                {loading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Creating Account...</span>
+                  </>
+                ) : (
+                  <span>Create Account</span>
+                )}
               </button>
 
               <div className="pt-4 border-t border-slate-100 text-center text-xs font-semibold text-slate-600">
@@ -372,6 +391,7 @@ export default function LoginPage() {
                   type="button"
                   onClick={() => {
                     setErrorMsg('');
+                    setSuccessMsg('');
                     setMode('SIGN_IN');
                   }}
                   className="text-[#059669] font-extrabold hover:underline"
@@ -382,32 +402,10 @@ export default function LoginPage() {
             </form>
           )}
 
-          {/* MODE 3: SIMULATING VERIFICATION EMAIL (Matching Image 5) */}
-          {mode === 'VERIFICATION_SUCCESS' && (
-            <div className="space-y-4 pt-2">
-              <button
-                onClick={() => router.push('/account')}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all"
-              >
-                Verify Registered Account Now
-              </button>
-
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setMode('SIGN_IN')}
-                  className="text-xs font-bold text-[#059669] hover:underline"
-                >
-                  Back to Sign In
-                </button>
-              </div>
-            </div>
-          )}
-
         </div>
       </main>
 
-      {/* Bottom Footer Links */}
+      {/* Footer */}
       <footer className="border-t border-amber-900/10 py-6 text-center text-xs text-slate-500 font-semibold bg-[#fbf9f4]">
         <div className="flex items-center justify-center space-x-6 mb-2">
           <span>100% Home Cooked</span>
