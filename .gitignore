@@ -52,3 +52,5 @@ coverage/
 # Build artifacts
 dist/
 build/
+client/e2e-screenshots/
+e2e-screenshots/
