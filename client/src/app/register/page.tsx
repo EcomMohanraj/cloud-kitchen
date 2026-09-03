@@ -62,7 +62,7 @@ export default function RegisterPage() {
       setCustomerProfile(fullName, phone);
       setSuccessMsg('Account created successfully! Redirecting...');
       setTimeout(() => {
-        router.push('/menu');
+        router.push('/');
       }, 800);
     } catch (err: any) {
       setErrorMsg(err.message || 'Registration failed');

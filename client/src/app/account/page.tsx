@@ -19,15 +19,16 @@ import {
   Phone,
   AlertCircle,
   CheckCircle2,
-  PackageCheck
+  PackageCheck,
+  Loader2
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { useCartStore } from '@/store/cartStore';
-import { AuthService } from '@/services/api';
+import { AuthService, OrderService } from '@/services/api';
 
 export default function AccountPage() {
   const router = useRouter();
-  const { customerName, customerPhone, setCustomerProfile, logoutCustomer } = useCartStore();
+  const { customerName, customerPhone, deliveryAddress, setCustomerProfile, logoutCustomer } = useCartStore();
 
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'ORDERS' | 'SLOTS' | 'ADDRESSES' | 'PROFILE'>('ORDERS');
@@ -43,11 +44,30 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  const [userOrders, setUserOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
   const isLoggedIn = mounted && Boolean(customerName);
+
+  useEffect(() => {
+    if (isLoggedIn && customerPhone) {
+      setOrdersLoading(true);
+      OrderService.getOrders({ phone: customerPhone })
+        .then((data) => {
+          if (data && data.orders) {
+            setUserOrders(data.orders);
+          }
+        })
+        .catch((err) => console.error(err))
+        .finally(() => setOrdersLoading(false));
+    } else {
+      setUserOrders([]);
+    }
+  }, [isLoggedIn, customerPhone]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,9 +89,11 @@ export default function AccountPage() {
       const savedName = data.user?.name || email.split('@')[0];
       const savedPhone = data.user?.phone || '9876543210';
       setCustomerProfile(savedName, savedPhone, data.user?.address || '');
+      router.push('/');
     } catch (err: any) {
       console.warn('Backend login fallback:', err);
       setCustomerProfile(email.split('@')[0], '9876543210');
+      router.push('/');
     } finally {
       setLoading(false);
     }
@@ -105,9 +127,11 @@ export default function AccountPage() {
     try {
       const data = await AuthService.registerCustomer({ name, phone, email });
       setCustomerProfile(data.user?.name || name, data.user?.phone || phone, data.user?.address || '');
+      router.push('/');
     } catch (err: any) {
       console.warn('Backend register fallback:', err);
       setCustomerProfile(name, phone);
+      router.push('/');
     } finally {
       setLoading(false);
     }
@@ -383,15 +407,42 @@ export default function AccountPage() {
             {activeTab === 'ORDERS' && (
               <div className="space-y-4">
                 <h3 className="font-extrabold text-base text-slate-900">Recent Food Orders</h3>
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs flex justify-between items-center">
-                  <div>
-                    <span className="font-mono font-bold text-slate-900">#YZH-884920</span>
-                    <p className="text-slate-500 font-semibold mt-0.5">Kongu Briyani x 2 • ₹570 (Lunch Slot)</p>
+                {ordersLoading ? (
+                  <div className="py-8 text-center text-xs font-bold text-slate-500 flex items-center justify-center space-x-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-[#059669]" />
+                    <span>Loading your orders...</span>
                   </div>
-                  <Link href="/orders" className="text-[#059669] font-extrabold hover:underline">
-                    Track Status →
-                  </Link>
-                </div>
+                ) : userOrders.length === 0 ? (
+                  <div className="p-6 rounded-2xl bg-slate-50 border border-slate-200 text-center space-y-3">
+                    <ShoppingBag className="w-10 h-10 mx-auto text-slate-400 stroke-[1.5]" />
+                    <p className="text-sm font-extrabold text-slate-800">No orders placed yet</p>
+                    <p className="text-xs text-slate-500 font-medium">You haven&apos;t placed any food pre-orders yet. Pick an operating date and meal slot to order!</p>
+                    <Link href="/" className="inline-block px-5 py-2.5 rounded-2xl bg-[#059669] text-white text-xs font-extrabold shadow-sm">
+                      Book Meal Slot
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {userOrders.map((ord: any) => (
+                      <div key={ord.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs flex justify-between items-center">
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-mono font-bold text-slate-900">#{ord.orderNumber || ord.id}</span>
+                            <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase">
+                              {ord.orderStatus}
+                            </span>
+                          </div>
+                          <p className="text-slate-500 font-semibold mt-1">
+                            Booked for: <strong className="text-slate-800">{ord.bookingDate}</strong> ({ord.slotType} Slot) • ₹{ord.totalAmount}
+                          </p>
+                        </div>
+                        <Link href="/orders" className="text-[#059669] font-extrabold hover:underline">
+                          Track Status →
+                        </Link>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -408,10 +459,16 @@ export default function AccountPage() {
             {activeTab === 'ADDRESSES' && (
               <div className="space-y-4">
                 <h3 className="font-extrabold text-base text-slate-900">Saved Delivery Addresses</h3>
-                <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
-                  <div className="font-bold text-slate-900">Home Address</div>
-                  <p className="mt-1">Door 42, Anna Nagar West, Chennai - 600040</p>
-                </div>
+                {deliveryAddress ? (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
+                    <div className="font-bold text-slate-900">Default Delivery Address</div>
+                    <p className="mt-1">{deliveryAddress}</p>
+                  </div>
+                ) : (
+                  <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 text-xs text-slate-500">
+                    No delivery address recorded yet. Delivery addresses are automatically saved when you place an order.
+                  </div>
+                )}
               </div>
             )}
 

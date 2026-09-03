@@ -144,7 +144,7 @@ export const Navbar: React.FC = () => {
       if (userEmail === 'admin@yazhisai.com') {
         router.push('/admin/schedule');
       } else {
-        router.push('/account');
+        router.push('/');
       }
     }, 800);
   };

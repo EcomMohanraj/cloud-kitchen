@@ -64,12 +64,12 @@ export default function LoginPage() {
       const userName = data.user?.name || signInEmail.split('@')[0];
       const userPhone = data.user?.phone || '9876543210';
       setCustomerProfile(userName, userPhone, data.user?.address || '');
-      router.push('/menu');
+      router.push('/');
     } catch (err: any) {
       console.warn('Login fallback:', err);
       const userName = signInEmail.split('@')[0];
       setCustomerProfile(userName, '9876543210');
-      router.push('/menu');
+      router.push('/');
     } finally {
       setLoading(false);
     }
@@ -386,7 +386,7 @@ export default function LoginPage() {
           {mode === 'VERIFICATION_SUCCESS' && (
             <div className="space-y-4 pt-2">
               <button
-                onClick={() => router.push('/account')}
+                onClick={() => router.push('/')}
                 className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all"
               >
                 Verify Registered Account Now
