@@ -29,7 +29,7 @@ export const Navbar: React.FC = () => {
   const pathname = usePathname();
   const router = useRouter();
 
-  const { cartItems, setIsCartOpen, customerName, setCustomerProfile, logoutCustomer } = useCartStore();
+  const { cartItems, setIsCartOpen, customerName, setCustomerProfile, logoutCustomer, loadSavedProfile } = useCartStore();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [authTab, setAuthTab] = useState<'SIGN_IN' | 'SIGN_UP' | 'ADMIN'>('SIGN_IN');
@@ -55,7 +55,8 @@ export const Navbar: React.FC = () => {
   // Mark as mounted after hydration to prevent SSR mismatch
   useEffect(() => {
     setMounted(true);
-  }, []);
+    loadSavedProfile();
+  }, [loadSavedProfile]);
 
   // Robust Admin Access Detection
   useEffect(() => {

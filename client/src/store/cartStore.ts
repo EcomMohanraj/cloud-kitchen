@@ -23,6 +23,7 @@ interface CartStore {
   setSelectedSlot: (slot: string) => void;
   setIsCartOpen: (open: boolean) => void;
   setCustomerProfile: (name: string, phone: string, address?: string) => void;
+  loadSavedProfile: () => void;
   logoutCustomer: () => void;
   addToCart: (item: any) => void;
   removeFromCart: (menuItemId: string) => void;
@@ -32,32 +33,31 @@ interface CartStore {
   getCartCount: () => number;
 }
 
-function getInitialProfile() {
-  if (typeof window === 'undefined') return { name: '', phone: '', address: '' };
-  try {
-    const name = localStorage.getItem('yazhisai_user_name') || '';
-    const phone = localStorage.getItem('yazhisai_user_phone') || '';
-    const address = localStorage.getItem('yazhisai_user_address') || '';
-    return { name, phone, address };
-  } catch {
-    return { name: '', phone: '', address: '' };
-  }
-}
-
-const savedProfile = getInitialProfile();
-
 export const useCartStore = create<CartStore>((set, get) => ({
   selectedDate: new Date().toISOString().split('T')[0],
   selectedSlot: 'BREAKFAST',
   cartItems: [],
   isCartOpen: false,
-  customerName: savedProfile.name,
-  customerPhone: savedProfile.phone,
-  deliveryAddress: savedProfile.address,
+  customerName: '',
+  customerPhone: '',
+  deliveryAddress: '',
 
   setSelectedDate: (date: string) => set({ selectedDate: date }),
   setSelectedSlot: (slot: string) => set({ selectedSlot: slot }),
   setIsCartOpen: (open: boolean) => set({ isCartOpen: open }),
+
+  loadSavedProfile: () => {
+    if (typeof window !== 'undefined') {
+      try {
+        const name = localStorage.getItem('yazhisai_user_name') || '';
+        const phone = localStorage.getItem('yazhisai_user_phone') || '';
+        const address = localStorage.getItem('yazhisai_user_address') || '';
+        set({ customerName: name, customerPhone: phone, deliveryAddress: address });
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  },
 
   setCustomerProfile: (name: string, phone: string, address?: string) => {
     if (typeof window !== 'undefined') {

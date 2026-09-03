@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -29,6 +29,7 @@ export default function AccountPage() {
   const router = useRouter();
   const { customerName, customerPhone, setCustomerProfile, logoutCustomer } = useCartStore();
 
+  const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<'ORDERS' | 'SLOTS' | 'ADDRESSES' | 'PROFILE'>('ORDERS');
 
   // Auth Mode when Not Logged In: 'SIGN_IN' | 'SIGN_UP'
@@ -42,7 +43,11 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  const isLoggedIn = Boolean(customerName);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const isLoggedIn = mounted && Boolean(customerName);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();

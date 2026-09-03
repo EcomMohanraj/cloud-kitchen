@@ -27,6 +27,13 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
   const [step, setStep] = useState<'SELECT' | 'PROCESSING' | 'OTP' | 'SUCCESS'>('SELECT');
   const [otp, setOtp] = useState('123456');
   const [loading, setLoading] = useState(false);
+  const [txnId, setTxnId] = useState('');
+
+  React.useEffect(() => {
+    if (step === 'SUCCESS' && !txnId) {
+      setTxnId(`TXN_${Math.floor(10000000 + Math.random() * 90000000)}`);
+    }
+  }, [step, txnId]);
 
   if (!isOpen || !targetOrder) return null;
 
@@ -237,7 +244,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
               <CheckCircle2 className="w-16 h-16 text-emerald-600 animate-bounce" />
               <h4 className="text-xl font-black text-slate-900">Payment Successful!</h4>
               <p className="text-xs text-slate-600 font-semibold">
-                Transaction ID: <span className="font-mono text-emerald-700 font-bold">TXN_{Math.floor(10000000 + Math.random() * 90000000)}</span>
+                Transaction ID: <span className="font-mono text-emerald-700 font-bold">{txnId}</span>
               </p>
               <p className="text-xs text-slate-500 font-semibold">Redirecting to Order Status Tracker...</p>
             </div>

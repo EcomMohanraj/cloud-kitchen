@@ -31,12 +31,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
   const packagingFee = subtotal > 0 ? 15 : 0;
   const grandTotal = subtotal + deliveryFee + packagingFee;
 
-  const formattedDate = new Date(selectedDate).toLocaleDateString('en-US', {
-    weekday: 'short',
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  const formatDateString = (dateStr: string) => {
+    if (!dateStr) return '';
+    const parts = dateStr.split('-');
+    if (parts.length !== 3) return dateStr;
+    const [year, month, day] = parts.map(Number);
+    return new Date(year, month - 1, day).toLocaleDateString('en-US', {
+      weekday: 'short',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  };
+
+  const formattedDate = formatDateString(selectedDate);
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
