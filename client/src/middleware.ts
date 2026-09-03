@@ -6,14 +6,12 @@ export function middleware(request: NextRequest) {
 
   // Protect all /admin routes except /admin/login
   if (path.startsWith('/admin') && path !== '/admin/login') {
-    const adminToken = request.cookies.get('yazhisai_admin_token')?.value;
-    const sessionCookie =
-      request.cookies.get('sb-access-token')?.value ||
-      request.cookies.get('supabase-auth-token')?.value ||
-      request.cookies.get('yazhisai_customer')?.value;
+    const adminToken =
+      request.cookies.get('admin_token')?.value ||
+      request.cookies.get('yazhisai_admin_token')?.value;
 
-    // Allow access if admin token or session cookie exists
-    if (!adminToken && !sessionCookie) {
+    // Require valid admin token for admin portal access
+    if (!adminToken) {
       const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('redirect', path);
       return NextResponse.redirect(loginUrl);

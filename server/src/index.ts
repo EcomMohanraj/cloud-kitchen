@@ -37,7 +37,7 @@ app.use(
       ) {
         return callback(null, true);
       }
-      return callback(null, true); // Fallback permissive to prevent CORS blocking during deployment
+      return callback(new Error('Not allowed by CORS policy'));
     },
     credentials: true,
   })

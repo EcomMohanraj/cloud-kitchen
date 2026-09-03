@@ -1,6 +1,12 @@
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'cloud-kitchen-super-secret-jwt-key-2026';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing.');
+  }
+  return secret;
+}
 
 export interface AdminPayload {
   userId: number;
@@ -9,12 +15,12 @@ export interface AdminPayload {
 }
 
 export function signAdminToken(payload: AdminPayload): string {
-  return jwt.sign(payload, JWT_SECRET, { expiresIn: '7d' });
+  return jwt.sign(payload, getJwtSecret(), { expiresIn: '7d' });
 }
 
 export function verifyAdminToken(token: string): AdminPayload | null {
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as AdminPayload;
+    const decoded = jwt.verify(token, getJwtSecret()) as AdminPayload;
     if (decoded && decoded.role === 'ADMIN') {
       return decoded;
     }
@@ -41,11 +47,6 @@ export function verifyAdminFromRequest(req: Request): boolean {
   }
 
   if (token && verifyAdminToken(token)) {
-    return true;
-  }
-
-  // In development mode, allow session access if cookie exists or bypass for local testing
-  if (process.env.NODE_ENV !== 'production') {
     return true;
   }
 

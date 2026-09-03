@@ -1,7 +1,13 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'yazhisai-cloud-kitchen-jwt-secret-2026';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing.');
+  }
+  return secret;
+}
 
 export interface AuthRequest extends Request {
   admin?: any;
@@ -16,7 +22,7 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
       return res.status(401).json({ error: 'Unauthorized admin access. Token missing.' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     req.admin = decoded;
     next();
   } catch (error) {

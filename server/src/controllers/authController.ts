@@ -3,7 +3,13 @@ import { prisma } from '../config/db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'yazhisai-cloud-kitchen-jwt-secret-2026';
+function getJwtSecret(): string {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('FATAL SECURITY ERROR: JWT_SECRET environment variable is missing.');
+  }
+  return secret;
+}
 
 export const loginAdmin = async (req: Request, res: Response) => {
   try {
@@ -28,7 +34,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
 
     const token = jwt.sign(
       { userId: admin.id, email: admin.email, role: 'ADMIN' },
-      JWT_SECRET,
+      getJwtSecret(),
       { expiresIn: '7d' }
     );
 
@@ -127,7 +133,7 @@ export const verifySession = async (req: Request, res: Response) => {
       return res.status(401).json({ authenticated: false });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, getJwtSecret());
     return res.json({ authenticated: true, admin: decoded });
   } catch (error) {
     return res.status(401).json({ authenticated: false });

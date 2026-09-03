@@ -22,6 +22,10 @@ const createOrderSchema = z.object({
 
 export const getOrders = async (req: Request, res: Response) => {
   try {
+    // SECURITY LIMITATION / IDOR NOTE:
+    // Currently, getOrders allows querying by phone number or order ID.
+    // In production with customer JWT authentication enabled, phone queries should
+    // be strictly bound to the authenticated user's session token payload.
     const { id, date, slot, phone } = req.query;
 
     if (id && typeof id === 'string') {
