@@ -3,6 +3,13 @@ import { prisma } from '../config/db';
 
 const SLOT_TYPES = ['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER'];
 
+function getLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /**
  * Helper to ensure initial 7-day schedule exists in DB
  */
@@ -14,7 +21,7 @@ async function ensureScheduleSeed() {
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
 
     for (const slotType of SLOT_TYPES) {
       await prisma.slotsSchedule.upsert({
@@ -46,7 +53,11 @@ export const getSchedule = async (req: Request, res: Response) => {
       return res.json({ date, slots });
     }
 
+    const todayStr = getLocalDateString(new Date());
     const schedules = await prisma.slotsSchedule.findMany({
+      where: {
+        date: { gte: todayStr },
+      },
       orderBy: [{ date: 'asc' }, { slotType: 'asc' }],
     });
 

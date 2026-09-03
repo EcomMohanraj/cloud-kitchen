@@ -3,13 +3,19 @@ import bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
 
+function getLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 async function main() {
   console.log('Seeding Yazhisai Cloud Kitchen database...');
 
-  // 1. Create Admin User
+  // 1. Create Admin User (Using upsert so existing users remain untouched)
   const passwordHash = await bcrypt.hash('admin123', 10);
   
-  // Create in User table and Admin table
   await prisma.user.upsert({
     where: { phone: '9876543210' },
     update: {},
@@ -29,25 +35,29 @@ async function main() {
     },
   });
 
-  console.log('Admin accounts created: admin@yazhisai.com / admin123');
+  console.log('Admin accounts verified: admin@yazhisai.com / admin123');
 
-  // 2. Create Granular Schedule (Dates enabled next week)
-  const dateList = [
-    { date: '2026-09-02', active: true },
-    { date: '2026-09-03', active: true },
-    { date: '2026-09-04', active: false }, // Chef Day Off
-    { date: '2026-09-05', active: true },
-    { date: '2026-09-06', active: true },
-    { date: '2026-09-07', active: false }, // Chef Day Off
-    { date: '2026-09-08', active: true },
-  ];
+  // Clear ONLY SlotsSchedule and MenuItem data (Preserve User, Order, OrderItem)
+  await prisma.slotsSchedule.deleteMany({});
+  await prisma.menuItem.deleteMany({});
+
+  // 2. Generate 7-Day Dynamic Schedule starting TODAY
+  const today = new Date();
+  const dateList = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    dateList.push({
+      date: getLocalDateString(d),
+      active: i !== 2 && i !== 5,
+    });
+  }
 
   const slots = ['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER'];
 
   for (const d of dateList) {
     for (const slot of slots) {
-      // Disable Dinner on Sep 3 as custom schedule rule
-      const isSlotActive = d.active && !(d.date === '2026-09-03' && slot === 'DINNER');
+      const isSlotActive = d.active;
 
       await prisma.slotsSchedule.upsert({
         where: {

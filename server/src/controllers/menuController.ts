@@ -221,7 +221,7 @@ export const getMenuItems = async (req: Request, res: Response) => {
 
     const whereClause: any = {};
     if (slot && typeof slot === 'string') {
-      whereClause.slotCategory = slot.toUpperCase();
+      whereClause.slotCategory = { equals: slot.trim(), mode: 'insensitive' };
     }
     if (!includeInactive) {
       whereClause.isAvailable = true;

@@ -14,6 +14,8 @@ import { ScheduleService, MenuService } from '@/services/api';
 import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 
+import { isSlotExpiredToday, getFirstValidUpcomingSlot } from '@/utils/slotTiming';
+
 // Format Date as local YYYY-MM-DD string to prevent UTC timezone shifts
 function formatDateKey(d: Date): string {
   const year = d.getFullYear();
@@ -49,15 +51,24 @@ export default function StorefrontPage() {
       if (data.schedule && data.schedule.length > 0) {
         setScheduleList(data.schedule);
 
-        // Guarantee active date selection
+        const todayKey = formatDateKey(new Date());
+        let targetDate = selectedDate;
+
         const currentActiveObj = data.schedule.find((s: ScheduleDate) => s.date === selectedDate && s.isDateActive);
-        if (!currentActiveObj) {
-          const firstActive = data.schedule.find((s: ScheduleDate) => s.isDateActive);
-          if (firstActive) {
-            setSelectedDate(firstActive.date);
+        if (!currentActiveObj || selectedDate < todayKey) {
+          const todayActive = data.schedule.find((s: ScheduleDate) => s.date >= todayKey && s.isDateActive);
+          if (todayActive) {
+            targetDate = todayActive.date;
           } else {
-            setSelectedDate(data.schedule[0].date);
+            targetDate = data.schedule[0].date;
           }
+        }
+        setSelectedDate(targetDate);
+
+        // Auto-select first valid open non-expired slot
+        const validOpenSlot = getFirstValidUpcomingSlot(targetDate);
+        if (validOpenSlot) {
+          setSelectedSlot(validOpenSlot);
         }
       }
     } catch (error) {
@@ -90,17 +101,21 @@ export default function StorefrontPage() {
   const currentSlotStatuses = currentDateSchedule ? currentDateSchedule.slots : undefined;
   const isDateActive = currentDateSchedule ? Boolean(currentDateSchedule.isDateActive) : true;
 
-  // Auto-shift slot if currently selected slot is inactive
+  // Auto-shift slot if currently selected slot is inactive or expired
   useEffect(() => {
     if (currentSlotStatuses && isDateActive) {
-      const isCurrentSlotActive = Boolean(
+      const currentCutoff = currentSlotStatuses[selectedSlot]?.cutoffTime || '10:30 AM';
+      const isExpired = isSlotExpiredToday(currentCutoff, selectedDate);
+      const isCurrentSlotActive = !isExpired && Boolean(
         currentSlotStatuses[selectedSlot]?.isActive && (currentSlotStatuses[selectedSlot]?.isAvailable ?? true)
       );
 
       if (!isCurrentSlotActive) {
-        const activeSlotKey = MEAL_SLOTS.find(
-          (s) => currentSlotStatuses[s.id]?.isActive && (currentSlotStatuses[s.id]?.isAvailable ?? true)
-        )?.id;
+        const activeSlotKey = MEAL_SLOTS.find((s) => {
+          const slotCutoff = currentSlotStatuses[s.id]?.cutoffTime || '10:30 AM';
+          const expired = isSlotExpiredToday(slotCutoff, selectedDate);
+          return !expired && currentSlotStatuses[s.id]?.isActive && (currentSlotStatuses[s.id]?.isAvailable ?? true);
+        })?.id;
 
         if (activeSlotKey) {
           setSelectedSlot(activeSlotKey);
