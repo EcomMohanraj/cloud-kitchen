@@ -5,10 +5,17 @@ import { KotSummaryTable } from '@/components/admin/KotSummaryTable';
 import { OrderService } from '@/services/api';
 import { Loader2 } from 'lucide-react';
 
+function getLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 export default function AdminKotPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState('2026-09-02');
+  const [selectedDate, setSelectedDate] = useState(() => getLocalDateString());
   const [selectedSlot, setSelectedSlot] = useState('BREAKFAST');
 
   const fetchOrders = async () => {
