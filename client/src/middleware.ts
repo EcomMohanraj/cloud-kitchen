@@ -13,6 +13,7 @@ export function middleware(request: NextRequest) {
 
     // Require valid admin token for admin portal access
     if (!adminToken) {
+      console.log(`[MIDDLEWARE REDIRECT] Path: ${path} | adminToken missing in cookies -> redirecting to /admin/login`);
       const loginUrl = new URL('/admin/login', request.url);
       loginUrl.searchParams.set('redirect', path);
       return NextResponse.redirect(loginUrl);
