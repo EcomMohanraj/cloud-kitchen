@@ -13,6 +13,13 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     'Content-Type': 'application/json',
   };
 
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('yazhisai_admin_jwt') || localStorage.getItem('admin_token');
+    if (token) {
+      defaultHeaders['Authorization'] = `Bearer ${token}`;
+    }
+  }
+
   const response = await fetch(url, {
     ...options,
     headers: {

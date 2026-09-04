@@ -61,16 +61,12 @@ export const Navbar: React.FC = () => {
   // Robust Admin Access Detection
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const hasAdminCookie = document.cookie.includes('yazhisai_admin_token');
+      const hasAdminJwt = Boolean(localStorage.getItem('yazhisai_admin_jwt'));
+      const hasAdminCookie = document.cookie.includes('admin_token') || document.cookie.includes('yazhisai_admin_jwt');
       const hasAdminActiveStorage = localStorage.getItem('yazhisai_admin_active') === 'true';
       const isCustomerAdmin = Boolean(customerName && customerName.toLowerCase().includes('admin'));
 
-      const isAdmin = hasAdminCookie || hasAdminActiveStorage || isCustomerAdmin;
-
-      if (isAdmin && !hasAdminActiveStorage) {
-        document.cookie = 'yazhisai_admin_token=active_session; path=/; max-age=31536000; SameSite=Lax';
-        localStorage.setItem('yazhisai_admin_active', 'true');
-      }
+      const isAdmin = hasAdminJwt || hasAdminCookie || hasAdminActiveStorage || isCustomerAdmin;
 
       setIsAdminLoggedIn(Boolean(isAdmin));
     }
@@ -96,7 +92,10 @@ export const Navbar: React.FC = () => {
 
   const handleAdminLogout = () => {
     if (typeof window !== 'undefined') {
+      localStorage.removeItem('yazhisai_admin_jwt');
       localStorage.removeItem('yazhisai_admin_active');
+      document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+      document.cookie = 'yazhisai_admin_jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       document.cookie = 'yazhisai_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
     logoutCustomer();
@@ -132,7 +131,6 @@ export const Navbar: React.FC = () => {
     if (userEmail === 'admin@yazhisai.com') {
       if (typeof window !== 'undefined') {
         localStorage.setItem('yazhisai_admin_active', 'true');
-        document.cookie = 'yazhisai_admin_token=active_session; path=/';
       }
       setIsAdminLoggedIn(true);
     }
@@ -155,10 +153,14 @@ export const Navbar: React.FC = () => {
     setAdminLoading(true);
 
     try {
-      await AuthService.login({ email: adminEmail, password: adminPassword });
+      const res = await AuthService.login({ email: adminEmail, password: adminPassword });
       if (typeof window !== 'undefined') {
+        if (res && res.token) {
+          localStorage.setItem('yazhisai_admin_jwt', res.token);
+          document.cookie = `admin_token=${res.token}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `yazhisai_admin_jwt=${res.token}; path=/; max-age=604800; SameSite=Lax`;
+        }
         localStorage.setItem('yazhisai_admin_active', 'true');
-        document.cookie = 'yazhisai_admin_token=active_session; path=/';
       }
       setCustomerProfile('admin', '9876543210');
       setIsAdminLoggedIn(true);

@@ -23,9 +23,13 @@ export default function AdminLoginPage() {
     setSuccess(false);
 
     try {
-      // 1. Attempt API auth with fallback for demo admin credentials
+      // 1. Attempt API auth
+      let token = '';
       try {
-        await AuthService.login({ email, password });
+        const res = await AuthService.login({ email, password });
+        if (res && res.token) {
+          token = res.token;
+        }
       } catch (apiErr) {
         if (email === 'admin@yazhisai.com' && password === 'admin123') {
           console.log('Demo Admin local authentication active.');
@@ -34,9 +38,13 @@ export default function AdminLoginPage() {
         }
       }
 
-      // 2. Set Admin Auth Cookies & LocalStorage
+      // 2. Set Admin Auth JWT Token in LocalStorage & Cookies
       if (typeof window !== 'undefined') {
-        document.cookie = 'yazhisai_admin_token=active_session; path=/';
+        if (token) {
+          localStorage.setItem('yazhisai_admin_jwt', token);
+          document.cookie = `admin_token=${token}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `yazhisai_admin_jwt=${token}; path=/; max-age=604800; SameSite=Lax`;
+        }
         localStorage.setItem('yazhisai_admin_active', 'true');
       }
 

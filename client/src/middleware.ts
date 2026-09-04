@@ -8,6 +8,7 @@ export function middleware(request: NextRequest) {
   if (path.startsWith('/admin') && path !== '/admin/login') {
     const adminToken =
       request.cookies.get('admin_token')?.value ||
+      request.cookies.get('yazhisai_admin_jwt')?.value ||
       request.cookies.get('yazhisai_admin_token')?.value;
 
     // Require valid admin token for admin portal access
