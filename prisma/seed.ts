@@ -37,11 +37,7 @@ async function main() {
 
   console.log('Admin accounts verified: admin@yazhisai.com / admin123');
 
-  // Clear ONLY SlotsSchedule and MenuItem data (Preserve User, Order, OrderItem)
-  await prisma.slotsSchedule.deleteMany({});
-  await prisma.menuItem.deleteMany({});
-
-  // 2. Generate 7-Day Dynamic Schedule starting TODAY
+  // 2. Generate 7-Day Dynamic Schedule starting TODAY (Preserve existing Admin toggles)
   const today = new Date();
   const dateList = [];
   for (let i = 0; i < 7; i++) {
@@ -66,10 +62,7 @@ async function main() {
             slotType: slot,
           },
         },
-        update: {
-          isActive: isSlotActive,
-          isAvailable: isSlotActive,
-        },
+        update: {},
         create: {
           date: d.date,
           slotType: slot,
@@ -84,9 +77,7 @@ async function main() {
   }
   console.log('Granular schedule dates seeded.');
 
-  // 3. Re-seed Signature Menu Items
-  await prisma.menuItem.deleteMany({});
-
+  // 3. Re-seed Signature Menu Items (Preserve existing items and availability toggles)
   const menuItems = [
     // BREAKFAST
     {
@@ -230,9 +221,18 @@ async function main() {
   ];
 
   for (const item of menuItems) {
-    await prisma.menuItem.create({
-      data: item,
+    const existing = await prisma.menuItem.findFirst({
+      where: {
+        name: item.name,
+        slotCategory: item.slotCategory,
+      },
     });
+
+    if (!existing) {
+      await prisma.menuItem.create({
+        data: item,
+      });
+    }
   }
 
   console.log('Yazhisai menu items seeded successfully!');

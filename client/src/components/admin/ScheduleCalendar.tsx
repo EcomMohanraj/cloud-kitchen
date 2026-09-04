@@ -11,6 +11,13 @@ interface ScheduleCalendarProps {
   onRefresh: () => void;
 }
 
+function getLocalDateString(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 // Generate default 7 upcoming operational days if database initialization is starting
 function generateDefault7Days() {
   const today = new Date();
@@ -18,7 +25,7 @@ function generateDefault7Days() {
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = getLocalDateString(d);
 
     const slotsObj: Record<string, any> = {};
     MEAL_SLOTS.forEach((slot) => {
@@ -91,9 +98,9 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleList
         setLocalScheduleList(data.schedule);
       }
 
-      // 2. Also sync to Supabase slot_schedules
+      // 2. Also sync to Supabase slot_schedules if active
       MEAL_SLOTS.forEach((slot) => {
-        SupabaseScheduleService.toggleSlotSchedule(date, slot.id as any, nextStatus).catch(console.error);
+        SupabaseScheduleService.toggleSlotSchedule(date, slot.id as any, nextStatus).catch(() => {});
       });
     } catch (error) {
       console.error('Failed to toggle date:', error);
@@ -144,7 +151,7 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleList
       }
 
       // 2. Sync to Supabase slot_schedules
-      SupabaseScheduleService.toggleSlotSchedule(date, slotType as any, nextSlotStatus).catch(console.error);
+      SupabaseScheduleService.toggleSlotSchedule(date, slotType as any, nextSlotStatus).catch(() => {});
     } catch (error) {
       console.error('Failed to toggle slot:', error);
     } finally {
@@ -202,7 +209,7 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleList
       {/* Date Matrix Cards Grid */}
       <div className="space-y-6">
         {localScheduleList.map((item) => {
-          const dateObj = new Date(item.date);
+          const dateObj = new Date(item.date.includes('T') ? item.date : `${item.date}T00:00:00`);
           const formattedDate = dateObj.toLocaleDateString('en-US', {
             weekday: 'long',
             month: 'short',

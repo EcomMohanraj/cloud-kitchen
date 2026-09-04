@@ -229,6 +229,25 @@ export default function AdminMenuPage() {
     fetchMenu();
   }, []);
 
+  const handleToggleDishAvailability = async (id: string, currentStatus: boolean) => {
+    const nextStatus = !currentStatus;
+
+    // Optimistic update
+    setMenuItems((prev) =>
+      prev.map((item) => (item.id === id ? { ...item, isAvailable: nextStatus } : item))
+    );
+
+    try {
+      await MenuService.updateMenuItem({ id, isAvailable: nextStatus });
+    } catch (error) {
+      console.error('Failed to toggle dish availability:', error);
+      // Revert state on failure
+      setMenuItems((prev) =>
+        prev.map((item) => (item.id === id ? { ...item, isAvailable: currentStatus } : item))
+      );
+    }
+  };
+
   const handleDeleteItem = async (id: string) => {
     if (!confirm('Are you sure you want to delete this menu item?')) return;
 
@@ -260,7 +279,7 @@ export default function AdminMenuPage() {
             Yazhisai Menu Management & Food Items CRUD
           </h2>
           <p className="text-xs text-slate-500 font-semibold mt-1">
-            Create, update, upload food photos, set prices, and assign slot categories (Breakfast, Snacks, Lunch, Dinner).
+            Create, update, toggle dish availability, upload food photos, set prices, and assign slot categories (Breakfast, Snacks, Lunch, Dinner).
           </p>
         </div>
 
@@ -342,11 +361,24 @@ export default function AdminMenuPage() {
             </div>
 
             <div className="p-4 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between">
-              <span className={`text-[10px] px-3 py-1 rounded-full font-black uppercase tracking-wider ${
-                item.isAvailable ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'
-              }`}>
-                {item.isAvailable ? 'Available' : 'Inactive'}
-              </span>
+              {/* Dish-Level Availability iOS-Style Toggle Switch */}
+              <div className="flex items-center space-x-2">
+                <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-wider ${
+                  item.isAvailable ? 'bg-emerald-100 text-emerald-900 border border-emerald-200' : 'bg-rose-100 text-rose-800 border border-rose-200'
+                }`}>
+                  {item.isAvailable ? 'Available' : 'Unavailable'}
+                </span>
+
+                <label className="relative inline-flex items-center cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={Boolean(item.isAvailable)}
+                    onChange={() => handleToggleDishAvailability(item.id, Boolean(item.isAvailable))}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-emerald-600"></div>
+                </label>
+              </div>
 
               <div className="flex space-x-2">
                 <button

@@ -11,12 +11,9 @@ function getLocalDateString(d: Date): string {
 }
 
 /**
- * Helper to ensure initial 7-day schedule exists in DB
+ * Helper to ensure initial 7-day schedule exists in DB from today onwards
  */
 async function ensureScheduleSeed() {
-  const count = await prisma.slotsSchedule.count();
-  if (count > 0) return;
-
   const today = new Date();
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
@@ -26,7 +23,7 @@ async function ensureScheduleSeed() {
     for (const slotType of SLOT_TYPES) {
       await prisma.slotsSchedule.upsert({
         where: { date_slotType: { date: dateStr, slotType } },
-        update: {},
+        update: {}, // Non-destructive: do NOT overwrite existing admin settings
         create: {
           date: dateStr,
           slotType,
@@ -150,7 +147,11 @@ export const updateSchedule = async (req: Request, res: Response) => {
       });
     }
 
+    const todayStr = getLocalDateString(new Date());
     const schedules = await prisma.slotsSchedule.findMany({
+      where: {
+        date: { gte: todayStr },
+      },
       orderBy: [{ date: 'asc' }, { slotType: 'asc' }],
     });
 

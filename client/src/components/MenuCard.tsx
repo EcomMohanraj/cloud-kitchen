@@ -143,7 +143,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false }) =>
         <div className="pt-2">
           {!isCardActive ? (
             <div className="w-full py-2.5 text-center text-xs font-extrabold text-slate-400 bg-slate-100 rounded-xl border border-slate-200">
-              Sold Out / Slot Closed
+              {!item.isAvailable ? 'Sold Out / Unavailable Today' : 'Slot Closed'}
             </div>
           ) : (
             <div className="relative w-full h-11">
