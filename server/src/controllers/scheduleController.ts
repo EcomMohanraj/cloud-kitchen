@@ -10,6 +10,13 @@ function getLocalDateString(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+const defaultCutoffMap: Record<string, string> = {
+  BREAKFAST: '10:30 AM',
+  LUNCH: '03:30 PM',
+  SNACKS: '06:30 PM',
+  DINNER: '10:00 PM',
+};
+
 /**
  * Helper to ensure initial 7-day schedule exists in DB from today onwards
  */
@@ -21,18 +28,28 @@ async function ensureScheduleSeed() {
     const dateStr = getLocalDateString(d);
 
     for (const slotType of SLOT_TYPES) {
-      await prisma.slotsSchedule.upsert({
+      const expectedCutoff = defaultCutoffMap[slotType] || '10:30 AM';
+      const existing = await prisma.slotsSchedule.findUnique({
         where: { date_slotType: { date: dateStr, slotType } },
-        update: {}, // Non-destructive: do NOT overwrite existing admin settings
-        create: {
-          date: dateStr,
-          slotType,
-          isActive: true,
-          isAvailable: true,
-          maxOrders: 50,
-          cutoffTime: slotType === 'BREAKFAST' ? '10:30 AM' : slotType === 'LUNCH' ? '03:30 PM' : slotType === 'SNACKS' ? '06:30 PM' : '10:00 PM',
-        },
       });
+
+      if (!existing) {
+        await prisma.slotsSchedule.create({
+          data: {
+            date: dateStr,
+            slotType,
+            isActive: true,
+            isAvailable: true,
+            maxOrders: 50,
+            cutoffTime: expectedCutoff,
+          },
+        });
+      } else if (!existing.cutoffTime || ['06:30 AM', '11:00 AM', '10:00 AM', '05:30 PM', '09:00 AM', '04:00 PM', '11:30 AM'].includes(existing.cutoffTime)) {
+        await prisma.slotsSchedule.update({
+          where: { date_slotType: { date: dateStr, slotType } },
+          data: { cutoffTime: expectedCutoff },
+        });
+      }
     }
   }
 }
