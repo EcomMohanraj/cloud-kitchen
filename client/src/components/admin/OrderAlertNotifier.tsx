@@ -15,11 +15,34 @@ interface OrderAlertNotifierProps {
 export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNotifierProps>((props, ref) => {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
   const [activeAlertOrder, setActiveAlertOrder] = useState<any | null>(null);
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(30);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthTimerRef = useRef<NodeJS.Timeout | null>(null);
   const autoStopTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const countdownIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
+
+  const stopCountdown = () => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+  };
+
+  const startCountdown = () => {
+    stopCountdown();
+    setSecondsRemaining(30);
+    countdownIntervalRef.current = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          stopCountdown();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+  };
 
   // Load sound alert preference from localStorage
   useEffect(() => {
@@ -115,7 +138,7 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
     if (synthTimerRef.current) clearInterval(synthTimerRef.current);
     synthTimerRef.current = setInterval(playSynthesizedChime, 1500);
 
-    // 3. Auto-stop after 30 seconds if not acknowledged
+    // 3. Auto-stop sound after 30 seconds if not acknowledged
     if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
     autoStopTimerRef.current = setTimeout(() => {
       stopSoundLoop();
@@ -139,6 +162,7 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
 
   const handleAcknowledge = () => {
     stopSoundLoop();
+    stopCountdown();
     if (props.onAcknowledge && activeAlertOrder) {
       props.onAcknowledge(activeAlertOrder);
     }
@@ -148,10 +172,12 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
   useImperativeHandle(ref, () => ({
     triggerAlert: (order: any) => {
       setActiveAlertOrder(order);
+      startCountdown();
       startSoundLoop();
     },
     stopAlert: () => {
       stopSoundLoop();
+      stopCountdown();
       setActiveAlertOrder(null);
     },
   }));
@@ -159,6 +185,7 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
   useEffect(() => {
     return () => {
       stopSoundLoop();
+      stopCountdown();
     };
   }, []);
 
@@ -200,7 +227,7 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
                 <span>🚨 NEW LIVE ORDER RECEIVED!</span>
               </div>
               <span className="text-[10px] bg-slate-950 text-amber-400 px-2.5 py-1 rounded-full font-mono font-bold">
-                Auto-stop in 30s
+                Auto-stop in {secondsRemaining}s
               </span>
             </div>
 
