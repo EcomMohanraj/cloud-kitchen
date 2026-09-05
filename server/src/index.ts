@@ -1,3 +1,4 @@
+import http from 'http';
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -8,12 +9,16 @@ import menuRoutes from './routes/menuRoutes';
 import orderRoutes from './routes/orderRoutes';
 import authRoutes from './routes/authRoutes';
 import paymentRoutes from './routes/paymentRoutes';
+import { initSocket } from './socket';
 
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
+
+const httpServer = http.createServer(app);
+initSocket(httpServer);
 
 // Dynamic CORS configuration for production deployment
 const allowedOrigins = [
@@ -63,6 +68,6 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`🚀 Yazhisai Cloud Kitchen Express Server running on port ${PORT}`);
+httpServer.listen(PORT, () => {
+  console.log(`🚀 Yazhisai Cloud Kitchen Express Server + Socket.io running on port ${PORT}`);
 });

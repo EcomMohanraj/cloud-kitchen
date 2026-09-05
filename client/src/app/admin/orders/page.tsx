@@ -16,10 +16,12 @@ import {
 } from 'lucide-react';
 import { ORDER_STATUSES, MEAL_SLOTS } from '@/lib/constants';
 import { OrderService } from '@/services/api';
+import { getSocket, joinAdminRoom } from '@/services/socket';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [newOrderToast, setNewOrderToast] = useState<string | null>(null);
 
   // Filters
   const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'CANCELLED'>('ALL');
@@ -43,10 +45,47 @@ export default function AdminOrdersPage() {
 
   useEffect(() => {
     fetchOrders();
-    const timer = setInterval(() => {
-      fetchOrders();
-    }, 5000);
-    return () => clearInterval(timer);
+
+    // 1. Join Socket.io Admin Room
+    const socket = getSocket();
+    joinAdminRoom();
+
+    // 2. Handle Real-Time New Order Emission
+    const handleNewOrder = (data: { order: any }) => {
+      const newOrder = data.order;
+      console.log('⚡ [Admin UI] Received new-order socket event:', newOrder);
+
+      setOrders((prev) => {
+        const exists = prev.some((o) => o.id === newOrder.id);
+        if (exists) return prev;
+        return [newOrder, ...prev];
+      });
+
+      setNewOrderToast(`🔔 New Order Received: #${newOrder.orderNumber || newOrder.id} from ${newOrder.customerName}!`);
+      setTimeout(() => setNewOrderToast(null), 5000);
+    };
+
+    // 3. Handle Real-Time Order Status Update Emission
+    const handleStatusUpdated = (data: { order: any }) => {
+      const updated = data.order;
+      console.log('⚡ [Admin UI] Received order-status-updated socket event:', updated);
+
+      setOrders((prev) =>
+        prev.map((o) => (o.id === updated.id ? { ...o, ...updated } : o))
+      );
+    };
+
+    socket.on('new-order', handleNewOrder);
+    socket.on('order-status-updated', handleStatusUpdated);
+
+    // Background safety fallback refresh every 30s
+    const fallbackTimer = setInterval(fetchOrders, 30000);
+
+    return () => {
+      socket.off('new-order', handleNewOrder);
+      socket.off('order-status-updated', handleStatusUpdated);
+      clearInterval(fallbackTimer);
+    };
   }, [selectedDateFilter, selectedSlotFilter]);
 
   const handleUpdateStatus = async (orderId: string, orderStatus: string) => {
@@ -93,6 +132,20 @@ export default function AdminOrdersPage() {
 
   return (
     <div className="space-y-6 text-slate-900 font-sans">
+      {newOrderToast && (
+        <div className="bg-amber-400 text-slate-950 px-6 py-4 rounded-2xl font-black text-sm shadow-xl flex items-center justify-between animate-bounce border-2 border-amber-500">
+          <div className="flex items-center space-x-3">
+            <span className="text-xl">🛎️</span>
+            <span>{newOrderToast}</span>
+          </div>
+          <button
+            onClick={() => setNewOrderToast(null)}
+            className="text-xs font-bold bg-slate-950 text-amber-400 px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
       
       {/* Header Banner */}
       <div className="bg-gradient-to-r from-forest-800 to-emerald-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">

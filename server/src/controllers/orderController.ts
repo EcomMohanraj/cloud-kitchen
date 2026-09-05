@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { z } from 'zod';
+import { emitNewOrder, emitOrderStatusUpdated } from '../socket';
 
 const orderItemSchema = z.object({
   menuItemId: z.string().min(1, 'Invalid menu item'),
@@ -136,6 +137,8 @@ export const createOrder = async (req: Request, res: Response) => {
       },
     });
 
+    emitNewOrder(newOrder);
+
     return res.json({ success: true, order: newOrder });
   } catch (error: any) {
     console.error('Create order controller error:', error);
@@ -160,6 +163,8 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
       data: updateData,
       include: { items: true },
     });
+
+    emitOrderStatusUpdated(updatedOrder);
 
     return res.json({ success: true, order: updatedOrder });
   } catch (error: any) {

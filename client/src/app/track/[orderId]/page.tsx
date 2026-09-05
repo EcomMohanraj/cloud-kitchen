@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { OrderStatusTracker } from '@/components/OrderStatusTracker';
 import { OrderService } from '@/services/api';
+import { getSocket, joinOrderRoom, leaveOrderRoom } from '@/services/socket';
 import { Clock, AlertCircle } from 'lucide-react';
 
 export default function OrderTrackingPage() {
@@ -35,9 +36,30 @@ export default function OrderTrackingPage() {
   useEffect(() => {
     if (orderId) {
       fetchOrder();
-      // Poll every 5s for real-time status updates
-      const interval = setInterval(fetchOrder, 5000);
-      return () => clearInterval(interval);
+
+      // 1. Join Order-specific Socket Room
+      const socket = getSocket();
+      joinOrderRoom(orderId);
+
+      // 2. Listen for Real-Time Status Updates
+      const handleStatusUpdated = (data: { order: any }) => {
+        const updated = data.order;
+        if (updated && (updated.id === orderId || updated.orderNumber === orderId)) {
+          console.log(`⚡ [Customer Tracking UI] Received real-time order status update for ${orderId}:`, updated);
+          setOrder((prev: any) => (prev ? { ...prev, ...updated } : updated));
+        }
+      };
+
+      socket.on('order-status-updated', handleStatusUpdated);
+
+      // Background fallback refresh every 30s
+      const fallbackTimer = setInterval(fetchOrder, 30000);
+
+      return () => {
+        leaveOrderRoom(orderId);
+        socket.off('order-status-updated', handleStatusUpdated);
+        clearInterval(fallbackTimer);
+      };
     }
   }, [orderId]);
 
