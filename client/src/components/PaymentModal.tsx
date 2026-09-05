@@ -37,36 +37,100 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
 
   if (!isOpen || !targetOrder) return null;
 
-  const handlePayNow = () => {
-    setStep('PROCESSING');
-    setTimeout(() => {
-      setStep('OTP');
-    }, 1500);
-  };
-
-  const handleVerifyOtp = async () => {
+  const handlePayNow = async () => {
     setLoading(true);
+    setStep('PROCESSING');
+
     try {
-      const mockPaymentId = `pay_${Math.random().toString(36).substring(2, 10)}`;
+      if (typeof window === 'undefined') return;
 
-      await PaymentService.processPayment({
-        orderId: targetOrder.id,
-        paymentId: mockPaymentId,
-        status: 'PAID',
+      const loadScript = (): Promise<boolean> => {
+        return new Promise((resolve) => {
+          if ((window as any).Razorpay) return resolve(true);
+          const script = document.createElement('script');
+          script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+          script.onload = () => resolve(true);
+          script.onerror = () => resolve(false);
+          document.body.appendChild(script);
+        });
+      };
+
+      const loaded = await loadScript();
+      if (!loaded) {
+        throw new Error('Razorpay Checkout SDK failed to load.');
+      }
+
+      const rzpData = await PaymentService.createRazorpayOrder(targetOrder.totalAmount, targetOrder.id);
+      if (!rzpData || !rzpData.razorpayOrderId) {
+        throw new Error('Failed to initialize Razorpay order');
+      }
+
+      const options = {
+        key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TYN2wPXhu0Um2a',
+        amount: rzpData.amount,
+        currency: rzpData.currency || 'INR',
+        name: 'Yazhisai Cloud Kitchen',
+        description: `Order #${targetOrder.orderNumber || targetOrder.id}`,
+        order_id: rzpData.razorpayOrderId,
+        handler: async function (response: any) {
+          try {
+            const verifyRes = await PaymentService.verifyPayment({
+              orderId: targetOrder.id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            if (verifyRes && verifyRes.success) {
+              setTxnId(response.razorpay_payment_id);
+              setStep('SUCCESS');
+              clearCart();
+              setTimeout(() => {
+                onClose();
+                router.push(`/track/${targetOrder.id}`);
+              }, 1800);
+            } else {
+              alert('Payment verification failed!');
+              setStep('SELECT');
+            }
+          } catch (vErr: any) {
+            alert('Verification error: ' + vErr.message);
+            setStep('SELECT');
+          } finally {
+            setLoading(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setStep('SELECT');
+            setLoading(false);
+          },
+        },
+        prefill: {
+          name: targetOrder.customerName,
+          contact: targetOrder.customerPhone,
+        },
+        theme: {
+          color: '#059669',
+        },
+      };
+
+      const rzp = new (window as any).Razorpay(options);
+      rzp.on('payment.failed', function (resp: any) {
+        alert(`Payment Failed: ${resp.error?.description || 'Declined'}`);
+        setStep('SELECT');
+        setLoading(false);
       });
-
-      setStep('SUCCESS');
-      clearCart();
-
-      setTimeout(() => {
-        onClose();
-        router.push(`/track/${targetOrder.id}`);
-      }, 1800);
+      rzp.open();
     } catch (err: any) {
       alert(err.message || 'Payment error');
       setStep('SELECT');
       setLoading(false);
     }
+  };
+
+  const handleVerifyOtp = async () => {
+    await handlePayNow();
   };
 
   return (

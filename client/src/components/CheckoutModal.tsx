@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
-import { OrderService, AddressService } from '@/services/api';
+import { OrderService, AddressService, PaymentService } from '@/services/api';
 import { useRouter } from 'next/navigation';
 
 interface CheckoutModalProps {
@@ -12,6 +12,18 @@ interface CheckoutModalProps {
   onOpenOnlinePayment?: (order: any) => void;
   onProceedToPayment?: (order: any) => void;
 }
+
+const loadRazorpayScript = (): Promise<boolean> => {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(false);
+    if ((window as any).Razorpay) return resolve(true);
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   isOpen,
@@ -140,11 +152,72 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
 
     if (paymentMethod === 'ONLINE') {
-      setLoading(false);
-      onClose();
-      const triggerPayment = onProceedToPayment || onOpenOnlinePayment;
-      if (triggerPayment) {
-        triggerPayment(createdOrder);
+      try {
+        const loaded = await loadRazorpayScript();
+        if (!loaded) {
+          throw new Error('Razorpay SDK failed to load. Please check network connection.');
+        }
+
+        const rzpData = await PaymentService.createRazorpayOrder(grandTotal, createdOrder.id);
+        if (!rzpData || !rzpData.razorpayOrderId) {
+          throw new Error('Could not initialize Razorpay payment order');
+        }
+
+        const options = {
+          key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TYN2wPXhu0Um2a',
+          amount: rzpData.amount,
+          currency: rzpData.currency || 'INR',
+          name: 'Yazhisai Cloud Kitchen',
+          description: `Order #${createdOrder.orderNumber || createdOrder.id}`,
+          order_id: rzpData.razorpayOrderId,
+          handler: async function (response: any) {
+            setLoading(true);
+            try {
+              const verifyRes = await PaymentService.verifyPayment({
+                orderId: createdOrder.id,
+                razorpayOrderId: response.razorpay_order_id,
+                razorpayPaymentId: response.razorpay_payment_id,
+                razorpaySignature: response.razorpay_signature,
+              });
+
+              if (verifyRes && verifyRes.success) {
+                clearCart();
+                setLoading(false);
+                onClose();
+                router.push(`/track/${createdOrder.id}`);
+              } else {
+                setLoading(false);
+                setErrorMsg('Payment verification failed! Signature invalid.');
+              }
+            } catch (verifyErr: any) {
+              setLoading(false);
+              setErrorMsg(verifyErr.message || 'Payment verification failed');
+            }
+          },
+          modal: {
+            ondismiss: function () {
+              setLoading(false);
+              setErrorMsg('Payment cancelled. You can retry payment or switch to Cash on Delivery.');
+            },
+          },
+          prefill: {
+            name: customerName,
+            contact: customerPhone,
+          },
+          theme: {
+            color: '#059669',
+          },
+        };
+
+        const rzp = new (window as any).Razorpay(options);
+        rzp.on('payment.failed', function (resp: any) {
+          setLoading(false);
+          setErrorMsg(`Payment Failed: ${resp.error?.description || 'Transaction declined'}`);
+        });
+        rzp.open();
+      } catch (rzpErr: any) {
+        setLoading(false);
+        setErrorMsg(rzpErr.message || 'Payment gateway initialization failed');
       }
     } else {
       // COD Order Success

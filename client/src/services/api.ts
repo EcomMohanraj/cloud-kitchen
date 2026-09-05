@@ -383,6 +383,10 @@ export const AuthService = {
 };
 
 export const PaymentService = {
+  createRazorpayOrder: (amount: number, orderId?: string) =>
+    fetchApi('/payment/create-order', { method: 'POST', body: JSON.stringify({ amount, orderId }) }),
+  verifyPayment: (payload: { orderId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
+    fetchApi('/payment/verify', { method: 'POST', body: JSON.stringify(payload) }),
   processPayment: (paymentData: any) => fetchApi('/payment', { method: 'POST', body: JSON.stringify(paymentData) }),
 };
 

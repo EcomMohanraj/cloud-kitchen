@@ -78,6 +78,9 @@ model Order {
   paymentMethod   String      // "COD" | "ONLINE"
   paymentStatus   String      // "PENDING" | "PAID" | "FAILED"
   paymentId       String?
+  razorpayOrderId   String?
+  razorpayPaymentId String?
+  razorpaySignature String?
   orderStatus     String      @default("PENDING")
   subtotal        Float
   deliveryFee     Float
