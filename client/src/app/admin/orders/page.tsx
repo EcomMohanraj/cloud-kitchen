@@ -12,14 +12,38 @@ import {
   XCircle,
   AlertCircle,
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  Calendar
 } from 'lucide-react';
 import { ORDER_STATUSES, MEAL_SLOTS } from '@/lib/constants';
 import { OrderService } from '@/services/api';
 import { getSocket, joinAdminRoom } from '@/services/socket';
 import { OrderAlertNotifier, OrderAlertNotifierRef } from '@/components/admin/OrderAlertNotifier';
 
+function getLocalDateString(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getYesterdayDateString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return getLocalDateString(d);
+}
+
+function getTomorrowDateString(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return getLocalDateString(d);
+}
+
 export default function AdminOrdersPage() {
+  const todayStr = getLocalDateString();
+  const yesterdayStr = getYesterdayDateString();
+  const tomorrowStr = getTomorrowDateString();
+
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOrderToast, setNewOrderToast] = useState<string | null>(null);
@@ -28,8 +52,26 @@ export default function AdminOrdersPage() {
 
   // Filters
   const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'CANCELLED'>('ALL');
-  const [selectedDateFilter, setSelectedDateFilter] = useState('');
+  
+  // Date filter defaults to Today (or stored sessionStorage value)
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('yazhisai_admin_order_date_filter');
+      if (saved !== null) {
+        return saved;
+      }
+    }
+    return todayStr;
+  });
+
   const [selectedSlotFilter, setSelectedSlotFilter] = useState('ALL');
+
+  const updateDateFilter = (newDate: string) => {
+    setSelectedDateFilter(newDate);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('yazhisai_admin_order_date_filter', newDate);
+    }
+  };
 
   const fetchOrders = async () => {
     try {
@@ -122,8 +164,18 @@ export default function AdminOrdersPage() {
     }
   };
 
-  // Filtered Orders Calculation
-  const filteredOrders = orders.filter((o) => {
+  // Filtered Orders Calculation (Combining Slot, Date & Status with AND logic)
+  const dateAndSlotFilteredOrders = orders.filter((o) => {
+    if (selectedSlotFilter !== 'ALL' && o.slotType !== selectedSlotFilter) {
+      return false;
+    }
+    if (selectedDateFilter && o.bookingDate !== selectedDateFilter) {
+      return false;
+    }
+    return true;
+  });
+
+  const filteredOrders = dateAndSlotFilteredOrders.filter((o) => {
     if (statusTab === 'ACTIVE') {
       return ['PENDING', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(o.orderStatus);
     }
@@ -181,80 +233,128 @@ export default function AdminOrdersPage() {
         </div>
       </div>
 
-      {/* Filter Bar: Status Tabs & Dropdowns */}
+      {/* Filter Bar: Status Tabs & Date Quick Shortcuts */}
       <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-card-soft space-y-4">
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+        {/* Row 1: Status Quick Tabs */}
+        <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => setStatusTab('ALL')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              statusTab === 'ALL'
+                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            All Orders ({dateAndSlotFilteredOrders.length})
+          </button>
+
+          <button
+            onClick={() => setStatusTab('ACTIVE')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              statusTab === 'ACTIVE'
+                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Active Prep ({dateAndSlotFilteredOrders.filter((o) => ['PENDING', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(o.orderStatus)).length})
+          </button>
+
+          <button
+            onClick={() => setStatusTab('DELIVERED')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              statusTab === 'DELIVERED'
+                ? 'bg-emerald-700 text-white shadow-md'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Delivered ({dateAndSlotFilteredOrders.filter((o) => o.orderStatus === 'DELIVERED').length})
+          </button>
+
+          <button
+            onClick={() => setStatusTab('CANCELLED')}
+            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
+              statusTab === 'CANCELLED'
+                ? 'bg-rose-600 text-white shadow-md'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+            }`}
+          >
+            Cancelled ({dateAndSlotFilteredOrders.filter((o) => o.orderStatus === 'CANCELLED').length})
+          </button>
+        </div>
+
+        {/* Row 2: Date Quick-Select Shortcuts + Date Picker & Slot Filter Dropdowns */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-3 border-t border-slate-100">
           
-          {/* Status Quick Tabs */}
+          {/* Quick Date Buttons */}
           <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-extrabold text-slate-500 mr-1 flex items-center gap-1">
+              <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Date:
+            </span>
+
             <button
-              onClick={() => setStatusTab('ALL')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                statusTab === 'ALL'
-                  ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              onClick={() => updateDateFilter(todayStr)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                selectedDateFilter === todayStr
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              All Orders ({orders.length})
+              Today
             </button>
 
             <button
-              onClick={() => setStatusTab('ACTIVE')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                statusTab === 'ACTIVE'
-                  ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              onClick={() => updateDateFilter(yesterdayStr)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                selectedDateFilter === yesterdayStr
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              Active Prep ({orders.filter((o) => ['PENDING', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(o.orderStatus)).length})
+              Yesterday
             </button>
 
             <button
-              onClick={() => setStatusTab('DELIVERED')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                statusTab === 'DELIVERED'
-                  ? 'bg-emerald-700 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              onClick={() => updateDateFilter(tomorrowStr)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                selectedDateFilter === tomorrowStr
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              Delivered ({orders.filter((o) => o.orderStatus === 'DELIVERED').length})
+              Tomorrow
             </button>
 
             <button
-              onClick={() => setStatusTab('CANCELLED')}
-              className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-                statusTab === 'CANCELLED'
-                  ? 'bg-rose-600 text-white shadow-md'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              onClick={() => updateDateFilter('')}
+              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                selectedDateFilter === ''
+                  ? 'bg-emerald-800 text-white shadow-sm'
+                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
               }`}
             >
-              Cancelled ({orders.filter((o) => o.orderStatus === 'CANCELLED').length})
+              All Dates
             </button>
           </div>
 
-          {/* Date & Slot Filter Dropdowns */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div>
-              <input
-                type="date"
-                value={selectedDateFilter}
-                onChange={(e) => setSelectedDateFilter(e.target.value)}
-                className="px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-600 font-bold"
-              />
-            </div>
+          {/* Date Input & Slot Filter Dropdowns */}
+          <div className="flex items-center gap-2 shrink-0">
+            <input
+              type="date"
+              value={selectedDateFilter}
+              onChange={(e) => updateDateFilter(e.target.value)}
+              className="px-3.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-600 font-bold"
+            />
 
-            <div>
-              <select
-                value={selectedSlotFilter}
-                onChange={(e) => setSelectedSlotFilter(e.target.value)}
-                className="px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-600 font-bold"
-              >
-                <option value="ALL">All Meal Slots</option>
-                {MEAL_SLOTS.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedSlotFilter}
+              onChange={(e) => setSelectedSlotFilter(e.target.value)}
+              className="px-3.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-600 font-bold"
+            >
+              <option value="ALL">All Meal Slots</option>
+              {MEAL_SLOTS.map((s) => (
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
           </div>
 
         </div>
