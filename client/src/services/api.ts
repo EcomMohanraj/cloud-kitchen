@@ -258,6 +258,7 @@ export const MenuService = {
 export const OrderService = {
   getOrders: async (filters?: { id?: string; date?: string; slot?: string; phone?: string }) => {
     let apiOrders: any[] = [];
+    let fetchFailed = false;
     try {
       const params = new URLSearchParams();
       if (filters?.id) params.append('id', filters.id);
@@ -266,8 +267,10 @@ export const OrderService = {
       if (filters?.phone) params.append('phone', filters.phone);
       const data = await fetchApi(`/orders?${params.toString()}`);
       if (data && data.orders) apiOrders = data.orders;
+      console.log(`🌐 [api.ts OrderService.getOrders] fetchApi returned ${apiOrders.length} orders for filters:`, filters);
     } catch (error) {
-      console.warn('Backend Express getOrders failed, fallback to local store:', error);
+      fetchFailed = true;
+      console.warn('❌ [api.ts OrderService.getOrders] Backend Express getOrders failed, fallback to local store:', error);
     }
 
     const stored = getStoredOrders();
@@ -298,7 +301,9 @@ export const OrderService = {
     // Sort newest first
     result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
-    return { orders: result };
+    console.log(`📊 [api.ts OrderService.getOrders] Returning total ${result.length} orders (fetchFailed=${fetchFailed})`);
+
+    return { orders: result, fetchFailed };
   },
 
   createOrder: async (orderData: any) => {

@@ -80,7 +80,26 @@ export default function AdminOrdersPage() {
         slot: selectedSlotFilter !== 'ALL' ? selectedSlotFilter : undefined,
       });
 
-      if (data.orders) setOrders(data.orders);
+      if (data.fetchFailed) {
+        console.warn('⚠️ [Admin UI] API fetch failed, preserving current orders in state.');
+        return;
+      }
+
+      if (data.orders) {
+        setOrders((prev) => {
+          if (prev.length === 0) return data.orders;
+
+          // Atomic merge preserving real-time socket orders and avoiding flicker
+          const map = new Map(prev.map((o) => [o.id, o]));
+          data.orders.forEach((o: any) => {
+            map.set(o.id, o);
+          });
+
+          const merged = Array.from(map.values());
+          merged.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+          return merged;
+        });
+      }
     } catch (error) {
       console.error('Error fetching admin orders:', error);
     } finally {
@@ -389,9 +408,13 @@ export default function AdminOrdersPage() {
                     </span>
                     <div>
                       <h3 className="font-extrabold text-slate-900 text-base">{order.customerName}</h3>
-                      <span className="text-xs text-slate-500 font-semibold flex items-center gap-1.5 mt-0.5">
+                      <a
+                        href={`tel:${order.customerPhone ? String(order.customerPhone).replace(/\s+/g, '') : ''}`}
+                        className="text-xs text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-1.5 mt-0.5 transition-colors cursor-pointer"
+                        title="Click to call customer phone"
+                      >
                         <Phone className="w-3.5 h-3.5 text-emerald-600" /> {order.customerPhone}
-                      </span>
+                      </a>
                     </div>
                   </div>
 
