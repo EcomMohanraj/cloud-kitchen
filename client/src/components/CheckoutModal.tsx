@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
-import { OrderService } from '@/services/api';
+import { OrderService, AddressService } from '@/services/api';
 import { useRouter } from 'next/navigation';
 
 interface CheckoutModalProps {
@@ -35,6 +35,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = useState<string>('DEFAULT');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('COD');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -49,6 +51,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       if (savedName) setCustomerName(savedName);
       if (savedPhone) setCustomerPhone(savedPhone);
       if (savedAddress) setDeliveryAddress(savedAddress);
+
+      if (savedPhone) {
+        AddressService.getAddresses(savedPhone)
+          .then((data) => {
+            if (data && data.addresses && data.addresses.length > 0) {
+              setSavedAddresses(data.addresses);
+              const def = data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
+              if (def) {
+                setSelectedAddressId(def.id);
+                setDeliveryAddress(def.fullAddress);
+              }
+            }
+          })
+          .catch((err) => console.error(err));
+      }
     }
   }, [isOpen, storeName, storePhone, storeAddress]);
 
@@ -212,22 +229,104 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             </div>
 
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">
-                Full Delivery Address *
-              </label>
-              <div className="relative">
-                <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
-                <textarea
-                  required
-                  rows={2}
-                  placeholder="Door No, Street Name, Apartment / Landmark, Pincode"
-                  value={deliveryAddress}
-                  onChange={(e) => setDeliveryAddress(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
-                />
+            {/* Saved Delivery Addresses Selector */}
+            {savedAddresses.length > 0 ? (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-2 flex items-center justify-between">
+                  <span>Select Delivery Address *</span>
+                  <span className="text-[10px] text-emerald-700 font-black">{savedAddresses.length} Saved</span>
+                </label>
+
+                <div className="space-y-2 mb-3">
+                  {savedAddresses.map((addr) => (
+                    <button
+                      key={addr.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedAddressId(addr.id);
+                        setDeliveryAddress(addr.fullAddress);
+                      }}
+                      className={`w-full text-left p-3 rounded-xl border transition-all flex items-start space-x-2.5 ${
+                        selectedAddressId === addr.id
+                          ? 'bg-emerald-50/80 border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                      }`}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedAddressId === addr.id ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 bg-white'}`}>
+                          {selectedAddressId === addr.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                        </div>
+                      </div>
+                      <div className="flex-1 text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className="font-extrabold text-slate-900">{addr.label || 'Address'}</span>
+                          {addr.isDefault && (
+                            <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-black uppercase">
+                              Default
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">{addr.fullAddress}</p>
+                      </div>
+                    </button>
+                  ))}
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedAddressId('NEW');
+                      setDeliveryAddress('');
+                    }}
+                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-center space-x-2.5 text-xs font-extrabold ${
+                      selectedAddressId === 'NEW'
+                        ? 'bg-emerald-50/80 border-emerald-600 ring-2 ring-emerald-500/20 text-emerald-800'
+                        : 'bg-slate-50 border-dashed border-slate-300 text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedAddressId === 'NEW' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 bg-white'}`}>
+                      {selectedAddressId === 'NEW' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                    </div>
+                    <span>+ Type a new / one-off delivery address</span>
+                  </button>
+                </div>
+
+                {selectedAddressId === 'NEW' && (
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Custom Delivery Address *
+                    </label>
+                    <div className="relative">
+                      <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                      <textarea
+                        required
+                        rows={2}
+                        placeholder="Door No, Street Name, Apartment / Landmark, Pincode"
+                        value={deliveryAddress}
+                        onChange={(e) => setDeliveryAddress(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
-            </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Full Delivery Address *
+                </label>
+                <div className="relative">
+                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  <textarea
+                    required
+                    rows={2}
+                    placeholder="Door No, Street Name, Apartment / Landmark, Pincode"
+                    value={deliveryAddress}
+                    onChange={(e) => setDeliveryAddress(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Payment Method Selector */}

@@ -8,12 +8,25 @@ datasource db {
 }
 
 model User {
-  id        String   @id @default(uuid())
-  phone     String   @unique
+  id        String    @id @default(uuid())
+  phone     String    @unique
   name      String?
   address   String?
+  addresses Address[]
   orders    Order[]
-  createdAt DateTime @default(now())
+  createdAt DateTime  @default(now())
+}
+
+model Address {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  label       String?  // e.g. "Home", "Work"
+  fullAddress String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  @@index([userId])
 }
 
 model Admin {

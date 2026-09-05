@@ -385,3 +385,17 @@ export const AuthService = {
 export const PaymentService = {
   processPayment: (paymentData: any) => fetchApi('/payment', { method: 'POST', body: JSON.stringify(paymentData) }),
 };
+
+export const AddressService = {
+  getAddresses: (phone: string) => fetchApi(`/addresses?phone=${encodeURIComponent(phone)}`),
+  createAddress: (payload: { phone: string; label?: string; fullAddress: string; isDefault?: boolean }) =>
+    fetchApi('/addresses', { method: 'POST', body: JSON.stringify(payload) }),
+  updateAddress: (id: string, payload: { phone: string; label?: string; fullAddress: string; isDefault?: boolean }) =>
+    fetchApi(`/addresses/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
+  deleteAddress: (id: string, phone: string) =>
+    fetchApi(`/addresses/${id}?phone=${encodeURIComponent(phone)}`, { method: 'DELETE' }),
+  setDefaultAddress: (id: string, phone: string) =>
+    fetchApi(`/addresses/${id}/default`, { method: 'PUT', body: JSON.stringify({ phone }) }),
+  updateProfile: (phone: string, name: string) =>
+    fetchApi('/addresses/profile', { method: 'PUT', body: JSON.stringify({ phone, name }) }),
+};
