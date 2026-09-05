@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   ClipboardList,
   Phone,
@@ -17,11 +17,14 @@ import {
 import { ORDER_STATUSES, MEAL_SLOTS } from '@/lib/constants';
 import { OrderService } from '@/services/api';
 import { getSocket, joinAdminRoom } from '@/services/socket';
+import { OrderAlertNotifier, OrderAlertNotifierRef } from '@/components/admin/OrderAlertNotifier';
 
 export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOrderToast, setNewOrderToast] = useState<string | null>(null);
+
+  const alertNotifierRef = useRef<OrderAlertNotifierRef>(null);
 
   // Filters
   const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'CANCELLED'>('ALL');
@@ -63,6 +66,9 @@ export default function AdminOrdersPage() {
 
       setNewOrderToast(`🔔 New Order Received: #${newOrder.orderNumber || newOrder.id} from ${newOrder.customerName}!`);
       setTimeout(() => setNewOrderToast(null), 5000);
+
+      // Trigger Sound Alert + Full-Screen Acknowledgment Modal
+      alertNotifierRef.current?.triggerAlert(newOrder);
     };
 
     // 3. Handle Real-Time Order Status Update Emission
@@ -163,13 +169,16 @@ export default function AdminOrdersPage() {
           </p>
         </div>
 
-        <button
-          onClick={fetchOrders}
-          className="self-start md:self-auto px-4 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold border border-white/15 flex items-center gap-2 transition-all shrink-0"
-        >
-          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          <span>Refresh Live Feed</span>
-        </button>
+        <div className="flex items-center space-x-3 self-start md:self-auto shrink-0">
+          <OrderAlertNotifier ref={alertNotifierRef} />
+          <button
+            onClick={fetchOrders}
+            className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold border border-white/15 flex items-center gap-2 transition-all"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span>Refresh Live Feed</span>
+          </button>
+        </div>
       </div>
 
       {/* Filter Bar: Status Tabs & Dropdowns */}
