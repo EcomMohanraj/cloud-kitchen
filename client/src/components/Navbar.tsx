@@ -62,9 +62,15 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const storedJwt = localStorage.getItem('yazhisai_admin_jwt');
-      const hasCookieToken = document.cookie.includes('admin_token=') || document.cookie.includes('yazhisai_admin_jwt=') || document.cookie.includes('yazhisai_admin_token=');
 
-      let activeToken = storedJwt;
+      // Clean up legacy dummy tokens if present
+      if (storedJwt === 'demo_admin_jwt_session') {
+        localStorage.removeItem('yazhisai_admin_jwt');
+        localStorage.removeItem('yazhisai_admin_active');
+      }
+
+      const activeToken = (storedJwt && storedJwt !== 'demo_admin_jwt_session') ? storedJwt : null;
+      const hasCookieToken = document.cookie.includes('admin_token=') || document.cookie.includes('yazhisai_admin_jwt=') || document.cookie.includes('yazhisai_admin_token=');
 
       // 1. Re-sync cookie from localStorage if cookie is missing
       if (activeToken && !hasCookieToken) {
@@ -73,8 +79,8 @@ export const Navbar: React.FC = () => {
         document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
       }
 
-      // 2. Strict verification: Admin is ONLY true when a valid token exists
-      const isAdmin = Boolean(activeToken || hasCookieToken);
+      // 2. Strict verification: Admin is ONLY true when a real server JWT token exists
+      const isAdmin = Boolean(activeToken);
       setIsAdminLoggedIn(isAdmin);
     }
   }, [pathname]);
@@ -134,28 +140,11 @@ export const Navbar: React.FC = () => {
     const savedPhone = userPhone || '9876543210';
     setCustomerProfile(savedName, savedPhone);
 
-    // If logging in as admin email
-    if (userEmail === 'admin@yazhisai.com') {
-      const adminToken = 'demo_admin_jwt_session';
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yazhisai_admin_jwt', adminToken);
-        localStorage.setItem('yazhisai_admin_active', 'true');
-        document.cookie = `admin_token=${adminToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_jwt=${adminToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_token=${adminToken}; path=/; max-age=604800; SameSite=Lax`;
-      }
-      setIsAdminLoggedIn(true);
-    }
-
     setUserSaved(true);
     setTimeout(() => {
       setIsAuthModalOpen(false);
       setUserSaved(false);
-      if (userEmail === 'admin@yazhisai.com') {
-        router.push('/admin/schedule');
-      } else {
-        router.push('/');
-      }
+      router.push('/');
     }, 800);
   };
 
@@ -165,15 +154,12 @@ export const Navbar: React.FC = () => {
     setAdminLoading(true);
 
     try {
-      let activeToken = 'demo_admin_jwt_session';
-      try {
-        const res = await AuthService.login({ email: adminEmail, password: adminPassword });
-        if (res && res.token) {
-          activeToken = res.token;
-        }
-      } catch (apiErr) {
-        // Fallback demo token
+      const res = await AuthService.login({ email: adminEmail, password: adminPassword });
+      if (!res || !res.token) {
+        throw new Error('Invalid admin email or password');
       }
+
+      const activeToken = res.token;
 
       if (typeof window !== 'undefined') {
         localStorage.setItem('yazhisai_admin_jwt', activeToken);
@@ -182,7 +168,6 @@ export const Navbar: React.FC = () => {
         document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
         document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
       }
-      setCustomerProfile('admin', '9876543210');
       setIsAdminLoggedIn(true);
       setAdminLoading(false);
       setIsAuthModalOpen(false);

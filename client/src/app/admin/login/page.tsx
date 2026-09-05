@@ -23,25 +23,13 @@ export default function AdminLoginPage() {
     setSuccess(false);
 
     try {
-      // 1. Attempt API auth with fallback for demo credentials
-      let activeToken = '';
-      try {
-        const res = await AuthService.login({ email, password });
-        if (res && res.token) {
-          activeToken = res.token;
-        }
-      } catch (apiErr) {
-        if (email === 'admin@yazhisai.com' && password === 'admin123') {
-          activeToken = 'demo_admin_jwt_session';
-          console.log('Demo Admin local authentication active.');
-        } else {
-          throw new Error('Invalid email or password credentials');
-        }
+      // 1. Authenticate against Express backend Admin table
+      const res = await AuthService.login({ email, password });
+      if (!res || !res.token) {
+        throw new Error('Invalid email or password credentials');
       }
 
-      if (!activeToken) {
-        activeToken = 'demo_admin_jwt_session';
-      }
+      const activeToken = res.token;
 
       // 2. Set Admin Auth JWT Token in LocalStorage & Cookies
       if (typeof window !== 'undefined') {
@@ -52,13 +40,12 @@ export default function AdminLoginPage() {
         document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
       }
 
-      setCustomerProfile('admin', '9876543210');
       setSuccess(true);
 
-      const redirectPath = new URLSearchParams(window.location.search).get('redirect') || '/admin';
+      const redirectPath = new URLSearchParams(window.location.search).get('redirect') || '/admin/schedule';
       router.push(redirectPath);
     } catch (err: any) {
-      setError(err.message || 'Invalid credentials');
+      setError(err.message || 'Invalid admin credentials');
     } finally {
       setLoading(false);
     }
