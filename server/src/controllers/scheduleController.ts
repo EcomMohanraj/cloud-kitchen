@@ -17,6 +17,13 @@ const defaultCutoffMap: Record<string, string> = {
   DINNER: '10:00 PM',
 };
 
+const defaultOrderCutoffMap: Record<string, string> = {
+  BREAKFAST: '06:00 AM',
+  LUNCH: '11:00 AM',
+  SNACKS: '03:30 PM',
+  DINNER: '06:00 PM',
+};
+
 /**
  * Helper to ensure initial 7-day schedule exists in DB from today onwards
  */
@@ -29,6 +36,7 @@ async function ensureScheduleSeed() {
 
     for (const slotType of SLOT_TYPES) {
       const expectedCutoff = defaultCutoffMap[slotType] || '10:30 AM';
+      const expectedOrderCutoff = defaultOrderCutoffMap[slotType] || '06:00 AM';
       const existing = await prisma.slotsSchedule.findUnique({
         where: { date_slotType: { date: dateStr, slotType } },
       });
@@ -42,7 +50,13 @@ async function ensureScheduleSeed() {
             isAvailable: true,
             maxOrders: 50,
             cutoffTime: expectedCutoff,
+            orderCutoffTime: expectedOrderCutoff,
           },
+        });
+      } else if (!existing.orderCutoffTime) {
+        await prisma.slotsSchedule.update({
+          where: { date_slotType: { date: dateStr, slotType } },
+          data: { orderCutoffTime: expectedOrderCutoff },
         });
       } else if (!existing.cutoffTime || ['06:30 AM', '11:00 AM', '10:00 AM', '05:30 PM', '09:00 AM', '04:00 PM', '11:30 AM'].includes(existing.cutoffTime)) {
         await prisma.slotsSchedule.update({

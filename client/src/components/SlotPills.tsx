@@ -5,10 +5,10 @@ import { motion } from 'framer-motion';
 import { Sun, Coffee, Utensils, Moon, Clock, Lock, Sparkles, Flame } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 import { useCartStore } from '@/store/cartStore';
-import { isSlotExpiredToday } from '@/utils/slotTiming';
+import { isSlotBookingClosed } from '@/utils/slotTiming';
 
 interface SlotPillsProps {
-  slotStatuses?: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string }>;
+  slotStatuses?: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string; orderCutoffTime?: string }>;
   isDateActive?: boolean;
 }
 
@@ -64,8 +64,8 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
         {MEAL_SLOTS.map((slot) => {
           const isSelected = selectedSlot === slot.id;
           const status = slotStatuses?.[slot.id];
-          const cutoffTime = status?.cutoffTime || slot.defaultCutoff;
-          const isExpired = isSlotExpiredToday(cutoffTime, selectedDate);
+          const orderCutoffDisplay = status?.orderCutoffTime || slot.orderCutoff || '06:00 AM';
+          const isExpired = isSlotBookingClosed(orderCutoffDisplay, selectedDate);
           const isSlotActive = isDateActive && !isExpired && (status ? Boolean(status.isActive && (status.isAvailable ?? true)) : true);
 
           return (
@@ -110,7 +110,7 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
                   {/* Real-time Status Pill */}
                   {isExpired ? (
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-rose-600" /> Time Expired / நேரம் முடிந்தது
+                      <Lock className="w-3 h-3 text-rose-600" /> Bookings Closed for Today / முன்பதிவு முடிந்தது
                     </span>
                   ) : isSlotActive ? (
                     <span
@@ -145,16 +145,20 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
                 </div>
 
                 {/* Footer Time & Cutoff */}
-                <div className={`pt-2.5 border-t text-[11px] font-semibold flex items-center justify-between ${
+                <div className={`pt-2.5 border-t text-[11px] font-semibold flex flex-col space-y-1 ${
                   isSelected ? 'border-white/20 text-emerald-50' : 'border-emerald-100 text-slate-500'
                 }`}>
-                  <span className="truncate pr-1 flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {slot.timeRange.split('&')[0]}
-                  </span>
-                  <span className="text-[10px] opacity-90 shrink-0 font-bold">
-                    Cutoff: {cutoffTime}
-                  </span>
+                  <div className="flex items-center justify-between">
+                    <span className="truncate pr-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      {slot.timeRange}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] font-bold opacity-90">
+                    <span className={isSelected ? 'text-amber-200' : 'text-amber-700'}>
+                      Book before {orderCutoffDisplay}
+                    </span>
+                  </div>
                 </div>
               </div>
             </button>

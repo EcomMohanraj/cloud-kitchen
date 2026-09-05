@@ -50,6 +50,12 @@ async function main() {
   }
 
   const slots = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
+  const orderCutoffMap: Record<string, string> = {
+    BREAKFAST: '06:00 AM',
+    LUNCH: '11:00 AM',
+    SNACKS: '03:30 PM',
+    DINNER: '06:00 PM',
+  };
 
   for (const d of dateList) {
     for (const slot of slots) {
@@ -71,6 +77,7 @@ async function main() {
           maxOrders: 50,
           currentOrders: 0,
           cutoffTime: slot === 'BREAKFAST' ? '10:30 AM' : slot === 'LUNCH' ? '03:30 PM' : slot === 'SNACKS' ? '06:30 PM' : '10:00 PM',
+          orderCutoffTime: orderCutoffMap[slot] || '06:00 AM',
         },
       });
     }

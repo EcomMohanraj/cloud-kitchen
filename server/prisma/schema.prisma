@@ -24,14 +24,15 @@ model Admin {
 }
 
 model SlotsSchedule {
-  id            String   @id @default(uuid())
-  date          String   // Format: "YYYY-MM-DD"
-  slotType      String   // "BREAKFAST", "SNACKS", "LUNCH", "DINNER"
-  isAvailable   Boolean  @default(false)
-  isActive      Boolean  @default(false)
-  cutoffTime    String?  @default("09:00 AM")
-  maxOrders     Int      @default(50)
-  currentOrders Int      @default(0)
+  id              String   @id @default(uuid())
+  date            String   // Format: "YYYY-MM-DD"
+  slotType        String   // "BREAKFAST", "SNACKS", "LUNCH", "DINNER"
+  isAvailable     Boolean  @default(false)
+  isActive        Boolean  @default(false)
+  cutoffTime      String?  @default("09:00 AM")
+  orderCutoffTime String?  @default("06:00 AM")
+  maxOrders       Int      @default(50)
+  currentOrders   Int      @default(0)
 
   @@unique([date, slotType])
 }

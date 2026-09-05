@@ -8,7 +8,7 @@ import { useCartStore } from '@/store/cartStore';
 export interface ScheduleDate {
   date: string;
   isDateActive: boolean;
-  slots: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string }>;
+  slots: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string; orderCutoffTime?: string }>;
 }
 
 interface DatePickerProps {

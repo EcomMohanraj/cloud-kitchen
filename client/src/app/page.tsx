@@ -14,7 +14,7 @@ import { ScheduleService, MenuService } from '@/services/api';
 import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 
-import { isSlotExpiredToday, getFirstValidUpcomingSlot } from '@/utils/slotTiming';
+import { isSlotBookingClosed, getFirstValidUpcomingSlot } from '@/utils/slotTiming';
 
 // Format Date as local YYYY-MM-DD string to prevent UTC timezone shifts
 function formatDateKey(d: Date): string {
@@ -101,19 +101,19 @@ export default function StorefrontPage() {
   const currentSlotStatuses = currentDateSchedule ? currentDateSchedule.slots : undefined;
   const isDateActive = currentDateSchedule ? Boolean(currentDateSchedule.isDateActive) : true;
 
-  // Auto-shift slot if currently selected slot is inactive or expired
+  // Auto-shift slot if currently selected slot is inactive or expired past order cutoff
   useEffect(() => {
     if (currentSlotStatuses && isDateActive) {
-      const currentCutoff = currentSlotStatuses[selectedSlot]?.cutoffTime || '10:30 AM';
-      const isExpired = isSlotExpiredToday(currentCutoff, selectedDate);
+      const currentCutoff = currentSlotStatuses[selectedSlot]?.orderCutoffTime || '06:00 AM';
+      const isExpired = isSlotBookingClosed(currentCutoff, selectedDate);
       const isCurrentSlotActive = !isExpired && Boolean(
         currentSlotStatuses[selectedSlot]?.isActive && (currentSlotStatuses[selectedSlot]?.isAvailable ?? true)
       );
 
       if (!isCurrentSlotActive) {
         const activeSlotKey = MEAL_SLOTS.find((s) => {
-          const slotCutoff = currentSlotStatuses[s.id]?.cutoffTime || '10:30 AM';
-          const expired = isSlotExpiredToday(slotCutoff, selectedDate);
+          const slotCutoff = currentSlotStatuses[s.id]?.orderCutoffTime || s.orderCutoff || '06:00 AM';
+          const expired = isSlotBookingClosed(slotCutoff, selectedDate);
           return !expired && currentSlotStatuses[s.id]?.isActive && (currentSlotStatuses[s.id]?.isAvailable ?? true);
         })?.id;
 

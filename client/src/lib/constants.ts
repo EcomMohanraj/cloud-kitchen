@@ -5,6 +5,7 @@ export const MEAL_SLOTS = [
     nameTamil: 'காலை உணவு',
     timeRange: '07:00 AM - 10:30 AM',
     iconName: 'Sun',
+    orderCutoff: '06:00 AM',
     defaultCutoff: '10:30 AM',
   },
   {
@@ -13,6 +14,7 @@ export const MEAL_SLOTS = [
     nameTamil: 'மதிய உணவு',
     timeRange: '12:30 PM - 03:30 PM',
     iconName: 'Utensils',
+    orderCutoff: '11:00 AM',
     defaultCutoff: '03:30 PM',
   },
   {
@@ -21,6 +23,7 @@ export const MEAL_SLOTS = [
     nameTamil: 'மாலை சிற்றுண்டி',
     timeRange: '04:30 PM - 06:30 PM',
     iconName: 'Coffee',
+    orderCutoff: '03:30 PM',
     defaultCutoff: '06:30 PM',
   },
   {
@@ -29,6 +32,7 @@ export const MEAL_SLOTS = [
     nameTamil: 'இரவு உணவு',
     timeRange: '07:30 PM - 10:30 PM',
     iconName: 'Moon',
+    orderCutoff: '06:00 PM',
     defaultCutoff: '10:00 PM',
   },
 ];

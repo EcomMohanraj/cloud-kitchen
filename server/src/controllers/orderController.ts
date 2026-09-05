@@ -57,6 +57,42 @@ export const getOrders = async (req: Request, res: Response) => {
   }
 };
 
+function isOrderCutoffPassed(orderCutoffTimeStr: string | null | undefined, bookingDateStr: string): boolean {
+  if (!orderCutoffTimeStr) return false;
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+
+  if (bookingDateStr > todayStr) return false;
+  if (bookingDateStr < todayStr) return true;
+
+  try {
+    let cutoffHour = 6;
+    let cutoffMinute = 0;
+
+    if (orderCutoffTimeStr.includes(':')) {
+      const parts = orderCutoffTimeStr.replace(/(AM|PM)/i, '').trim().split(':');
+      cutoffHour = Number(parts[0]);
+      cutoffMinute = Number(parts[1] || 0);
+
+      if (orderCutoffTimeStr.toUpperCase().includes('PM') && cutoffHour < 12) {
+        cutoffHour += 12;
+      } else if (orderCutoffTimeStr.toUpperCase().includes('AM') && cutoffHour === 12) {
+        cutoffHour = 0;
+      }
+    }
+
+    const cutoff = new Date();
+    cutoff.setHours(cutoffHour, cutoffMinute, 0, 0);
+
+    return now > cutoff;
+  } catch (error) {
+    return false;
+  }
+}
+
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const validated = createOrderSchema.parse(req.body);
@@ -73,6 +109,12 @@ export const createOrder = async (req: Request, res: Response) => {
     if (schedule && (schedule.isAvailable === false || schedule.isActive === false)) {
       return res.status(400).json({
         error: `Orders are closed for ${validated.bookingDate} (${validated.slotType}). Please choose an active calendar date and meal slot.`,
+      });
+    }
+
+    if (schedule && isOrderCutoffPassed(schedule.orderCutoffTime, validated.bookingDate)) {
+      return res.status(400).json({
+        error: `Booking deadline for ${validated.slotType} on ${validated.bookingDate} has passed (Order Cutoff: ${schedule.orderCutoffTime || 'Closed'}).`,
       });
     }
 
