@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 
-const SLOT_TYPES = ['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER'];
+const SLOT_TYPES = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
 
 function getLocalDateString(d: Date): string {
   const year = d.getFullYear();
@@ -30,7 +30,7 @@ async function ensureScheduleSeed() {
           isActive: true,
           isAvailable: true,
           maxOrders: 50,
-          cutoffTime: slotType === 'BREAKFAST' ? '09:00 AM' : slotType === 'SNACKS' ? '04:00 PM' : slotType === 'LUNCH' ? '11:30 AM' : '06:30 PM',
+          cutoffTime: slotType === 'BREAKFAST' ? '10:30 AM' : slotType === 'LUNCH' ? '03:30 PM' : slotType === 'SNACKS' ? '06:30 PM' : '10:00 PM',
         },
       });
     }

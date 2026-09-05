@@ -49,7 +49,7 @@ async function main() {
     });
   }
 
-  const slots = ['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER'];
+  const slots = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
 
   for (const d of dateList) {
     for (const slot of slots) {
@@ -70,7 +70,7 @@ async function main() {
           isAvailable: isSlotActive,
           maxOrders: 50,
           currentOrders: 0,
-          cutoffTime: slot === 'BREAKFAST' ? '06:30 AM' : slot === 'SNACKS' ? '10:00 AM' : slot === 'LUNCH' ? '11:00 AM' : '05:30 PM',
+          cutoffTime: slot === 'BREAKFAST' ? '10:30 AM' : slot === 'LUNCH' ? '03:30 PM' : slot === 'SNACKS' ? '06:30 PM' : '10:00 PM',
         },
       });
     }

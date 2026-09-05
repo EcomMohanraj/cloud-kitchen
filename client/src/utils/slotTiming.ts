@@ -1,18 +1,19 @@
 // utils/slotTiming.ts - Time-Based Auto-Cutoff Engine for Yazhisai Cloud Kitchen
 
 export interface SlotWindow {
-  type: 'BREAKFAST' | 'SNACKS' | 'LUNCH' | 'DINNER';
+  type: 'BREAKFAST' | 'LUNCH' | 'SNACKS' | 'DINNER';
   label: string;
   tamilLabel: string;
+  timeRange: string;
   startTime: string; // e.g. "07:00"
   cutoffTime: string; // e.g. "10:30" (24hr format)
 }
 
 export const MEAL_SLOTS: SlotWindow[] = [
-  { type: 'BREAKFAST', label: 'Breakfast', tamilLabel: 'காலை உணவு', startTime: '07:00', cutoffTime: '10:30' },
-  { type: 'SNACKS', label: 'Snacks', tamilLabel: 'சிற்றுண்டி', startTime: '11:00', cutoffTime: '16:30' },
-  { type: 'LUNCH', label: 'Lunch', tamilLabel: 'மதிய உணவு', startTime: '12:00', cutoffTime: '15:30' },
-  { type: 'DINNER', label: 'Dinner', tamilLabel: 'இரவு உணவு', startTime: '18:30', cutoffTime: '22:00' },
+  { type: 'BREAKFAST', label: 'Breakfast', tamilLabel: 'காலை உணவு', timeRange: '07:00 AM – 10:30 AM', startTime: '07:00', cutoffTime: '10:30' },
+  { type: 'LUNCH', label: 'Lunch', tamilLabel: 'மதிய உணவு', timeRange: '12:30 PM – 03:30 PM', startTime: '12:30', cutoffTime: '15:30' },
+  { type: 'SNACKS', label: 'Snacks & Tea Break', tamilLabel: 'மாலை சிற்றுண்டி', timeRange: '04:30 PM – 06:30 PM', startTime: '16:30', cutoffTime: '18:30' },
+  { type: 'DINNER', label: 'Dinner', tamilLabel: 'இரவு உணவு', timeRange: '07:30 PM – 10:30 PM', startTime: '19:30', cutoffTime: '22:00' },
 ];
 
 /**
