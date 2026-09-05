@@ -78,22 +78,33 @@ export default function AccountPage() {
       return;
     }
 
-    if (!password || password.length < 6) {
-      setErrorMsg('Password must be at least 6 characters.');
+    if (!password || password.length < 4) {
+      setErrorMsg('Password must be at least 4 characters.');
       return;
     }
 
     setLoading(true);
     try {
-      const data = await AuthService.loginCustomer({ email });
-      const savedName = data.user?.name || email.split('@')[0];
-      const savedPhone = data.user?.phone || '9876543210';
-      setCustomerProfile(savedName, savedPhone, data.user?.address || '');
-      router.push('/');
+      const data = await AuthService.loginCustomer({ email, password });
+      if (data.role === 'ADMIN' && data.token) {
+        const activeToken = data.token;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('yazhisai_admin_jwt', activeToken);
+          localStorage.setItem('yazhisai_admin_active', 'true');
+          document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+        }
+        router.push('/admin/orders');
+      } else {
+        const savedName = data.user?.name || email.split('@')[0];
+        const savedPhone = data.user?.phone || '9876543210';
+        setCustomerProfile(savedName, savedPhone, data.user?.address || '');
+        router.push('/');
+      }
     } catch (err: any) {
-      console.warn('Backend login fallback:', err);
-      setCustomerProfile(email.split('@')[0], '9876543210');
-      router.push('/');
+      console.warn('Backend login error:', err);
+      setErrorMsg(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }

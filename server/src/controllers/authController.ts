@@ -20,7 +20,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
     }
 
     const admin = await prisma.admin.findUnique({
-      where: { email },
+      where: { email: String(email).trim().toLowerCase() },
     });
 
     if (!admin) {
@@ -49,6 +49,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
+      role: 'ADMIN',
       user: { id: admin.id, email: admin.email, role: 'ADMIN' },
       token,
     });
@@ -82,6 +83,7 @@ export const registerCustomer = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
+      role: 'CUSTOMER',
       user,
     });
   } catch (error: any) {
@@ -92,14 +94,58 @@ export const registerCustomer = async (req: Request, res: Response) => {
 
 export const loginCustomer = async (req: Request, res: Response) => {
   try {
-    const { email, phone, name } = req.body;
+    const { email, password, phone, name } = req.body;
 
     if (!phone && !email) {
       return res.status(400).json({ error: 'Phone number or email is required' });
     }
 
+    // 1. First check if email matches an entry in the Admin table
+    if (email && String(email).trim()) {
+      const cleanEmail = String(email).trim().toLowerCase();
+      const admin = await prisma.admin.findUnique({
+        where: { email: cleanEmail },
+      });
+
+      if (admin) {
+        if (!password) {
+          return res.status(400).json({ error: 'Password is required for admin login' });
+        }
+
+        const isMatch = await bcrypt.compare(password, admin.password);
+        if (!isMatch) {
+          return res.status(401).json({ error: 'Invalid credentials' });
+        }
+
+        const token = jwt.sign(
+          { userId: admin.id, email: admin.email, role: 'ADMIN' },
+          getJwtSecret(),
+          { expiresIn: '7d' }
+        );
+
+        const isProd = process.env.NODE_ENV === 'production';
+
+        res.cookie('admin_token', token, {
+          httpOnly: true,
+          secure: isProd,
+          sameSite: isProd ? 'none' : 'lax',
+          maxAge: 7 * 24 * 60 * 60 * 1000,
+        });
+
+        console.log('✅ Admin logged in via unified login:', admin.email);
+
+        return res.json({
+          success: true,
+          role: 'ADMIN',
+          user: { id: admin.id, email: admin.email, role: 'ADMIN' },
+          token,
+        });
+      }
+    }
+
+    // 2. If no Admin match, check User (customer) table as normal
     const userPhone = phone ? String(phone).trim() : '9876543210';
-    const userName = name || (email ? email.split('@')[0] : 'Valued Patron');
+    const userName = name || (email ? String(email).split('@')[0] : 'Valued Patron');
 
     const user = await prisma.user.upsert({
       where: { phone: userPhone },
@@ -116,11 +162,12 @@ export const loginCustomer = async (req: Request, res: Response) => {
 
     return res.json({
       success: true,
+      role: 'CUSTOMER',
       user,
     });
   } catch (error: any) {
-    console.error('❌ Customer login database error:', error);
-    return res.status(500).json({ error: error.message || 'Customer login failed' });
+    console.error('❌ Login database error:', error);
+    return res.status(500).json({ error: error.message || 'Authentication failed' });
   }
 };
 

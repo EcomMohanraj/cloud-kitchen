@@ -23,8 +23,9 @@ router.post('/', loginAdmin);
 router.get('/', verifySession);
 router.delete('/', logoutAdmin);
 
-// Customer Authentication Endpoints with Rate Limiting
+// Customer & Unified Authentication Endpoints with Rate Limiting
 router.post('/customer/register', authLimiter, registerCustomer);
 router.post('/customer/login', authLimiter, loginCustomer);
+router.post('/login', authLimiter, loginCustomer);
 
 export default router;

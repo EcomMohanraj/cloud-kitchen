@@ -42,7 +42,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
-  // Handle Sign In Submit (Image 3)
+  // Handle Sign In Submit
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -52,24 +52,35 @@ export default function LoginPage() {
       return;
     }
 
-    if (!signInPassword || signInPassword.length < 6) {
-      setErrorMsg('Password must be at least 6 characters.');
+    if (!signInPassword || signInPassword.length < 4) {
+      setErrorMsg('Password must be at least 4 characters.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const data = await AuthService.loginCustomer({ email: signInEmail });
-      const userName = data.user?.name || signInEmail.split('@')[0];
-      const userPhone = data.user?.phone || '9876543210';
-      setCustomerProfile(userName, userPhone, data.user?.address || '');
-      router.push('/');
+      const data = await AuthService.loginCustomer({ email: signInEmail, password: signInPassword });
+      
+      if (data.role === 'ADMIN' && data.token) {
+        const activeToken = data.token;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('yazhisai_admin_jwt', activeToken);
+          localStorage.setItem('yazhisai_admin_active', 'true');
+          document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+        }
+        router.push('/admin/orders');
+      } else {
+        const userName = data.user?.name || signInEmail.split('@')[0];
+        const userPhone = data.user?.phone || '9876543210';
+        setCustomerProfile(userName, userPhone, data.user?.address || '');
+        router.push('/');
+      }
     } catch (err: any) {
-      console.warn('Login fallback:', err);
-      const userName = signInEmail.split('@')[0];
-      setCustomerProfile(userName, '9876543210');
-      router.push('/');
+      console.warn('Login error:', err);
+      setErrorMsg(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }

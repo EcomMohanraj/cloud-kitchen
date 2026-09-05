@@ -116,7 +116,7 @@ export const Navbar: React.FC = () => {
     router.push('/admin/login');
   };
 
-  const handleUserAuth = (e: React.FormEvent) => {
+  const handleUserAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setUserError('');
     setUserSaved(false);
@@ -131,21 +131,59 @@ export const Navbar: React.FC = () => {
       return;
     }
 
-    if (!userPassword || userPassword.length < 6) {
-      setUserError('Password must be at least 6 characters.');
+    if (!userPassword || userPassword.length < 4) {
+      setUserError('Password must be at least 4 characters.');
       return;
     }
 
-    const savedName = fullName || userEmail.split('@')[0];
-    const savedPhone = userPhone || '9876543210';
-    setCustomerProfile(savedName, savedPhone);
-
-    setUserSaved(true);
-    setTimeout(() => {
-      setIsAuthModalOpen(false);
-      setUserSaved(false);
-      router.push('/');
-    }, 800);
+    if (authTab === 'SIGN_UP') {
+      try {
+        const data = await AuthService.registerCustomer({
+          name: fullName,
+          phone: userPhone || '9876543210',
+          email: userEmail,
+        });
+        setCustomerProfile(data.user?.name || fullName, data.user?.phone || userPhone || '9876543210', data.user?.address || '');
+        setUserSaved(true);
+        setTimeout(() => {
+          setIsAuthModalOpen(false);
+          setUserSaved(false);
+          router.push('/');
+        }, 800);
+      } catch (err: any) {
+        setUserError(err.message || 'Registration failed');
+      }
+    } else {
+      // SIGN_IN tab
+      try {
+        const data = await AuthService.loginCustomer({ email: userEmail, password: userPassword });
+        if (data.role === 'ADMIN' && data.token) {
+          const activeToken = data.token;
+          if (typeof window !== 'undefined') {
+            localStorage.setItem('yazhisai_admin_jwt', activeToken);
+            localStorage.setItem('yazhisai_admin_active', 'true');
+            document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+            document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+            document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+          }
+          setIsAdminLoggedIn(true);
+          setIsAuthModalOpen(false);
+          router.push('/admin/orders');
+        } else {
+          const savedName = data.user?.name || fullName || userEmail.split('@')[0];
+          const savedPhone = data.user?.phone || userPhone || '9876543210';
+          setCustomerProfile(savedName, savedPhone, data.user?.address || '');
+          setUserSaved(true);
+          setTimeout(() => {
+            setIsAuthModalOpen(false);
+            setUserSaved(false);
+            router.push('/');
+          }, 800);
+        }
+      } catch (err: any) {
+        setUserError(err.message || 'Sign in failed');
+      }
+    }
   };
 
   const handleAdminLogin = async (e: React.FormEvent) => {
@@ -171,7 +209,7 @@ export const Navbar: React.FC = () => {
       setIsAdminLoggedIn(true);
       setAdminLoading(false);
       setIsAuthModalOpen(false);
-      router.push('/admin/schedule');
+      router.push('/admin/orders');
     } catch (err: any) {
       setAdminLoading(false);
       setAdminError(err.message || 'Invalid admin credentials');
@@ -230,11 +268,11 @@ export const Navbar: React.FC = () => {
               {mounted && isAdminLoggedIn ? (
                 <div className="flex items-center space-x-2">
                   <Link
-                    href="/admin/schedule"
+                    href="/admin/orders"
                     className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 shadow-sm transition-all"
                   >
                     <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                    <span>👨‍🍳 Chef Admin Matrix</span>
+                    <span>👨‍🍳 Switch to Admin Dashboard</span>
                   </Link>
                   <button
                     onClick={handleAdminLogout}
