@@ -395,9 +395,9 @@ export const PaymentService = {
 
 export const AddressService = {
   getAddresses: (phone: string) => fetchApi(`/addresses?phone=${encodeURIComponent(phone)}`),
-  createAddress: (payload: { phone: string; label?: string; fullAddress: string; isDefault?: boolean }) =>
+  createAddress: (payload: { phone: string; label?: string; fullAddress: string; latitude?: number; longitude?: number; isDefault?: boolean }) =>
     fetchApi('/addresses', { method: 'POST', body: JSON.stringify(payload) }),
-  updateAddress: (id: string, payload: { phone: string; label?: string; fullAddress: string; isDefault?: boolean }) =>
+  updateAddress: (id: string, payload: { phone: string; label?: string; fullAddress: string; latitude?: number; longitude?: number; isDefault?: boolean }) =>
     fetchApi(`/addresses/${id}`, { method: 'PUT', body: JSON.stringify(payload) }),
   deleteAddress: (id: string, phone: string) =>
     fetchApi(`/addresses/${id}?phone=${encodeURIComponent(phone)}`, { method: 'DELETE' }),

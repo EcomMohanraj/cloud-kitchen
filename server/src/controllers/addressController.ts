@@ -56,7 +56,7 @@ export const getAddresses = async (req: Request, res: Response) => {
 
 export const createAddress = async (req: Request, res: Response) => {
   try {
-    const { phone, label, fullAddress, isDefault } = req.body;
+    const { phone, label, fullAddress, latitude, longitude, isDefault } = req.body;
 
     if (!phone) {
       return res.status(400).json({ error: 'Customer phone number is required' });
@@ -88,6 +88,8 @@ export const createAddress = async (req: Request, res: Response) => {
         userId: user.id,
         label: label ? String(label).trim() : 'Home',
         fullAddress: String(fullAddress).trim(),
+        latitude: latitude != null ? Number(latitude) : null,
+        longitude: longitude != null ? Number(longitude) : null,
         isDefault: setAsDefault,
       },
     });
@@ -114,7 +116,7 @@ export const createAddress = async (req: Request, res: Response) => {
 export const updateAddress = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    const { phone, label, fullAddress, isDefault } = req.body;
+    const { phone, label, fullAddress, latitude, longitude, isDefault } = req.body;
 
     if (!phone) {
       return res.status(400).json({ error: 'Customer phone number is required' });
@@ -149,6 +151,8 @@ export const updateAddress = async (req: Request, res: Response) => {
       data: {
         label: label ? String(label).trim() : existing.label,
         fullAddress: String(fullAddress).trim(),
+        latitude: latitude != null ? Number(latitude) : existing.latitude,
+        longitude: longitude != null ? Number(longitude) : existing.longitude,
         isDefault: isDefault !== undefined ? Boolean(isDefault) : existing.isDefault,
       },
     });

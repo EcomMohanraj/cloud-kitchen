@@ -23,6 +23,8 @@ model Address {
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   label       String?  // e.g. "Home", "Work"
   fullAddress String
+  latitude    Float?
+  longitude   Float?
   isDefault   Boolean  @default(false)
   createdAt   DateTime @default(now())
 

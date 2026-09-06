@@ -28,6 +28,7 @@ import {
   Home,
   Briefcase,
   Building,
+  Navigation,
   Save,
   X
 } from 'lucide-react';
@@ -63,6 +64,9 @@ export default function AccountPage() {
   const [editingAddress, setEditingAddress] = useState<any | null>(null);
   const [formLabel, setFormLabel] = useState('Home');
   const [formFullAddress, setFormFullAddress] = useState('');
+  const [formLatitude, setFormLatitude] = useState<number | null>(null);
+  const [formLongitude, setFormLongitude] = useState<number | null>(null);
+  const [locatingForm, setLocatingForm] = useState(false);
   const [formIsDefault, setFormIsDefault] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [addressSaving, setAddressSaving] = useState(false);
@@ -108,6 +112,8 @@ export default function AccountPage() {
     setEditingAddress(null);
     setFormLabel('Home');
     setFormFullAddress('');
+    setFormLatitude(null);
+    setFormLongitude(null);
     setFormIsDefault(savedAddresses.length === 0);
     setAddressFormOpen(true);
   };
@@ -116,8 +122,54 @@ export default function AccountPage() {
     setEditingAddress(addr);
     setFormLabel(addr.label || 'Home');
     setFormFullAddress(addr.fullAddress);
+    setFormLatitude(addr.latitude || null);
+    setFormLongitude(addr.longitude || null);
     setFormIsDefault(addr.isDefault);
     setAddressFormOpen(true);
+  };
+
+  const handleFormUseCurrentLocation = () => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setLocatingForm(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setFormLatitude(lat);
+        setFormLongitude(lng);
+
+        const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+        if (googleApiKey) {
+          try {
+            const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`);
+            const data = await res.json();
+            if (data.results && data.results[0]) {
+              setFormFullAddress(data.results[0].formatted_address);
+            } else {
+              setFormFullAddress((prev) => prev || `GPS Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            }
+          } catch {
+            setFormFullAddress((prev) => prev || `GPS Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+          }
+        } else {
+          setFormFullAddress((prev) => (prev && !prev.includes('GPS') ? `${prev} (GPS Pinned: ${lat.toFixed(4)}, ${lng.toFixed(4)})` : `GPS Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`));
+        }
+
+        setLocatingForm(false);
+      },
+      (error) => {
+        console.warn('Geolocation permission denied or unavailable:', error.message);
+        alert('Location access denied or unavailable. Please type your delivery address manually.');
+        setLocatingForm(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   };
 
   const handleSaveAddress = async (e: React.FormEvent) => {
@@ -131,6 +183,8 @@ export default function AccountPage() {
           phone: customerPhone,
           label: formLabel,
           fullAddress: formFullAddress,
+          latitude: formLatitude ?? undefined,
+          longitude: formLongitude ?? undefined,
           isDefault: formIsDefault,
         });
       } else {
@@ -138,6 +192,8 @@ export default function AccountPage() {
           phone: customerPhone,
           label: formLabel,
           fullAddress: formFullAddress,
+          latitude: formLatitude ?? undefined,
+          longitude: formLongitude ?? undefined,
           isDefault: formIsDefault,
         });
       }
@@ -662,9 +718,20 @@ export default function AccountPage() {
                       </div>
 
                       <div>
-                        <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                          FULL ADDRESS *
-                        </label>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                            FULL ADDRESS *
+                          </label>
+                          <button
+                            type="button"
+                            onClick={handleFormUseCurrentLocation}
+                            disabled={locatingForm}
+                            className="inline-flex items-center gap-1 text-[10px] font-extrabold text-[#059669] hover:underline bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg transition-all"
+                          >
+                            {locatingForm ? <Loader2 className="w-3 h-3 animate-spin text-[#059669]" /> : <Navigation className="w-3 h-3 text-[#059669]" />}
+                            <span>{locatingForm ? 'Detecting...' : '📍 Use My Current Location'}</span>
+                          </button>
+                        </div>
                         <textarea
                           required
                           rows={3}
@@ -673,6 +740,11 @@ export default function AccountPage() {
                           onChange={(e) => setFormFullAddress(e.target.value)}
                           className="w-full p-3 bg-white border border-slate-200 rounded-2xl text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#059669]"
                         />
+                        {formLatitude && formLongitude && (
+                          <p className="text-[10px] text-[#059669] font-bold mt-1 flex items-center gap-1">
+                            <span>📍 GPS Pinned:</span> ({formLatitude.toFixed(4)}, {formLongitude.toFixed(4)})
+                          </p>
+                        )}
                       </div>
 
                       <div className="flex items-center space-x-2 pt-1">

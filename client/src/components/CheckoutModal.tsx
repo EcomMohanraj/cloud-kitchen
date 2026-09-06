@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle } from 'lucide-react';
+import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle, Navigation, Loader2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { OrderService, AddressService, PaymentService } from '@/services/api';
 import { useRouter } from 'next/navigation';
@@ -52,6 +52,51 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('COD');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [capturedCoords, setCapturedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locating, setLocating] = useState(false);
+
+  const handleUseCurrentLocation = async () => {
+    if (typeof window === 'undefined' || !('geolocation' in navigator)) {
+      alert('Geolocation is not supported by your browser.');
+      return;
+    }
+
+    setLocating(true);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        setCapturedCoords({ latitude: lat, longitude: lng });
+
+        const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
+        if (googleApiKey) {
+          try {
+            const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`);
+            const data = await res.json();
+            if (data.results && data.results[0]) {
+              setDeliveryAddress(data.results[0].formatted_address);
+            } else {
+              setDeliveryAddress((prev) => prev || `GPS Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            }
+          } catch {
+            setDeliveryAddress((prev) => prev || `GPS Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+          }
+        } else {
+          setDeliveryAddress((prev) => (prev && !prev.includes('GPS') ? `${prev} (GPS Pinned: ${lat.toFixed(4)}, ${lng.toFixed(4)})` : `GPS Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`));
+        }
+
+        setLocating(false);
+      },
+      (error) => {
+        console.warn('Geolocation permission denied or unavailable:', error.message);
+        alert('Location access denied or unavailable. Please type your delivery address manually.');
+        setLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   // Auto-fill stored profile and delivery address when modal opens
   useEffect(() => {
@@ -111,10 +156,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
     setLoading(true);
 
+    const selectedAddrObj = savedAddresses.find((a) => a.id === selectedAddressId);
+
     const payload = {
       customerName,
       customerPhone,
       deliveryAddress,
+      deliveryLatitude: capturedCoords?.latitude || selectedAddrObj?.latitude || null,
+      deliveryLongitude: capturedCoords?.longitude || selectedAddrObj?.longitude || null,
       bookingDate: selectedDate,
       slotType: selectedSlot as any,
       paymentMethod,
@@ -365,9 +414,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
                 {selectedAddressId === 'NEW' && (
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
-                      Custom Delivery Address *
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-bold text-slate-700">
+                        Custom Delivery Address *
+                      </label>
+                      <button
+                        type="button"
+                        onClick={handleUseCurrentLocation}
+                        disabled={locating}
+                        className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 hover:text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition-all"
+                      >
+                        {locating ? <Loader2 className="w-3 h-3 animate-spin text-emerald-600" /> : <Navigation className="w-3 h-3 text-emerald-600" />}
+                        <span>{locating ? 'Detecting...' : '📍 Use My Current Location'}</span>
+                      </button>
+                    </div>
                     <div className="relative">
                       <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                       <textarea
@@ -379,14 +439,30 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                         className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
                       />
                     </div>
+                    {capturedCoords && (
+                      <p className="text-[10px] text-emerald-700 font-bold mt-1 flex items-center gap-1">
+                        <span>📍 GPS Pinned:</span> ({capturedCoords.latitude.toFixed(4)}, {capturedCoords.longitude.toFixed(4)})
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
             ) : (
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Full Delivery Address *
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700">
+                    Full Delivery Address *
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleUseCurrentLocation}
+                    disabled={locating}
+                    className="inline-flex items-center gap-1 text-[11px] font-black text-emerald-700 hover:text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-lg transition-all"
+                  >
+                    {locating ? <Loader2 className="w-3 h-3 animate-spin text-emerald-600" /> : <Navigation className="w-3 h-3 text-emerald-600" />}
+                    <span>{locating ? 'Detecting...' : '📍 Use My Current Location'}</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <MapPin className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
                   <textarea
@@ -398,6 +474,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
                   />
                 </div>
+                {capturedCoords && (
+                  <p className="text-[10px] text-emerald-700 font-bold mt-1 flex items-center gap-1">
+                    <span>📍 GPS Pinned:</span> ({capturedCoords.latitude.toFixed(4)}, {capturedCoords.longitude.toFixed(4)})
+                  </p>
+                )}
               </div>
             )}
           </div>

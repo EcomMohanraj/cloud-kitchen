@@ -364,6 +364,21 @@ export default function RiderDashboardPage() {
                           <MapPin className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
                           <span>{order.deliveryAddress}</span>
                         </div>
+                        <div className="pt-2">
+                          <a
+                            href={
+                              order.deliveryLatitude && order.deliveryLongitude
+                                ? `https://www.google.com/maps/dir/?api=1&destination=${order.deliveryLatitude},${order.deliveryLongitude}&travelmode=driving`
+                                : `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(order.deliveryAddress)}&travelmode=driving`
+                            }
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black text-xs shadow-md shadow-blue-600/30 transition-all border border-blue-400/40"
+                          >
+                            <Navigation className="w-3.5 h-3.5 fill-white text-white" />
+                            <span>🧭 Navigate to Customer {order.deliveryLatitude ? '(Exact GPS Pin)' : '(Text Search)'}</span>
+                          </a>
+                        </div>
                       </div>
                     </div>
 
