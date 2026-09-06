@@ -5,13 +5,15 @@ import {
   acceptOrder,
   updateRiderOrderStatus,
   getMyRiderOrders,
+  getRiderLocationForOrder,
 } from '../controllers/deliveryPartnerController';
 import { requireRider } from '../middlewares/authMiddleware';
 
 const router = Router();
 
-// Public rider authentication
+// Public endpoints
 router.post('/login', riderLogin);
+router.get('/location/:orderId', getRiderLocationForOrder);
 
 // Protected rider endpoints
 router.use(requireRider);

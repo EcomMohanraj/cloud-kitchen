@@ -3,6 +3,8 @@
 import React from 'react';
 import { CheckCircle2, Clock, Utensils, Truck, Home, AlertCircle, Phone, MapPin, Calendar } from 'lucide-react';
 
+import { LiveRiderMap } from './LiveRiderMap';
+
 interface OrderStatusTrackerProps {
   order: any;
 }
@@ -115,6 +117,16 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order })
             })}
           </div>
         </div>
+      )}
+
+      {/* Live Rider GPS Map (Visible when OUT_FOR_DELIVERY) */}
+      {order.orderStatus === 'OUT_FOR_DELIVERY' && (
+        <LiveRiderMap
+          orderId={order.id}
+          orderStatus={order.orderStatus}
+          deliveryAddress={order.deliveryAddress}
+          deliveryPartner={order.deliveryPartner}
+        />
       )}
 
       {/* Details & Items Grid */}

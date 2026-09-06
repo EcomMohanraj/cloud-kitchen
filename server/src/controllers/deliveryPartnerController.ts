@@ -239,3 +239,35 @@ export const getMyRiderOrders = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: 'Failed to fetch rider assigned orders.' });
   }
 };
+
+// GET /api/rider/location/:orderId
+export const getRiderLocationForOrder = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.params;
+
+    const order = await prisma.order.findUnique({
+      where: { id: orderId },
+      select: { id: true, deliveryPartnerId: true, orderStatus: true, deliveryLatitude: true, deliveryLongitude: true },
+    });
+
+    if (!order || !order.deliveryPartnerId) {
+      return res.json({ success: true, location: null, message: 'No delivery partner assigned to order.' });
+    }
+
+    const location = await prisma.driverLocation.findUnique({
+      where: { deliveryPartnerId: order.deliveryPartnerId },
+    });
+
+    return res.json({
+      success: true,
+      location,
+      deliveryCoordinates: {
+        latitude: order.deliveryLatitude,
+        longitude: order.deliveryLongitude,
+      },
+    });
+  } catch (error: any) {
+    console.error('Get rider location error:', error);
+    return res.status(500).json({ error: 'Failed to fetch rider location.' });
+  }
+};

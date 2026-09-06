@@ -59,6 +59,38 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
       }
     });
 
+    // Rider emits live GPS location update
+    socket.on('rider-location-update', async (data: { deliveryPartnerId: string; orderId?: string; latitude: number; longitude: number }) => {
+      const { deliveryPartnerId, orderId, latitude, longitude } = data || {};
+      if (!deliveryPartnerId || latitude == null || longitude == null) return;
+
+      try {
+        const { PrismaClient } = require('@prisma/client');
+        const prismaClient = new PrismaClient();
+
+        await prismaClient.driverLocation.upsert({
+          where: { deliveryPartnerId },
+          update: { orderId: orderId || null, latitude, longitude },
+          create: { deliveryPartnerId, orderId: orderId || null, latitude, longitude },
+        });
+        await prismaClient.$disconnect();
+
+        if (orderId && io) {
+          const room = `order-${orderId}`;
+          console.log(`📍 [Socket.io Server] Emitting rider-location-update for order ${orderId} (${latitude}, ${longitude}) to ${room}`);
+          io.to(room).emit('rider-location-update', {
+            deliveryPartnerId,
+            orderId,
+            latitude,
+            longitude,
+            updatedAt: new Date().toISOString(),
+          });
+        }
+      } catch (err) {
+        console.error('Error handling rider-location-update:', err);
+      }
+    });
+
     socket.on('disconnect', (reason) => {
       console.log(`⚡ [Socket.io Server] Client disconnected: ${socket.id} (${reason})`);
     });

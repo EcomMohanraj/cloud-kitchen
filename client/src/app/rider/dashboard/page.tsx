@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Truck,
@@ -15,6 +15,7 @@ import {
   ChevronRight,
   ShieldCheck,
   User,
+  Navigation,
 } from 'lucide-react';
 import { RiderService } from '@/services/api';
 import { getSocket } from '@/services/socket';
@@ -29,6 +30,10 @@ export default function RiderDashboardPage() {
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [locationPermissionStatus, setLocationPermissionStatus] = useState<'ACTIVE' | 'DENIED' | 'IDLE'>('IDLE');
+
+  const watchIdRef = useRef<number | null>(null);
+  const lastEmitTimeRef = useRef<number>(0);
 
   // Logout helper
   const handleLogout = () => {
@@ -58,6 +63,62 @@ export default function RiderDashboardPage() {
       setLoading(false);
     }
   }, []);
+
+  // Continuous Geolocation Watch for active OUT_FOR_DELIVERY order
+  useEffect(() => {
+    const activeDeliveryOrder = myOrders.find((o) => o.orderStatus === 'OUT_FOR_DELIVERY');
+
+    if (activeDeliveryOrder && typeof window !== 'undefined' && 'geolocation' in navigator) {
+      if (watchIdRef.current === null) {
+        console.log('📍 [Rider Dashboard] Starting live GPS watchPosition for order', activeDeliveryOrder.id);
+
+        const watchId = navigator.geolocation.watchPosition(
+          (position) => {
+            setLocationPermissionStatus('ACTIVE');
+            const now = Date.now();
+            // Throttle to 5 seconds
+            if (now - lastEmitTimeRef.current >= 5000) {
+              lastEmitTimeRef.current = now;
+              const socket = getSocket();
+              const payload = {
+                deliveryPartnerId: riderInfo?.id || 'test-rider-id',
+                orderId: activeDeliveryOrder.id,
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+              };
+              console.log('📍 [Rider Dashboard] Emitting rider-location-update:', payload);
+              socket.emit('rider-location-update', payload);
+            }
+          },
+          (err) => {
+            console.warn('⚠️ [Rider Dashboard] Geolocation error or denied:', err.message);
+            setLocationPermissionStatus('DENIED');
+          },
+          {
+            enableHighAccuracy: true,
+            maximumAge: 5000,
+            timeout: 10000,
+          }
+        );
+
+        watchIdRef.current = watchId;
+      }
+    } else {
+      if (watchIdRef.current !== null && typeof window !== 'undefined' && 'geolocation' in navigator) {
+        console.log('📍 [Rider Dashboard] Clearing watchPosition');
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+        setLocationPermissionStatus('IDLE');
+      }
+    }
+
+    return () => {
+      if (watchIdRef.current !== null && typeof window !== 'undefined' && 'geolocation' in navigator) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [myOrders, riderInfo?.id]);
 
   useEffect(() => {
     // 1. Verify Rider authentication locally
@@ -269,6 +330,20 @@ export default function RiderDashboardPage() {
                         <div className="text-sm font-bold text-slate-200 mt-1">₹{order.totalAmount} ({order.paymentMethod})</div>
                       </div>
                     </div>
+
+                    {/* Live GPS Tracking Badge */}
+                    {isOutForDelivery && (
+                      <div className="flex items-center gap-2 bg-emerald-950/60 border border-emerald-600/50 text-emerald-300 text-xs px-3.5 py-2 rounded-xl font-bold">
+                        <Navigation className="w-4 h-4 text-emerald-400 animate-pulse shrink-0" />
+                        <span>
+                          {locationPermissionStatus === 'ACTIVE'
+                            ? '📍 Live GPS Location Sharing Active'
+                            : locationPermissionStatus === 'DENIED'
+                            ? '⚠️ Location permission denied by browser. Manual status updates active.'
+                            : '📍 Initializing GPS live tracking stream...'}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Customer & Address Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs bg-slate-900/60 p-4 rounded-2xl border border-slate-700/60">

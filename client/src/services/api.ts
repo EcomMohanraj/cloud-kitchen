@@ -416,4 +416,5 @@ export const RiderService = {
   updateOrderStatus: (orderId: string, orderStatus: string) =>
     fetchApi(`/rider/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ orderStatus }) }),
   getMyOrders: () => fetchApi('/rider/my-orders'),
+  getRiderLocation: (orderId: string) => fetchApi(`/rider/location/${orderId}`),
 };
