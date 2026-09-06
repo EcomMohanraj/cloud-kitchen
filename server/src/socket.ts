@@ -88,5 +88,14 @@ export const emitOrderStatusUpdated = (order: any) => {
     console.log(`📢 [Socket.io Server] Emitting order-status-updated event for order ${order.id} (${order.orderStatus}) to ${orderRoom} & admin-room`);
     io.to('admin-room').emit('order-status-updated', { order });
     io.to(orderRoom).emit('order-status-updated', { order });
+    io.emit('order-status-updated', { order });
+  }
+};
+
+export const emitOrderAssigned = (order: any) => {
+  if (io) {
+    console.log(`📢 [Socket.io Server] Emitting order-assigned event for order ${order.id} to admin-room & listeners`);
+    io.to('admin-room').emit('order-assigned', { order });
+    io.emit('order-assigned', { order });
   }
 };

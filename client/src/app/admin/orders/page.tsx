@@ -13,7 +13,9 @@ import {
   AlertCircle,
   Sparkles,
   RefreshCw,
-  Calendar
+  Calendar,
+  Package,
+  UserCheck,
 } from 'lucide-react';
 import { ORDER_STATUSES, MEAL_SLOTS } from '@/lib/constants';
 import { OrderService } from '@/services/api';
@@ -196,7 +198,7 @@ export default function AdminOrdersPage() {
 
   const filteredOrders = dateAndSlotFilteredOrders.filter((o) => {
     if (statusTab === 'ACTIVE') {
-      return ['PENDING', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(o.orderStatus);
+      return ['PENDING', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.orderStatus);
     }
     if (statusTab === 'DELIVERED') {
       return o.orderStatus === 'DELIVERED';
@@ -275,7 +277,7 @@ export default function AdminOrdersPage() {
                 : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
             }`}
           >
-            Active Prep ({dateAndSlotFilteredOrders.filter((o) => ['PENDING', 'ACCEPTED', 'PREPARING', 'OUT_FOR_DELIVERY'].includes(o.orderStatus)).length})
+            Active Prep ({dateAndSlotFilteredOrders.filter((o) => ['PENDING', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.orderStatus)).length})
           </button>
 
           <button
@@ -511,35 +513,73 @@ export default function AdminOrdersPage() {
                           {currentStatus === 'PREPARING' && <span className="text-[10px] uppercase font-black">Active</span>}
                         </button>
 
-                        {/* OUT FOR DELIVERY */}
+                        {/* READY FOR PICKUP */}
                         <button
-                          onClick={() => handleUpdateStatus(order.id, 'OUT_FOR_DELIVERY')}
+                          onClick={() => handleUpdateStatus(order.id, 'READY_FOR_PICKUP')}
+                          className={`w-full py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
+                            currentStatus === 'READY_FOR_PICKUP'
+                              ? 'bg-purple-600 text-white shadow-md font-black'
+                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-purple-50 hover:border-purple-300'
+                          }`}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <Package className="w-4 h-4" /> 3. Ready for Pickup
+                          </span>
+                          {currentStatus === 'READY_FOR_PICKUP' && <span className="text-[10px] uppercase font-black">Food Packed</span>}
+                        </button>
+
+                        {/* ADMIN SELF-DELIVER FALLBACK BUTTON */}
+                        {currentStatus === 'READY_FOR_PICKUP' && !order.deliveryPartnerId && (
+                          <button
+                            onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
+                            className="w-full py-2 px-3 rounded-xl font-black text-xs bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-md flex items-center justify-between transition-all border border-amber-500"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <UserCheck className="w-4 h-4" /> No Rider — Self-Deliver (Admin Direct)
+                            </span>
+                            <span className="text-[10px] uppercase tracking-wider font-black bg-slate-950 text-amber-300 px-2 py-0.5 rounded-md">Direct</span>
+                          </button>
+                        )}
+
+                        {/* OUT FOR DELIVERY INFORMATIONAL BADGE */}
+                        <div
                           className={`w-full py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
                             currentStatus === 'OUT_FOR_DELIVERY'
                               ? 'bg-teal-600 text-white shadow-md'
-                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-teal-50 hover:border-teal-300'
+                              : 'bg-slate-50 text-slate-400 border border-slate-200'
                           }`}
                         >
                           <span className="flex items-center gap-1.5">
-                            <Truck className="w-4 h-4" /> 3. Out for Delivery
+                            <Truck className="w-4 h-4" /> 4. Out for Delivery
+                            {order.deliveryPartner ? (
+                              <span className="text-[11px] font-bold text-teal-200 ml-1">
+                                ({order.deliveryPartner.name} - {order.deliveryPartner.phone})
+                              </span>
+                            ) : null}
                           </span>
-                          {currentStatus === 'OUT_FOR_DELIVERY' && <span className="text-[10px] uppercase font-black">Active</span>}
-                        </button>
+                          {currentStatus === 'OUT_FOR_DELIVERY' && <span className="text-[10px] uppercase font-black">In Transit</span>}
+                        </div>
 
-                        {/* MARK DELIVERED */}
-                        <button
-                          onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
+                        {/* MARK DELIVERED BADGE */}
+                        <div
                           className={`w-full py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
                             currentStatus === 'DELIVERED'
                               ? 'bg-emerald-600 text-white shadow-md'
-                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-emerald-50 hover:border-emerald-300'
+                              : 'bg-slate-50 text-slate-400 border border-slate-200'
                           }`}
                         >
                           <span className="flex items-center gap-1.5">
-                            <CheckCircle2 className="w-4 h-4" /> 4. Mark Delivered
+                            <CheckCircle2 className="w-4 h-4" /> 5. Delivered
+                            {order.deliveryPartner ? (
+                              <span className="text-[11px] font-bold text-emerald-100 ml-1">
+                                (by Rider: {order.deliveryPartner.name})
+                              </span>
+                            ) : currentStatus === 'DELIVERED' ? (
+                              <span className="text-[11px] font-bold text-amber-200 ml-1">(Admin Direct Delivery)</span>
+                            ) : null}
                           </span>
                           {currentStatus === 'DELIVERED' && <span className="text-[10px] uppercase font-black font-black">Completed</span>}
-                        </button>
+                        </div>
                       </div>
                     </div>
 

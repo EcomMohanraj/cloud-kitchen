@@ -11,6 +11,7 @@ function getJwtSecret(): string {
 
 export interface AuthRequest extends Request {
   admin?: any;
+  rider?: any;
 }
 
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -27,5 +28,26 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired admin token.' });
+  }
+};
+
+export const requireRider = (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '') || req.cookies?.rider_token;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized rider access. Token missing.' });
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+    if (decoded.role !== 'RIDER') {
+      return res.status(403).json({ error: 'Forbidden. Access restricted to delivery partners.' });
+    }
+
+    req.rider = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired rider token.' });
   }
 };

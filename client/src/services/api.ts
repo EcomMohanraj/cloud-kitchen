@@ -14,7 +14,10 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   };
 
   if (typeof window !== 'undefined') {
-    const token = localStorage.getItem('yazhisai_admin_jwt') || localStorage.getItem('admin_token');
+    const token =
+      localStorage.getItem('rider_token') ||
+      localStorage.getItem('yazhisai_admin_jwt') ||
+      localStorage.getItem('admin_token');
     if (token) {
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
@@ -402,4 +405,15 @@ export const AddressService = {
     fetchApi(`/addresses/${id}/default`, { method: 'PUT', body: JSON.stringify({ phone }) }),
   updateProfile: (phone: string, name: string) =>
     fetchApi('/addresses/profile', { method: 'PUT', body: JSON.stringify({ phone, name }) }),
+};
+
+export const RiderService = {
+  login: (credentials: { phone: string; password?: string }) =>
+    fetchApi('/rider/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  getAvailableOrders: () => fetchApi('/rider/available-orders'),
+  acceptOrder: (orderId: string) =>
+    fetchApi(`/rider/orders/${orderId}/accept`, { method: 'POST' }),
+  updateOrderStatus: (orderId: string, orderStatus: string) =>
+    fetchApi(`/rider/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ orderStatus }) }),
+  getMyOrders: () => fetchApi('/rider/my-orders'),
 };

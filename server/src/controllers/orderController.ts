@@ -203,7 +203,13 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
       data: updateData,
-      include: { items: true },
+      include: {
+        items: true,
+        deliveryPartner: {
+          select: { id: true, name: true, phone: true },
+        },
+        user: true,
+      },
     });
 
     emitOrderStatusUpdated(updatedOrder);
