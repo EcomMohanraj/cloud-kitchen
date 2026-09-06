@@ -6,6 +6,7 @@ import {
   updateRiderOrderStatus,
   getMyRiderOrders,
   getRiderLocationForOrder,
+  getDeliveryHistory,
 } from '../controllers/deliveryPartnerController';
 import { requireRider } from '../middlewares/authMiddleware';
 
@@ -22,5 +23,6 @@ router.get('/available-orders', getAvailableOrders);
 router.post('/orders/:id/accept', acceptOrder);
 router.patch('/orders/:id/status', updateRiderOrderStatus);
 router.get('/my-orders', getMyRiderOrders);
+router.get('/delivery-history', getDeliveryHistory);
 
 export default router;

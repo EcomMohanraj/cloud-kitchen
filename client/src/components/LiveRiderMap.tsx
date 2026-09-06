@@ -29,7 +29,7 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
 
   useEffect(() => {
-    if (orderStatus !== 'OUT_FOR_DELIVERY') {
+    if (orderStatus !== 'OUT_FOR_DELIVERY' && orderStatus !== 'DELIVERED') {
       setLoadingLocation(false);
       return;
     }
@@ -54,7 +54,7 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
 
     fetchInitialLocation();
 
-    // 2. Listen for Real-Time Socket GPS updates
+    // 2. Listen for Real-Time Socket GPS updates & socket reconnection
     const socket = getSocket();
     const handleLocationUpdate = (data: any) => {
       if (data && (data.orderId === orderId || !data.orderId)) {
@@ -67,14 +67,21 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
       }
     };
 
+    const handleConnect = () => {
+      console.log('⚡ [LiveRiderMap] Socket reconnected, re-fetching latest rider location');
+      fetchInitialLocation();
+    };
+
+    socket.on('connect', handleConnect);
     socket.on('rider-location-update', handleLocationUpdate);
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('rider-location-update', handleLocationUpdate);
     };
   }, [orderId, orderStatus]);
 
-  if (orderStatus !== 'OUT_FOR_DELIVERY') {
+  if (orderStatus !== 'OUT_FOR_DELIVERY' && orderStatus !== 'DELIVERED') {
     return null;
   }
 

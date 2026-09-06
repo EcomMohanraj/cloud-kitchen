@@ -271,3 +271,80 @@ export const getRiderLocationForOrder = async (req: Request, res: Response) => {
     return res.status(500).json({ error: 'Failed to fetch rider location.' });
   }
 };
+
+// GET /api/rider/delivery-history
+export const getDeliveryHistory = async (req: AuthRequest, res: Response) => {
+  try {
+    const riderId = req.rider?.deliveryPartnerId;
+
+    if (!riderId) {
+      return res.status(401).json({ error: 'Rider authentication required.' });
+    }
+
+    const { date } = req.query;
+
+    const whereClause: any = {
+      deliveryPartnerId: riderId,
+      orderStatus: 'DELIVERED',
+    };
+
+    if (date && typeof date === 'string') {
+      whereClause.bookingDate = date;
+    }
+
+    const history = await prisma.order.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+        user: true,
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+    });
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`;
+
+    const allCompletedOrders = await prisma.order.findMany({
+      where: {
+        deliveryPartnerId: riderId,
+        orderStatus: 'DELIVERED',
+      },
+      select: {
+        id: true,
+        totalAmount: true,
+        bookingDate: true,
+        createdAt: true,
+      },
+    });
+
+    const todayOrders = allCompletedOrders.filter((o) => {
+      const completionDate = o.createdAt ? new Date(o.createdAt).toISOString().split('T')[0] : o.bookingDate;
+      return o.bookingDate === todayStr || completionDate === todayStr;
+    });
+
+    const todayCount = todayOrders.length;
+    const todayEarnings = todayOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const totalCount = allCompletedOrders.length;
+    const totalEarnings = allCompletedOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+
+    return res.json({
+      success: true,
+      history,
+      summary: {
+        todayCount,
+        todayEarnings,
+        totalCount,
+        totalEarnings,
+        todayDate: todayStr,
+      },
+    });
+  } catch (error: any) {
+    console.error('Get rider delivery history error:', error);
+    return res.status(500).json({ error: 'Failed to fetch delivery history.' });
+  }
+};

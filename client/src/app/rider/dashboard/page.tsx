@@ -26,6 +26,9 @@ export default function RiderDashboardPage() {
   const [riderInfo, setRiderInfo] = useState<{ id?: string; name?: string; phone?: string } | null>(null);
   const [availableOrders, setAvailableOrders] = useState<any[]>([]);
   const [myOrders, setMyOrders] = useState<any[]>([]);
+  const [historyOrders, setHistoryOrders] = useState<any[]>([]);
+  const [historySummary, setHistorySummary] = useState<any>({ todayCount: 0, todayEarnings: 0, totalCount: 0, totalEarnings: 0 });
+  const [selectedHistoryDate, setSelectedHistoryDate] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [actionLoadingId, setActionLoadingId] = useState<string | null>(null);
   const [error, setError] = useState('');
@@ -45,7 +48,19 @@ export default function RiderDashboardPage() {
     router.push('/rider/login');
   };
 
-  // Fetch all orders
+  const fetchHistory = useCallback(async (dateFilter?: string) => {
+    try {
+      const res = await RiderService.getDeliveryHistory(dateFilter);
+      if (res && res.success) {
+        setHistoryOrders(res.history || []);
+        setHistorySummary(res.summary || { todayCount: 0, todayEarnings: 0, totalCount: 0, totalEarnings: 0 });
+      }
+    } catch (err) {
+      console.warn('Failed to fetch rider delivery history:', err);
+    }
+  }, []);
+
+  // Fetch all orders & history
   const refreshOrders = useCallback(async () => {
     setError('');
     try {
@@ -56,13 +71,14 @@ export default function RiderDashboardPage() {
 
       setAvailableOrders(availRes.orders || []);
       setMyOrders(myRes.orders || []);
+      await fetchHistory(selectedHistoryDate);
     } catch (err: any) {
       console.error('Error fetching rider dashboard orders:', err);
       setError('Failed to sync orders from kitchen server.');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [fetchHistory, selectedHistoryDate]);
 
   // Continuous Geolocation Watch for active OUT_FOR_DELIVERY order
   useEffect(() => {
@@ -259,7 +275,7 @@ export default function RiderDashboardPage() {
         )}
 
         {/* Summary Metric Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-5 flex items-center justify-between">
             <div>
               <div className="text-xs uppercase font-extrabold text-blue-400 tracking-wider">Available Pickups</div>
@@ -279,6 +295,17 @@ export default function RiderDashboardPage() {
             </div>
             <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
               <Truck className="w-6 h-6" />
+            </div>
+          </div>
+
+          <div className="bg-slate-800/80 border border-slate-700/70 rounded-2xl p-5 flex items-center justify-between">
+            <div>
+              <div className="text-xs uppercase font-extrabold text-emerald-400 tracking-wider">Today's Completed</div>
+              <div className="text-3xl font-black text-white mt-1">{historySummary.todayCount}</div>
+              <div className="text-[11px] text-slate-400 mt-0.5">Total completed: {historySummary.totalCount}</div>
+            </div>
+            <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+              <CheckCircle2 className="w-6 h-6" />
             </div>
           </div>
         </div>
@@ -489,6 +516,87 @@ export default function RiderDashboardPage() {
                   </div>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        {/* SECTION 3: RIDER DELIVERY HISTORY */}
+        <section className="space-y-4 pt-6 border-t border-slate-800">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+              <span>Completed Delivery History</span>
+              <span className="bg-emerald-500/20 text-emerald-300 text-xs px-2 py-0.5 rounded-full font-extrabold">
+                {historyOrders.length}
+              </span>
+            </h2>
+
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-semibold text-slate-400">Filter Date:</span>
+              <input
+                type="date"
+                value={selectedHistoryDate}
+                onChange={(e) => {
+                  const newDate = e.target.value;
+                  setSelectedHistoryDate(newDate);
+                  fetchHistory(newDate);
+                }}
+                className="bg-slate-800 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-emerald-500"
+              />
+              {selectedHistoryDate && (
+                <button
+                  onClick={() => {
+                    setSelectedHistoryDate('');
+                    fetchHistory('');
+                  }}
+                  className="text-xs text-emerald-400 hover:underline font-bold"
+                >
+                  Clear Filter
+                </button>
+              )}
+            </div>
+          </div>
+
+          {historyOrders.length === 0 ? (
+            <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-8 text-center space-y-2">
+              <Clock className="w-10 h-10 text-slate-600 mx-auto" />
+              <p className="text-sm font-semibold text-slate-300">No completed deliveries found for this selection.</p>
+              <p className="text-xs text-slate-500">Your finished orders will be archived here automatically with timestamps.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {historyOrders.map((order) => (
+                <div
+                  key={order.id}
+                  className="bg-slate-800/70 border border-slate-700/80 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:border-slate-600 transition-all"
+                >
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-black text-white">{order.orderNumber || order.id}</span>
+                      <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-bold px-2 py-0.5 rounded-full">
+                        DELIVERED
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-300 font-semibold">
+                      Customer: {order.customerName} ({order.customerPhone})
+                    </p>
+                    <p className="text-xs text-slate-400 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                      <span>{order.deliveryAddress}</span>
+                    </p>
+                  </div>
+
+                  <div className="flex flex-col md:items-end justify-between text-xs space-y-1">
+                    <div className="font-black text-base text-emerald-400">₹{order.totalAmount}</div>
+                    <div className="text-slate-400 text-[11px] font-semibold">
+                      Completed: {order.updatedAt ? new Date(order.updatedAt).toLocaleString() : order.bookingDate}
+                    </div>
+                    <div className="text-[10px] text-slate-500">
+                      Slot: {order.slotType} | Payment: {order.paymentMethod}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </section>

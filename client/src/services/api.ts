@@ -269,7 +269,11 @@ export const OrderService = {
       if (filters?.slot && filters.slot !== 'ALL') params.append('slot', filters.slot);
       if (filters?.phone) params.append('phone', filters.phone);
       const data = await fetchApi(`/orders?${params.toString()}`);
-      if (data && data.orders) apiOrders = data.orders;
+      if (data && Array.isArray(data.orders)) {
+        apiOrders = data.orders;
+      } else if (data && data.order) {
+        apiOrders = [data.order];
+      }
       console.log(`🌐 [api.ts OrderService.getOrders] fetchApi returned ${apiOrders.length} orders for filters:`, filters);
     } catch (error) {
       fetchFailed = true;
@@ -278,13 +282,22 @@ export const OrderService = {
 
     const stored = getStoredOrders();
 
-    // Merge API & local stored orders uniquely by ID
+    // Merge API & local stored orders uniquely by ID (API orders override stale stored orders)
     const mergedMap = new Map();
-    [...stored, ...apiOrders].forEach((ord) => {
+    stored.forEach((ord) => {
+      if (ord && ord.id) mergedMap.set(ord.id, ord);
+    });
+    apiOrders.forEach((ord) => {
       if (ord && ord.id) {
-        mergedMap.set(ord.id, ord);
+        const prev = mergedMap.get(ord.id) || {};
+        mergedMap.set(ord.id, { ...prev, ...ord });
       }
     });
+
+    // Update localStorage with fresh merged state if API succeeded
+    if (apiOrders.length > 0) {
+      saveStoredOrders(Array.from(mergedMap.values()));
+    }
 
     let result = Array.from(mergedMap.values());
 
@@ -417,4 +430,6 @@ export const RiderService = {
     fetchApi(`/rider/orders/${orderId}/status`, { method: 'PATCH', body: JSON.stringify({ orderStatus }) }),
   getMyOrders: () => fetchApi('/rider/my-orders'),
   getRiderLocation: (orderId: string) => fetchApi(`/rider/location/${orderId}`),
+  getDeliveryHistory: (date?: string) =>
+    fetchApi(`/rider/delivery-history${date ? `?date=${encodeURIComponent(date)}` : ''}`),
 };

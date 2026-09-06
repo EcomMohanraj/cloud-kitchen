@@ -16,18 +16,22 @@ export default function OrderTrackingPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  const fetchOrder = async () => {
+  const fetchOrder = async (isBackground = false) => {
     try {
       const data = await OrderService.getOrders({ id: orderId });
       const foundOrder = data.orders && data.orders.length > 0 ? data.orders[0] : null;
       if (foundOrder) {
-        setOrder(foundOrder);
+        setOrder((prev: any) => (prev ? { ...prev, ...foundOrder, deliveryPartner: foundOrder.deliveryPartner || prev.deliveryPartner } : foundOrder));
         setError('');
-      } else {
+      } else if (!isBackground) {
         setError('Order not found');
       }
     } catch (err: any) {
-      setError(err.message || 'Failed to load order status');
+      if (!isBackground) {
+        setError(err.message || 'Failed to load order status');
+      } else {
+        console.warn('⚠️ [Customer Tracking UI] Background poll failed, keeping last known good order state:', err);
+      }
     } finally {
       setLoading(false);
     }
@@ -35,28 +39,37 @@ export default function OrderTrackingPage() {
 
   useEffect(() => {
     if (orderId) {
-      fetchOrder();
+      fetchOrder(false);
 
       // 1. Join Order-specific Socket Room
       const socket = getSocket();
       joinOrderRoom(orderId);
+
+      const handleConnect = () => {
+        console.log(`⚡ [Customer Tracking UI] Socket connected/reconnected. Re-joining order room for ${orderId}`);
+        joinOrderRoom(orderId);
+      };
 
       // 2. Listen for Real-Time Status Updates
       const handleStatusUpdated = (data: { order: any }) => {
         const updated = data.order;
         if (updated && (updated.id === orderId || updated.orderNumber === orderId)) {
           console.log(`⚡ [Customer Tracking UI] Received real-time order status update for ${orderId}:`, updated);
-          setOrder((prev: any) => (prev ? { ...prev, ...updated } : updated));
+          setOrder((prev: any) =>
+            prev ? { ...prev, ...updated, deliveryPartner: updated.deliveryPartner || prev.deliveryPartner } : updated
+          );
         }
       };
 
+      socket.on('connect', handleConnect);
       socket.on('order-status-updated', handleStatusUpdated);
 
       // Background fallback refresh every 30s
-      const fallbackTimer = setInterval(fetchOrder, 30000);
+      const fallbackTimer = setInterval(() => fetchOrder(true), 30000);
 
       return () => {
         leaveOrderRoom(orderId);
+        socket.off('connect', handleConnect);
         socket.off('order-status-updated', handleStatusUpdated);
         clearInterval(fallbackTimer);
       };

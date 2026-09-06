@@ -119,8 +119,8 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order })
         </div>
       )}
 
-      {/* Live Rider GPS Map (Visible when OUT_FOR_DELIVERY) */}
-      {order.orderStatus === 'OUT_FOR_DELIVERY' && (
+      {/* Live Rider GPS Map (Visible when OUT_FOR_DELIVERY or DELIVERED) */}
+      {(order.orderStatus === 'OUT_FOR_DELIVERY' || order.orderStatus === 'DELIVERED') && (
         <LiveRiderMap
           orderId={order.id}
           orderStatus={order.orderStatus}
