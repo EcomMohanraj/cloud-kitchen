@@ -21,6 +21,7 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order })
   const getStepIndex = (status: string) => {
     switch (status) {
       case 'PENDING':
+      case 'PLACED':
         return 0;
       case 'ACCEPTED':
         return 1;
@@ -35,7 +36,28 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order })
     }
   };
 
+  const getProgressPercentage = (status: string) => {
+    switch (status) {
+      case 'PENDING':
+      case 'PLACED':
+        return 10;
+      case 'ACCEPTED':
+        return 25;
+      case 'PREPARING':
+        return 50;
+      case 'READY_FOR_PICKUP':
+        return 65;
+      case 'OUT_FOR_DELIVERY':
+        return 80;
+      case 'DELIVERED':
+        return 100;
+      default:
+        return 10;
+    }
+  };
+
   const currentIndex = getStepIndex(order.orderStatus);
+  const progressPercentage = getProgressPercentage(order.orderStatus);
   const isCancelled = order.orderStatus === 'CANCELLED';
 
   return (
@@ -81,8 +103,23 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order })
 
       {/* Stepper Grid */}
       {!isCancelled && (
-        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm">
-          <h3 className="text-base font-black text-slate-900 mb-6">Kitchen Progress Stepper</h3>
+        <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-sm space-y-6">
+          
+          {/* Animated Horizontal Progress Bar */}
+          <div className="space-y-2 pb-4 border-b border-slate-100">
+            <div className="flex justify-between items-center text-xs font-black">
+              <span className="text-slate-700 uppercase tracking-wider text-[11px]">Kitchen Progress</span>
+              <span className="bg-emerald-100 text-emerald-800 px-2.5 py-0.5 rounded-full font-black border border-emerald-300">
+                {progressPercentage}% Complete
+              </span>
+            </div>
+            <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden p-0.5 border border-slate-200 shadow-inner">
+              <div
+                className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-600 rounded-full transition-all duration-700 ease-out shadow-xs"
+                style={{ width: `${progressPercentage}%` }}
+              ></div>
+            </div>
+          </div>
 
           <div className="relative grid grid-cols-1 md:grid-cols-5 gap-6">
             {steps.map((s, idx) => {

@@ -85,8 +85,24 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
     return null;
   }
 
-  // Calculate approximate distance if location is available (using sample Chennai kitchen reference 13.0827, 80.2707)
-  const calculateDistanceKm = (lat: number, lng: number) => {
+  // Delivered Success Screen
+  if (orderStatus === 'DELIVERED') {
+    return (
+      <div className="bg-emerald-950/90 border-2 border-emerald-500/60 rounded-3xl p-6 shadow-2xl text-white space-y-3 text-center relative overflow-hidden">
+        <div className="absolute -top-10 -right-10 w-40 h-40 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center mx-auto shadow-md">
+          <ShieldCheck className="w-6 h-6" />
+        </div>
+        <h3 className="text-xl font-black">Order Delivered Successfully 🎉</h3>
+        <p className="text-xs text-emerald-200 font-semibold max-w-md mx-auto">
+          Thank you for ordering with Yazhisai Cloud Kitchen! Enjoy your delicious meal.
+        </p>
+      </div>
+    );
+  }
+
+  // Calculate friendly customer status based on rider GPS coordinates
+  const getFriendlyStatus = (lat: number, lng: number) => {
     const kitchenLat = 13.0827;
     const kitchenLng = 80.2707;
     const R = 6371; // Earth radius in km
@@ -99,9 +115,27 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
         Math.sin(dLng / 2) *
         Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    const dist = R * c;
-    return dist < 0.5 ? 'Approaching (< 500m)' : `${dist.toFixed(1)} km away`;
+    const distKm = R * c;
+
+    // Log raw coordinates for internal developer debugging
+    console.log('⚡ [LiveRiderMap Internal Log] Rider GPS:', { latitude: lat, longitude: lng, distKm: distKm.toFixed(1) });
+
+    if (distKm < 2.0) {
+      return {
+        title: 'Your rider is nearby 🛵',
+        subtitle: 'Arriving very soon at your delivery address!',
+        badge: 'Nearby',
+      };
+    } else {
+      return {
+        title: 'Your rider is on the way 🛵',
+        subtitle: 'In transit with your freshly cooked hot meal.',
+        badge: 'On The Way',
+      };
+    }
   };
+
+  const statusInfo = riderLocation ? getFriendlyStatus(riderLocation.latitude, riderLocation.longitude) : null;
 
   return (
     <div className="bg-slate-900 border-2 border-emerald-500/50 rounded-3xl p-6 shadow-2xl text-white space-y-5 overflow-hidden relative">
@@ -116,13 +150,13 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
           </div>
           <div>
             <h3 className="text-base font-black text-white flex items-center gap-2">
-              <span>Live Rider GPS Telemetry</span>
+              <span>Live Delivery Tracker 🛵</span>
               <span className="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] uppercase font-black px-2 py-0.5 rounded-full flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping"></span>
-                Live
+                Active
               </span>
             </h3>
-            <p className="text-xs text-slate-400">Real-time rider position tracking</p>
+            <p className="text-xs text-slate-400">Real-time updates from kitchen dispatch to your doorstep</p>
           </div>
         </div>
 
@@ -146,11 +180,11 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
         )}
       </div>
 
-      {/* MAP / TELEMETRY DISPLAY */}
+      {/* MAP / FRIENDLY STATUS DISPLAY */}
       {loadingLocation ? (
         <div className="py-10 text-center space-y-2">
           <Clock className="w-8 h-8 text-emerald-400 animate-spin mx-auto" />
-          <p className="text-xs font-bold text-slate-300">Connecting to rider GPS feed...</p>
+          <p className="text-xs font-bold text-slate-300">Connecting to rider live stream...</p>
         </div>
       ) : apiKey ? (
         /* GOOGLE MAPS DISPLAY IF API KEY IS PRESENT */
@@ -169,50 +203,65 @@ export const LiveRiderMap: React.FC<LiveRiderMapProps> = ({
             allowFullScreen
           ></iframe>
         </div>
-      ) : riderLocation ? (
-        /* HIGH-TECH TELEMETRY RADAR DISPLAY (FALLBACK WHEN NO GOOGLE MAPS KEY IS PROVIDED) */
+      ) : riderLocation && statusInfo ? (
+        /* CLEAN CUSTOMER-FRIENDLY PROGRESS PANEL */
         <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
-              <div className="text-[10px] uppercase font-bold text-slate-400">Rider Coordinates</div>
-              <div className="font-mono font-bold text-xs text-emerald-400 mt-1">
-                {riderLocation.latitude.toFixed(4)}° N, {riderLocation.longitude.toFixed(4)}° E
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-2xl bg-emerald-950/50 border border-emerald-800/60">
+            <div className="flex items-center gap-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center justify-center shrink-0">
+                <Truck className="w-6 h-6 animate-pulse" />
+              </div>
+              <div>
+                <h4 className="text-base font-black text-white">{statusInfo.title}</h4>
+                <p className="text-xs text-emerald-200 mt-0.5 font-medium">{statusInfo.subtitle}</p>
               </div>
             </div>
-
-            <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
-              <div className="text-[10px] uppercase font-bold text-slate-400">Distance Indicator</div>
-              <div className="font-bold text-xs text-amber-300 mt-1 flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                <span>{calculateDistanceKm(riderLocation.latitude, riderLocation.longitude)}</span>
-              </div>
-            </div>
-
-            <div className="bg-slate-900/90 border border-slate-800 p-3.5 rounded-xl">
-              <div className="text-[10px] uppercase font-bold text-slate-400">Last GPS Pulse</div>
-              <div className="font-semibold text-xs text-slate-300 mt-1 flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5 text-blue-400" />
-                <span>{riderLocation.updatedAt ? new Date(riderLocation.updatedAt).toLocaleTimeString() : 'Just now'}</span>
-              </div>
-            </div>
+            <span className="self-start sm:self-center px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-xs font-black uppercase tracking-wider">
+              {statusInfo.badge}
+            </span>
           </div>
 
-          <div className="p-3.5 rounded-xl bg-emerald-950/50 border border-emerald-800/60 text-xs text-emerald-200 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-              <span>Live tracking stream active. Your meal is on the way!</span>
+          {deliveryPartner && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-slate-900/90 border border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center justify-center font-black text-sm">
+                  {deliveryPartner.name ? deliveryPartner.name.charAt(0).toUpperCase() : 'R'}
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-400 block font-bold uppercase">Assigned Delivery Partner</span>
+                  <span className="text-sm font-bold text-white">{deliveryPartner.name || 'Kitchen Partner'}</span>
+                </div>
+              </div>
+
+              {deliveryPartner.phone && (
+                <a
+                  href={`tel:${deliveryPartner.phone}`}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-600/30"
+                >
+                  <Phone className="w-3.5 h-3.5" />
+                  <span>Call Rider ({deliveryPartner.phone})</span>
+                </a>
+              )}
             </div>
-            <span className="text-[10px] font-mono text-emerald-400 font-bold">SOCKET OK</span>
+          )}
+
+          <div className="p-3.5 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>Live order updates active. Prepared fresh with high hygiene standards.</span>
           </div>
         </div>
       ) : (
-        /* NO RIDER LOCATION YET */
-        <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-6 text-center space-y-2">
-          <AlertCircle className="w-8 h-8 text-amber-400 mx-auto" />
-          <h4 className="text-sm font-bold text-slate-200">Waiting for rider location stream...</h4>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
-            The rider has been assigned and dispatched. Live GPS markers will appear as soon as the rider device transmits coordinates.
-          </p>
+        /* FRIENDLY RIDER DISPATCH FALLBACK */
+        <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-6 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 border border-amber-500/30 flex items-center justify-center mx-auto">
+            <Truck className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <h4 className="text-sm font-bold text-slate-200">Your rider is on the way 🛵</h4>
+            <p className="text-xs text-slate-400 max-w-md mx-auto mt-1 font-medium">
+              Order dispatched with {deliveryPartner?.name || 'our delivery partner'}. Live tracking stream will refine automatically as your rider approaches.
+            </p>
+          </div>
         </div>
       )}
     </div>
