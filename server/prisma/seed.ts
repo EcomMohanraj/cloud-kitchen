@@ -37,6 +37,21 @@ async function main() {
 
   console.log('Admin account verified: admin@yazhisai.com / admin123');
 
+  // 1b. Create Test DeliveryPartner (Using upsert so existing rider accounts remain untouched)
+  const riderPasswordHash = await bcrypt.hash('rider123', 10);
+  await prisma.deliveryPartner.upsert({
+    where: { phone: '9999999999' },
+    update: { password: riderPasswordHash },
+    create: {
+      name: 'Test Rider',
+      phone: '9999999999',
+      password: riderPasswordHash,
+      isActive: true,
+      isOnline: false,
+    },
+  });
+  console.log('DeliveryPartner test account verified: 9999999999 / rider123');
+
   // 2. Generate 7-Day Dynamic Schedule starting TODAY (Preserve existing Admin toggles)
   const today = new Date();
   const dateList = [];

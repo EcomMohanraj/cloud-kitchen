@@ -88,7 +88,31 @@ model Order {
   createdAt       DateTime    @default(now())
   userId          String?
   user            User?       @relation(fields: [userId], references: [id])
+  deliveryPartnerId String?
+  deliveryPartner   DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
+  deliveryLatitude  Float?
+  deliveryLongitude Float?
   items           OrderItem[]
+}
+
+model DeliveryPartner {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  password  String
+  isActive  Boolean  @default(true)
+  isOnline  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  orders    Order[]
+}
+
+model DriverLocation {
+  id                String   @id @default(uuid())
+  deliveryPartnerId String   @unique
+  orderId           String?
+  latitude          Float
+  longitude         Float
+  updatedAt         DateTime @updatedAt
 }
 
 model OrderItem {
