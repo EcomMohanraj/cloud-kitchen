@@ -1,5 +1,8 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -31,7 +34,7 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
   }
 };
 
-export const requireRider = (req: AuthRequest, res: Response, next: NextFunction) => {
+export const requireRider = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization || '';
     const token = authHeader.replace('Bearer ', '') || req.cookies?.rider_token;
@@ -43,6 +46,19 @@ export const requireRider = (req: AuthRequest, res: Response, next: NextFunction
     const decoded = jwt.verify(token, getJwtSecret()) as any;
     if (decoded.role !== 'RIDER') {
       return res.status(403).json({ error: 'Forbidden. Access restricted to delivery partners.' });
+    }
+
+    // Verify rider account is active in DB
+    const riderId = decoded.deliveryPartnerId;
+    if (riderId) {
+      const partner = await prisma.deliveryPartner.findUnique({
+        where: { id: riderId },
+        select: { id: true, isActive: true },
+      });
+
+      if (!partner || !partner.isActive) {
+        return res.status(403).json({ error: 'Rider account has been deactivated. Access denied.' });
+      }
     }
 
     req.rider = decoded;

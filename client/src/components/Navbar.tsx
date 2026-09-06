@@ -20,7 +20,8 @@ import {
   AlertCircle,
   PackageCheck,
   ShieldCheck,
-  LogOut
+  LogOut,
+  Truck
 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { AuthService } from '@/services/api';
@@ -99,6 +100,7 @@ export const Navbar: React.FC = () => {
     { href: '/admin/orders', label: 'Live Orders', icon: Layers },
     { href: '/admin/kot', label: 'KOT Screen', icon: ClipboardList },
     { href: '/admin/menu', label: 'Menu Catalog', icon: ChefHat },
+    { href: '/admin/riders', label: 'Delivery Partners', icon: Truck },
   ];
 
   const routes = isAdminLoggedIn ? adminRoutes : customerRoutes;

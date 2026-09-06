@@ -433,3 +433,12 @@ export const RiderService = {
   getDeliveryHistory: (date?: string) =>
     fetchApi(`/rider/delivery-history${date ? `?date=${encodeURIComponent(date)}` : ''}`),
 };
+
+export const AdminRiderService = {
+  createRider: (payload: { name: string; phone: string; password: string }) =>
+    fetchApi('/admin/riders', { method: 'POST', body: JSON.stringify(payload) }),
+  getAllRiders: () => fetchApi('/admin/riders'),
+  getRiderOrders: (riderId: string) => fetchApi(`/admin/riders/${riderId}/orders`),
+  updateRiderStatus: (riderId: string, isActive: boolean) =>
+    fetchApi(`/admin/riders/${riderId}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
+};
