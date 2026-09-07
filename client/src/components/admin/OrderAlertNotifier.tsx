@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useImperativeHandle, forwardRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
 import { Volume2, VolumeX, Bell, CheckCircle2, ShieldAlert, ShoppingBag, MapPin, User, Phone, Clock, UtensilsCrossed } from 'lucide-react';
 
 export interface OrderAlertNotifierRef {
@@ -14,6 +14,7 @@ interface OrderAlertNotifierProps {
 
 export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNotifierProps>((props, ref) => {
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState<boolean>(false);
   const [activeAlertOrder, setActiveAlertOrder] = useState<any | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(30);
 
@@ -54,28 +55,82 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
     }
   }, []);
 
+  const unlockAudio = useCallback(() => {
+    if (typeof window === 'undefined') return;
+
+    try {
+      // 1. Resume / Initialize Web Audio API AudioContext
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!audioContextRef.current && AudioCtx) {
+        audioContextRef.current = new AudioCtx();
+      }
+      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+        audioContextRef.current.resume().then(() => {
+          setIsAudioUnlocked(true);
+        }).catch(() => {});
+      } else if (audioContextRef.current && audioContextRef.current.state === 'running') {
+        setIsAudioUnlocked(true);
+      }
+
+      // 2. Prime HTMLAudioElement (/sounds/order-bell.mp3)
+      if (!audioRef.current) {
+        audioRef.current = new Audio('/sounds/order-bell.mp3');
+        audioRef.current.loop = true;
+      }
+
+      if (audioRef.current) {
+        const origVol = audioRef.current.volume;
+        audioRef.current.volume = 0;
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise
+            .then(() => {
+              if (audioRef.current) {
+                audioRef.current.pause();
+                audioRef.current.currentTime = 0;
+                audioRef.current.volume = origVol || 1;
+              }
+              setIsAudioUnlocked(true);
+            })
+            .catch((err) => {
+              console.warn('⚠️ Audio prime waiting for first user gesture:', err.message);
+            });
+        }
+      }
+    } catch (e) {
+      console.warn('Audio unlock error:', e);
+    }
+  }, []);
+
+  // One-time gesture listener on component mount
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleFirstInteraction = () => {
+      unlockAudio();
+    };
+
+    window.addEventListener('click', handleFirstInteraction, { capture: true, once: true });
+    window.addEventListener('keydown', handleFirstInteraction, { capture: true, once: true });
+    window.addEventListener('touchstart', handleFirstInteraction, { capture: true, once: true });
+    window.addEventListener('pointerdown', handleFirstInteraction, { capture: true, once: true });
+
+    return () => {
+      window.removeEventListener('click', handleFirstInteraction, { capture: true });
+      window.removeEventListener('keydown', handleFirstInteraction, { capture: true });
+      window.removeEventListener('touchstart', handleFirstInteraction, { capture: true });
+      window.removeEventListener('pointerdown', handleFirstInteraction, { capture: true });
+    };
+  }, [unlockAudio]);
+
   const toggleSound = () => {
     const nextState = !soundEnabled;
     setSoundEnabled(nextState);
     if (typeof window !== 'undefined') {
       localStorage.setItem('yazhisai_admin_sound_alert', String(nextState));
     }
-    unlockAudio();
-  };
-
-  const unlockAudio = () => {
-    try {
-      if (!audioContextRef.current && typeof window !== 'undefined') {
-        const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-        if (AudioCtx) {
-          audioContextRef.current = new AudioCtx();
-        }
-      }
-      if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
-        audioContextRef.current.resume();
-      }
-    } catch (e) {
-      console.error(e);
+    if (nextState) {
+      unlockAudio();
     }
   };
 
@@ -110,12 +165,14 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
       osc2.start(now + 0.15);
       osc2.stop(now + 0.6);
     } catch (e) {
-      console.error('Audio chime error:', e);
+      console.warn('Audio chime error:', e);
     }
   };
 
   const startSoundLoop = () => {
     if (!soundEnabled) return;
+
+    unlockAudio();
 
     // 1. Try HTMLAudioElement with order-bell.mp3
     try {
@@ -125,18 +182,25 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
       }
       if (audioRef.current) {
         audioRef.current.currentTime = 0;
-        audioRef.current.play().catch(() => {
-          // Fallback handled by Web Audio API synth
-        });
+        const playPromise = audioRef.current.play();
+        if (playPromise !== undefined) {
+          playPromise.catch((err) => {
+            console.warn('HTMLAudioElement play blocked by browser autoplay policy until user gesture:', err.message);
+          });
+        }
       }
     } catch (e) {
-      console.error(e);
+      console.warn('Audio file play error:', e);
     }
 
     // 2. Synthesized bell chime loop
-    playSynthesizedChime();
-    if (synthTimerRef.current) clearInterval(synthTimerRef.current);
-    synthTimerRef.current = setInterval(playSynthesizedChime, 1500);
+    try {
+      playSynthesizedChime();
+      if (synthTimerRef.current) clearInterval(synthTimerRef.current);
+      synthTimerRef.current = setInterval(playSynthesizedChime, 1500);
+    } catch (e) {
+      console.warn('Synthesized chime error:', e);
+    }
 
     // 3. Auto-stop sound after 30 seconds if not acknowledged
     if (autoStopTimerRef.current) clearTimeout(autoStopTimerRef.current);
@@ -171,9 +235,16 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
 
   useImperativeHandle(ref, () => ({
     triggerAlert: (order: any) => {
+      // Always open full-screen visual modal alert immediately
       setActiveAlertOrder(order);
       startCountdown();
-      startSoundLoop();
+
+      // Start audio alert safely without blocking visual modal
+      try {
+        startSoundLoop();
+      } catch (err) {
+        console.warn('Audio alert loop error, visual modal displayed:', err);
+      }
     },
     stopAlert: () => {
       stopSoundLoop();
@@ -191,29 +262,47 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
 
   return (
     <>
-      {/* Sound Toggle Control Button */}
-      <button
-        onClick={toggleSound}
-        type="button"
-        title={soundEnabled ? 'Disable order notification sound' : 'Enable order notification sound'}
-        className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center space-x-2 transition-all border shadow-sm ${
-          soundEnabled
-            ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-            : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
-        }`}
-      >
-        {soundEnabled ? (
-          <>
-            <Volume2 className="w-4 h-4 text-emerald-600 animate-pulse" />
-            <span>🔔 Sound Alerts: ON</span>
-          </>
-        ) : (
-          <>
-            <VolumeX className="w-4 h-4 text-slate-400" />
-            <span>🔕 Sound Alerts: OFF</span>
-          </>
+      {/* Sound Toggle & Status Pill Badge */}
+      <div className="flex items-center space-x-2">
+        <button
+          onClick={toggleSound}
+          type="button"
+          title={soundEnabled ? 'Disable order notification sound' : 'Enable order notification sound'}
+          className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center space-x-2 transition-all border shadow-xs ${
+            soundEnabled
+              ? isAudioUnlocked
+                ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
+                : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+              : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
+          }`}
+        >
+          {soundEnabled ? (
+            isAudioUnlocked ? (
+              <>
+                <Volume2 className="w-4 h-4 text-emerald-600 animate-pulse" />
+                <span>🔔 Sound Alerts: ON</span>
+              </>
+            ) : (
+              <>
+                <Volume2 className="w-4 h-4 text-amber-600 animate-bounce" />
+                <span>🔔 Sound Alerts: ON (Click page to activate)</span>
+              </>
+            )
+          ) : (
+            <>
+              <VolumeX className="w-4 h-4 text-slate-400" />
+              <span>🔕 Sound Alerts: OFF</span>
+            </>
+          )}
+        </button>
+
+        {soundEnabled && !isAudioUnlocked && (
+          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100/90 border border-amber-300 text-amber-900 text-[11px] font-bold shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
+            <span>Click anywhere to activate audio priming for new orders</span>
+          </span>
         )}
-      </button>
+      </div>
 
       {/* Full-Screen Acknowledgment Modal */}
       {activeAlertOrder && (
