@@ -245,8 +245,13 @@ export const getRiderLocationForOrder = async (req: Request, res: Response) => {
   try {
     const { orderId } = req.params;
 
-    const order = await prisma.order.findUnique({
-      where: { id: orderId },
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { id: orderId },
+          { orderNumber: orderId },
+        ],
+      },
       select: { id: true, deliveryPartnerId: true, orderStatus: true, deliveryLatitude: true, deliveryLongitude: true },
     });
 

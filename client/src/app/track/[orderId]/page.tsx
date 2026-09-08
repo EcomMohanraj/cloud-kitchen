@@ -48,12 +48,15 @@ export default function OrderTrackingPage() {
       const handleConnect = () => {
         console.log(`⚡ [Customer Tracking UI] Socket connected/reconnected. Re-joining order room for ${orderId}`);
         joinOrderRoom(orderId);
+        if (order?.id && order.id !== orderId) {
+          joinOrderRoom(order.id);
+        }
       };
 
       // 2. Listen for Real-Time Status Updates
       const handleStatusUpdated = (data: { order: any }) => {
         const updated = data.order;
-        if (updated && (updated.id === orderId || updated.orderNumber === orderId)) {
+        if (updated && (updated.id === orderId || updated.orderNumber === orderId || (order && updated.id === order.id))) {
           console.log(`⚡ [Customer Tracking UI] Received real-time order status update for ${orderId}:`, updated);
           setOrder((prev: any) =>
             prev ? { ...prev, ...updated, deliveryPartner: updated.deliveryPartner || prev.deliveryPartner } : updated
@@ -69,12 +72,15 @@ export default function OrderTrackingPage() {
 
       return () => {
         leaveOrderRoom(orderId);
+        if (order?.id && order.id !== orderId) {
+          leaveOrderRoom(order.id);
+        }
         socket.off('connect', handleConnect);
         socket.off('order-status-updated', handleStatusUpdated);
         clearInterval(fallbackTimer);
       };
     }
-  }, [orderId]);
+  }, [orderId, order?.id]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">

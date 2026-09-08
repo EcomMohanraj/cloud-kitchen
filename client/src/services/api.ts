@@ -302,7 +302,14 @@ export const OrderService = {
     let result = Array.from(mergedMap.values());
 
     if (filters?.id) {
-      result = result.filter((o) => o.id === filters.id);
+      const q = filters.id.trim().toLowerCase();
+      result = result.filter(
+        (o) =>
+          o.id === filters.id ||
+          o.orderNumber === filters.id ||
+          (o.id && o.id.toLowerCase() === q) ||
+          (o.orderNumber && o.orderNumber.toLowerCase() === q)
+      );
     }
     if (filters?.date) {
       result = result.filter((o) => o.bookingDate === filters.date);
