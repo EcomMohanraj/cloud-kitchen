@@ -9,6 +9,7 @@ const router = Router();
 
 router.post('/create-order', createRazorpayOrder);
 router.post('/verify', verifyRazorpayPayment);
+router.post('/verify-payment', verifyRazorpayPayment);
 router.post('/process', processPayment);
 router.post('/', processPayment);
 

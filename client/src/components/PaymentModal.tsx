@@ -61,17 +61,18 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
       }
 
       const rzpData = await PaymentService.createRazorpayOrder(targetOrder.totalAmount, targetOrder.id);
-      if (!rzpData || !rzpData.razorpayOrderId) {
+      const activeOrderId = rzpData?.order_id || rzpData?.razorpayOrderId;
+      if (!rzpData || !activeOrderId) {
         throw new Error('Failed to initialize Razorpay order');
       }
 
       const options = {
-        key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
+        key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TZXEUX6cB2Fnu1',
         amount: rzpData.amount,
         currency: rzpData.currency || 'INR',
         name: 'Yazhisai Cloud Kitchen',
         description: `Order #${targetOrder.orderNumber || targetOrder.id}`,
-        order_id: rzpData.razorpayOrderId,
+        order_id: activeOrderId,
         handler: async function (response: any) {
           try {
             const verifyRes = await PaymentService.verifyPayment({

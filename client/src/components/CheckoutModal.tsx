@@ -208,17 +208,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         }
 
         const rzpData = await PaymentService.createRazorpayOrder(grandTotal, createdOrder.id);
-        if (!rzpData || !rzpData.razorpayOrderId) {
+        const activeOrderId = rzpData?.order_id || rzpData?.razorpayOrderId;
+        if (!rzpData || !activeOrderId) {
           throw new Error('Could not initialize Razorpay payment order');
         }
 
         const options = {
-          key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TYN2wPXhu0Um2a',
+          key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TZXEUX6cB2Fnu1',
           amount: rzpData.amount,
           currency: rzpData.currency || 'INR',
           name: 'Yazhisai Cloud Kitchen',
           description: `Order #${createdOrder.orderNumber || createdOrder.id}`,
-          order_id: rzpData.razorpayOrderId,
+          order_id: activeOrderId,
           handler: async function (response: any) {
             setLoading(true);
             try {
