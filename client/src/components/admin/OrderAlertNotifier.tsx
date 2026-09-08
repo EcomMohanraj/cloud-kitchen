@@ -265,14 +265,20 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
       {/* Sound Toggle & Status Pill Badge */}
       <div className="flex items-center space-x-2">
         <button
-          onClick={toggleSound}
+          onClick={() => {
+            if (!isAudioUnlocked) {
+              unlockAudio();
+            } else {
+              toggleSound();
+            }
+          }}
           type="button"
           title={soundEnabled ? 'Disable order notification sound' : 'Enable order notification sound'}
           className={`px-3.5 py-2 rounded-2xl text-xs font-extrabold flex items-center space-x-2 transition-all border shadow-xs ${
             soundEnabled
               ? isAudioUnlocked
                 ? 'bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100'
-                : 'bg-amber-50 text-amber-900 border-amber-300 hover:bg-amber-100'
+                : 'bg-amber-400 text-slate-950 border-amber-500 hover:bg-amber-300 animate-pulse font-black shadow-md'
               : 'bg-slate-100 text-slate-500 border-slate-300 hover:bg-slate-200'
           }`}
         >
@@ -280,12 +286,12 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
             isAudioUnlocked ? (
               <>
                 <Volume2 className="w-4 h-4 text-emerald-600 animate-pulse" />
-                <span>🔔 Sound Alerts: ON</span>
+                <span>🔔 Sound Alerts: ACTIVE</span>
               </>
             ) : (
               <>
-                <Volume2 className="w-4 h-4 text-amber-600 animate-bounce" />
-                <span>🔔 Sound Alerts: ON (Click page to activate)</span>
+                <Volume2 className="w-4 h-4 text-slate-950 animate-bounce" />
+                <span>🔊 CLICK TO ENABLE ORDER AUDIO ALERTS</span>
               </>
             )
           ) : (
@@ -297,10 +303,14 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
         </button>
 
         {soundEnabled && !isAudioUnlocked && (
-          <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100/90 border border-amber-300 text-amber-900 text-[11px] font-bold shadow-xs">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-ping"></span>
-            <span>Click anywhere to activate audio priming for new orders</span>
-          </span>
+          <button
+            onClick={unlockAudio}
+            type="button"
+            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-100 hover:bg-amber-200 border border-amber-400 text-amber-950 text-[11px] font-black shadow-xs cursor-pointer transition-all"
+          >
+            <span className="w-2 h-2 rounded-full bg-amber-600 animate-ping"></span>
+            <span>Tap here to unlock browser audio for incoming orders</span>
+          </button>
         )}
       </div>
 

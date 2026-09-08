@@ -6,6 +6,8 @@ import {
   logoutAdmin,
   registerCustomer,
   loginCustomer,
+  sendCustomerOtp,
+  verifyCustomerOtp,
 } from '../controllers/authController';
 
 const router = Router();
@@ -23,9 +25,14 @@ router.post('/', loginAdmin);
 router.get('/', verifySession);
 router.delete('/', logoutAdmin);
 
-// Customer & Unified Authentication Endpoints with Rate Limiting
+// Customer OTP Authentication Endpoints
+router.post('/customer/send-otp', authLimiter, sendCustomerOtp);
+router.post('/customer/verify-otp', authLimiter, verifyCustomerOtp);
+
+// Legacy Customer & Unified Authentication Endpoints
 router.post('/customer/register', authLimiter, registerCustomer);
 router.post('/customer/login', authLimiter, loginCustomer);
 router.post('/login', authLimiter, loginCustomer);
 
 export default router;
+

@@ -13,6 +13,8 @@ function getJwtSecret(): string {
 export interface AuthRequest extends Request {
   admin?: any;
   rider?: any;
+  customer?: any;
+  user?: any;
   file?: Express.Multer.File;
 }
 
@@ -25,8 +27,13 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
       return res.status(401).json({ error: 'Unauthorized admin access. Token missing.' });
     }
 
-    const decoded = jwt.verify(token, getJwtSecret());
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+    if (decoded.role !== 'ADMIN') {
+      return res.status(403).json({ error: 'Forbidden. Admin access required.' });
+    }
+
     req.admin = decoded;
+    req.user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired admin token.' });
@@ -61,8 +68,58 @@ export const requireRider = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     req.rider = decoded;
+    req.user = decoded;
     next();
   } catch (error) {
     return res.status(401).json({ error: 'Invalid or expired rider token.' });
   }
 };
+
+export const requireCustomer = (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '') || req.cookies?.auth_token || req.cookies?.customer_token;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized. Customer token missing.' });
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+    if (decoded.role !== 'CUSTOMER') {
+      return res.status(403).json({ error: 'Forbidden. Access restricted to customers.' });
+    }
+
+    req.customer = decoded;
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired customer authentication token.' });
+  }
+};
+
+export const requireAuthOrCustomer = (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '') || req.cookies?.admin_token || req.cookies?.rider_token || req.cookies?.auth_token || req.cookies?.customer_token;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Authentication token missing. Please sign in to view orders.' });
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+    req.user = decoded;
+
+    if (decoded.role === 'ADMIN') {
+      req.admin = decoded;
+    } else if (decoded.role === 'RIDER') {
+      req.rider = decoded;
+    } else if (decoded.role === 'CUSTOMER') {
+      req.customer = decoded;
+    }
+
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired authentication token.' });
+  }
+};
+

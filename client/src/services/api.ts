@@ -16,6 +16,8 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
 
   if (typeof window !== 'undefined') {
     const token =
+      localStorage.getItem('customer_token') ||
+      localStorage.getItem('yazhisai_customer_token') ||
       localStorage.getItem('rider_token') ||
       localStorage.getItem('yazhisai_admin_jwt') ||
       localStorage.getItem('admin_token');
@@ -405,6 +407,10 @@ export const OrderService = {
 export const AuthService = {
   login: (credentials: any) => fetchApi('/auth', { method: 'POST', body: JSON.stringify(credentials) }),
   loginAdmin: (credentials: any) => fetchApi('/auth', { method: 'POST', body: JSON.stringify(credentials) }),
+  sendCustomerOtp: (payload: { phone: string; name?: string; address?: string }) =>
+    fetchApi('/auth/customer/send-otp', { method: 'POST', body: JSON.stringify(payload) }),
+  verifyCustomerOtp: (payload: { phone: string; otp: string; name?: string; address?: string }) =>
+    fetchApi('/auth/customer/verify-otp', { method: 'POST', body: JSON.stringify(payload) }),
   registerCustomer: (payload: { name: string; phone: string; email?: string; address?: string }) =>
     fetchApi('/auth/customer/register', { method: 'POST', body: JSON.stringify(payload) }),
   loginCustomer: (payload: { email?: string; phone?: string; name?: string; password?: string }) =>

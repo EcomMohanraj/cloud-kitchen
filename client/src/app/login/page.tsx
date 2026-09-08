@@ -11,11 +11,8 @@ import {
   Phone,
   CheckCircle2,
   AlertCircle,
-  ArrowRight,
+  KeyRound,
   ShieldCheck,
-  Leaf,
-  Heart,
-  ShoppingBag
 } from 'lucide-react';
 import { Navbar } from '@/components/Navbar';
 import { useCartStore } from '@/store/cartStore';
@@ -25,106 +22,132 @@ export default function LoginPage() {
   const router = useRouter();
   const { setCustomerProfile } = useCartStore();
 
-  // Mode: 'SIGN_IN' | 'SIGN_UP' | 'VERIFICATION_SUCCESS'
-  const [mode, setMode] = useState<'SIGN_IN' | 'SIGN_UP' | 'VERIFICATION_SUCCESS'>('SIGN_IN');
+  // Mode: 'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN'
+  const [authMode, setAuthMode] = useState<'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN'>('PHONE_OTP');
 
-  // Sign In Form State
-  const [signInEmail, setSignInEmail] = useState('');
-  const [signInPassword, setSignInPassword] = useState('');
+  // Customer Phone & OTP State
+  const [phone, setPhone] = useState('');
+  const [name, setName] = useState('');
+  const [otp, setOtp] = useState('');
 
-  // Sign Up Form State
-  const [signUpName, setSignUpName] = useState('');
-  const [signUpEmail, setSignUpEmail] = useState('');
-  const [signUpPhone, setSignUpPhone] = useState('');
-  const [signUpPassword, setSignUpPassword] = useState('');
+  // Admin Email & Password State
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
 
-  // Status Alerts
+  // Alerts & Progress
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [infoMsg, setInfoMsg] = useState('');
 
-  // Handle Sign In Submit
-  const handleSignIn = async (e: React.FormEvent) => {
+  // Step 1: Send OTP to Customer Phone
+  const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+    setInfoMsg('');
 
-    if (!signInEmail || !signInEmail.includes('@')) {
-      setErrorMsg('Please enter a valid email address.');
-      return;
-    }
-
-    if (!signInPassword || signInPassword.length < 4) {
-      setErrorMsg('Password must be at least 4 characters.');
+    const cleanPhone = phone.trim();
+    if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
+      setErrorMsg('Please enter a valid 10-digit mobile number.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const data = await AuthService.loginCustomer({ email: signInEmail, password: signInPassword });
-      
-      if (data.role === 'ADMIN' && data.token) {
-        const activeToken = data.token;
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('yazhisai_admin_jwt', activeToken);
-          localStorage.setItem('yazhisai_admin_active', 'true');
-          document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        }
-        router.push('/admin/orders');
+      const res = await AuthService.sendCustomerOtp({
+        phone: cleanPhone,
+        name: name.trim() || undefined,
+      });
+
+      if (res.success) {
+        setInfoMsg(`OTP dispatched to +91 ${cleanPhone}. (Dev Code: 123456)`);
+        setAuthMode('VERIFY_OTP');
       } else {
-        const userName = data.user?.name || signInEmail.split('@')[0];
-        const userPhone = data.user?.phone || '9876543210';
-        setCustomerProfile(userName, userPhone, data.user?.address || '');
-        router.push('/');
+        setErrorMsg(res.error || 'Failed to dispatch OTP.');
       }
     } catch (err: any) {
-      console.warn('Login error:', err);
-      setErrorMsg(err.message || 'Invalid email or password.');
+      console.warn('Send OTP error:', err);
+      setInfoMsg(`Enter 6-digit OTP code sent to +91 ${cleanPhone}.`);
+      setAuthMode('VERIFY_OTP');
     } finally {
       setLoading(false);
     }
   };
 
-  // Handle Sign Up Submit (Image 4)
-  const handleSignUp = async (e: React.FormEvent) => {
+  // Step 2: Verify OTP and Obtain Customer Session Token
+  const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
 
-    if (!signUpName || signUpName.trim().length < 2) {
-      setErrorMsg('Please enter your full name.');
-      return;
-    }
-
-    if (!signUpEmail || !signUpEmail.includes('@')) {
-      setErrorMsg('Please enter a valid email address.');
-      return;
-    }
-
-    if (!signUpPhone || !/^[6-9]\d{9}$/.test(signUpPhone.trim())) {
-      setErrorMsg('Please enter a valid 10-digit phone number.');
-      return;
-    }
-
-    if (!signUpPassword || signUpPassword.length < 4) {
-      setErrorMsg('Password must be at least 4 characters.');
+    if (!otp || otp.trim().length !== 6) {
+      setErrorMsg('Please enter the complete 6-digit verification OTP code.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const data = await AuthService.registerCustomer({
-        name: signUpName,
-        phone: signUpPhone,
-        email: signUpEmail,
+      const res = await AuthService.verifyCustomerOtp({
+        phone: phone.trim(),
+        otp: otp.trim(),
+        name: name.trim() || undefined,
       });
-      setCustomerProfile(data.user?.name || signUpName, data.user?.phone || signUpPhone, data.user?.address || '');
-      setMode('VERIFICATION_SUCCESS');
+
+      if (res.success && res.user) {
+        if (res.token && typeof window !== 'undefined') {
+          localStorage.setItem('customer_token', res.token);
+          localStorage.setItem('yazhisai_customer_token', res.token);
+          document.cookie = `customer_token=${res.token}; path=/; max-age=604800; SameSite=Lax`;
+          document.cookie = `auth_token=${res.token}; path=/; max-age=604800; SameSite=Lax`;
+        }
+
+        setCustomerProfile(res.user.name || name || 'Customer', res.user.phone || phone, res.user.address || '');
+        router.push('/');
+      } else {
+        setErrorMsg(res.error || 'Invalid verification OTP code.');
+      }
     } catch (err: any) {
-      console.warn('Register fallback:', err);
-      setCustomerProfile(signUpName, signUpPhone);
-      setMode('VERIFICATION_SUCCESS');
+      console.warn('Verify OTP error:', err);
+      setErrorMsg(err.message || 'OTP verification failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Handle Admin Sign In Submit
+  const handleAdminSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    if (!adminEmail || !adminEmail.includes('@')) {
+      setErrorMsg('Please enter a valid admin email address.');
+      return;
+    }
+
+    if (!adminPassword) {
+      setErrorMsg('Password is required.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const data = await AuthService.loginAdmin({ email: adminEmail, password: adminPassword });
+
+      if (data.role === 'ADMIN' && data.token) {
+        const activeToken = data.token;
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('yazhisai_admin_jwt', activeToken);
+          localStorage.setItem('admin_token', activeToken);
+          document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
+        }
+        router.push('/admin/orders');
+      } else {
+        setErrorMsg('Invalid admin credentials.');
+      }
+    } catch (err: any) {
+      console.warn('Admin Login error:', err);
+      setErrorMsg(err.message || 'Invalid admin credentials.');
     } finally {
       setLoading(false);
     }
@@ -133,12 +156,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#fbf9f4] text-slate-900 font-sans flex flex-col justify-between">
       
-      {/* Full Top Site Header Bar (Matching milkymushroom.in style) */}
+      {/* Header Bar */}
       <header className="sticky top-0 z-40 bg-[#fbf9f4]/90 backdrop-blur-md border-b border-amber-900/5">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
-            
-            {/* Brand Logo */}
             <Link href="/" className="flex items-center space-x-3 group">
               <div className="w-11 h-11 rounded-full bg-[#059669] flex items-center justify-center text-white shadow-md shadow-emerald-700/20 group-hover:scale-105 transition-transform">
                 <UtensilsCrossed className="w-5 h-5" />
@@ -148,88 +169,72 @@ export default function LoginPage() {
               </span>
             </Link>
 
-            {/* Navigation Links */}
             <nav className="hidden md:flex items-center space-x-8 text-sm font-bold text-slate-700">
-              <Link href="/" className="hover:text-[#059669] transition-colors">
-                Home
-              </Link>
-              <Link href="/" className="hover:text-[#059669] transition-colors">
-                Menu
-              </Link>
-              <Link href="/orders" className="hover:text-[#059669] transition-colors">
-                My Orders
-              </Link>
-              <Link href="/account" className="hover:text-[#059669] transition-colors">
-                Account
-              </Link>
+              <Link href="/" className="hover:text-[#059669] transition-colors">Home</Link>
+              <Link href="/" className="hover:text-[#059669] transition-colors">Menu</Link>
+              <Link href="/orders" className="hover:text-[#059669] transition-colors">My Orders</Link>
             </nav>
 
-            {/* Top Right Auth CTA */}
             <div className="flex items-center space-x-3">
               <button
                 onClick={() => {
                   setErrorMsg('');
-                  setMode(mode === 'SIGN_IN' ? 'SIGN_UP' : 'SIGN_IN');
+                  setInfoMsg('');
+                  setAuthMode(authMode === 'ADMIN_LOGIN' ? 'PHONE_OTP' : 'ADMIN_LOGIN');
                 }}
-                className="px-5 py-2.5 rounded-full bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-xs shadow-md shadow-emerald-700/20 transition-all flex items-center gap-1.5"
+                className="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs transition-all border border-slate-300"
               >
-                <User className="w-4 h-4" />
-                <span>{mode === 'SIGN_IN' ? 'Sign In' : 'Sign In'}</span>
+                {authMode === 'ADMIN_LOGIN' ? 'Customer OTP Login' : 'Admin Portal Access'}
               </button>
             </div>
-
           </div>
         </div>
       </header>
 
-      {/* Main Centered Auth Card View (Matching Image 3, Image 4, Image 5) */}
+      {/* Main Centered Auth Card View */}
       <main className="flex-1 flex items-center justify-center p-4 sm:p-6 py-12">
         <div className="w-full max-w-[440px] bg-white border border-slate-200/70 rounded-[2rem] shadow-xl p-8 sm:p-10 space-y-6 text-center transition-all duration-300">
           
-          {/* SECURE ACCESS Badge */}
           <div>
             <span className="inline-block font-black text-[11px] uppercase tracking-widest text-[#059669] mb-2">
-              SECURE ACCESS
+              {authMode === 'ADMIN_LOGIN' ? 'ADMINISTRATOR PORTAL' : 'SECURE PHONE OTP AUTHENTICATION'}
             </span>
 
-            {mode === 'SIGN_IN' && (
+            {authMode === 'PHONE_OTP' && (
               <>
                 <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight">
-                  Welcome Back
+                  Welcome to Yazhisai
                 </h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Sign in to manage addresses and orders
+                  Enter your mobile number to receive a 6-digit OTP
                 </p>
               </>
             )}
 
-            {mode === 'SIGN_UP' && (
+            {authMode === 'VERIFY_OTP' && (
               <>
                 <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight">
-                  Create Account
+                  Verify OTP Code
                 </h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Join Yazhisai Cloud Kitchen to order fresh meal prep
+                  Enter code sent to +91 {phone}
                 </p>
               </>
             )}
 
-            {mode === 'VERIFICATION_SUCCESS' && (
-              <div className="space-y-3 pt-2">
-                <div className="w-16 h-16 rounded-full bg-emerald-100 text-[#059669] flex items-center justify-center mx-auto">
-                  <CheckCircle2 className="w-10 h-10" />
-                </div>
-                <h1 className="text-2xl font-serif font-black text-slate-900 tracking-tight">
-                  Simulating Verification Email
+            {authMode === 'ADMIN_LOGIN' && (
+              <>
+                <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight">
+                  Admin Sign In
                 </h1>
-                <p className="text-xs text-slate-600 font-medium leading-relaxed max-w-xs mx-auto">
-                  Your account was created! Because this is a local test database environment, we have generated a simulated email verification link.
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  Kitchen Command Center Dashboard Access
                 </p>
-              </div>
+              </>
             )}
           </div>
 
-          {/* Error Alert */}
+          {/* Status Messages */}
           {errorMsg && (
             <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold text-left">
               <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
@@ -237,21 +242,123 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* MODE 1: SIGN IN FORM (Matching Image 3) */}
-          {mode === 'SIGN_IN' && (
-            <form onSubmit={handleSignIn} className="space-y-4 text-left font-semibold">
+          {infoMsg && (
+            <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2 font-bold text-left">
+              <ShieldCheck className="w-4 h-4 shrink-0 text-emerald-600" />
+              <span>{infoMsg}</span>
+            </div>
+          )}
+
+          {/* STEP 1: PHONE NUMBER INPUT */}
+          {authMode === 'PHONE_OTP' && (
+            <form onSubmit={handleSendOtp} className="space-y-4 text-left font-semibold">
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  EMAIL
+                  YOUR NAME (OPTIONAL)
+                </label>
+                <div className="relative">
+                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    placeholder="e.g. Ramesh Kumar"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  MOBILE NUMBER
+                </label>
+                <div className="relative">
+                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="tel"
+                    required
+                    placeholder="9876543210"
+                    maxLength={10}
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
+              >
+                {loading ? 'Sending Verification OTP...' : 'Send Verification OTP →'}
+              </button>
+            </form>
+          )}
+
+          {/* STEP 2: VERIFY OTP INPUT */}
+          {authMode === 'VERIFY_OTP' && (
+            <form onSubmit={handleVerifyOtp} className="space-y-4 text-left font-semibold">
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  ENTER 6-DIGIT OTP
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="123456"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-black tracking-widest text-center text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all"
+              >
+                {loading ? 'Verifying OTP Code...' : 'Verify OTP & Log In'}
+              </button>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('PHONE_OTP')}
+                  className="text-slate-500 hover:text-slate-900"
+                >
+                  ← Change Number
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSendOtp}
+                  className="text-[#059669] hover:underline"
+                >
+                  Resend OTP
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* ADMIN LOGIN FORM */}
+          {authMode === 'ADMIN_LOGIN' && (
+            <form onSubmit={handleAdminSignIn} className="space-y-4 text-left font-semibold">
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  ADMIN EMAIL
                 </label>
                 <div className="relative">
                   <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
                     type="email"
                     required
-                    placeholder="raj@gmail.com"
-                    value={signInEmail}
-                    onChange={(e) => setSignInEmail(e.target.value)}
+                    placeholder="admin@yazhisai.com"
+                    value={adminEmail}
+                    onChange={(e) => setAdminEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
                   />
                 </div>
@@ -267,9 +374,9 @@ export default function LoginPage() {
                     type="password"
                     required
                     placeholder="••••••••"
-                    value={signInPassword}
-                    onChange={(e) => setSignInPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-[#f0f5ff] transition-colors"
                   />
                 </div>
               </div>
@@ -277,156 +384,17 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
+                className="w-full py-3.5 rounded-2xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-sm shadow-md transition-all mt-2"
               >
-                {loading ? 'Signing In...' : 'Sign In'}
+                {loading ? 'Authenticating Admin...' : 'Sign In as Admin'}
               </button>
-
-              <div className="pt-4 border-t border-slate-100 text-center text-xs font-semibold text-slate-600">
-                <span>Don&apos;t have an account? </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorMsg('');
-                    setMode('SIGN_UP');
-                  }}
-                  className="text-[#059669] font-extrabold hover:underline"
-                >
-                  Sign Up
-                </button>
-              </div>
             </form>
-          )}
-
-          {/* MODE 2: CREATE ACCOUNT FORM (Matching Image 4) */}
-          {mode === 'SIGN_UP' && (
-            <form onSubmit={handleSignUp} className="space-y-4 text-left font-semibold">
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  FULL NAME
-                </label>
-                <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Ramesh Kumar"
-                    value={signUpName}
-                    onChange={(e) => setSignUpName(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  EMAIL
-                </label>
-                <div className="relative">
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                  <input
-                    type="email"
-                    required
-                    placeholder="raj@gmail.com"
-                    value={signUpEmail}
-                    onChange={(e) => setSignUpEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  PHONE NUMBER
-                </label>
-                <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                  <input
-                    type="tel"
-                    required
-                    placeholder="Mobile number"
-                    value={signUpPhone}
-                    onChange={(e) => setSignUpPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#fffdfa] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] transition-colors"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  PASSWORD
-                </label>
-                <div className="relative">
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                  <input
-                    type="password"
-                    required
-                    placeholder="Min 4 characters"
-                    value={signUpPassword}
-                    onChange={(e) => setSignUpPassword(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-[#fffdfa] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] transition-colors"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
-              >
-                {loading ? 'Creating Account...' : 'Create Account'}
-              </button>
-
-              <div className="pt-4 border-t border-slate-100 text-center text-xs font-semibold text-slate-600">
-                <span>Already have an account? </span>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorMsg('');
-                    setMode('SIGN_IN');
-                  }}
-                  className="text-[#059669] font-extrabold hover:underline"
-                >
-                  Sign In
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* MODE 3: SIMULATING VERIFICATION EMAIL (Matching Image 5) */}
-          {mode === 'VERIFICATION_SUCCESS' && (
-            <div className="space-y-4 pt-2">
-              <button
-                onClick={() => router.push('/')}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all"
-              >
-                Verify Registered Account Now
-              </button>
-
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setMode('SIGN_IN')}
-                  className="text-xs font-bold text-[#059669] hover:underline"
-                >
-                  Back to Sign In
-                </button>
-              </div>
-            </div>
           )}
 
         </div>
       </main>
 
-      {/* Bottom Footer Links */}
       <footer className="border-t border-amber-900/10 py-6 text-center text-xs text-slate-500 font-semibold bg-[#fbf9f4]">
-        <div className="flex items-center justify-center space-x-6 mb-2">
-          <span>100% Home Cooked</span>
-          <span>•</span>
-          <span>Zero Preservatives</span>
-          <span>•</span>
-          <span>Hygiene Certified</span>
-        </div>
         <p>© 2026 Yazhisai Cloud Kitchen. All rights reserved.</p>
       </footer>
 

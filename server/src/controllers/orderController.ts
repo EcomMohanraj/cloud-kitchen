@@ -25,14 +25,16 @@ const createOrderSchema = z.object({
   items: z.array(orderItemSchema).min(1, 'Cart cannot be empty'),
 });
 
-export const getOrders = async (req: Request, res: Response) => {
+export const getOrders = async (req: any, res: Response) => {
   try {
-    // SECURITY LIMITATION / IDOR NOTE:
-    // Currently, getOrders allows querying by phone number or order ID.
-    // In production with customer JWT authentication enabled, phone queries should
-    // be strictly bound to the authenticated user's session token payload.
+    const userRole = req.user?.role;
+    if (!userRole) {
+      return res.status(401).json({ error: 'Unauthorized access. Authentication token missing.' });
+    }
+
     const { id, date, slot, phone } = req.query;
 
+    // 1. Single Order Fetch by ID
     if (id && typeof id === 'string') {
       const order = await prisma.order.findFirst({
         where: {
@@ -48,16 +50,50 @@ export const getOrders = async (req: Request, res: Response) => {
           },
         },
       });
+
       if (!order) {
         return res.status(404).json({ error: 'Order not found' });
       }
+
+      // IDOR Authorization Guard
+      if (userRole === 'CUSTOMER') {
+        const customerPhone = req.user.phone;
+        if (order.customerPhone !== customerPhone) {
+          return res.status(403).json({ error: 'Forbidden. You are not authorized to view orders belonging to another user.' });
+        }
+      } else if (userRole === 'RIDER') {
+        const riderId = req.user.deliveryPartnerId;
+        if (order.deliveryPartnerId !== riderId && order.orderStatus !== 'READY_FOR_PICKUP') {
+          return res.status(403).json({ error: 'Forbidden. Access restricted to assigned orders or available pickup orders.' });
+        }
+      }
+
       return res.json({ order, orders: [order] });
     }
 
+    // 2. Orders List Query
     const whereClause: any = {};
+
+    if (userRole === 'CUSTOMER') {
+      const customerPhone = req.user.phone;
+      if (phone && typeof phone === 'string' && phone.trim() !== customerPhone) {
+        return res.status(403).json({ error: 'Forbidden. Cannot query order history of another customer.' });
+      }
+      whereClause.customerPhone = customerPhone;
+    } else if (userRole === 'RIDER') {
+      const riderId = req.user.deliveryPartnerId;
+      whereClause.OR = [
+        { deliveryPartnerId: riderId },
+        { deliveryPartnerId: null, orderStatus: 'READY_FOR_PICKUP' },
+      ];
+    } else if (userRole === 'ADMIN') {
+      if (phone && typeof phone === 'string') {
+        whereClause.customerPhone = phone.trim();
+      }
+    }
+
     if (date && typeof date === 'string') whereClause.bookingDate = date;
     if (slot && typeof slot === 'string' && slot !== 'ALL') whereClause.slotType = slot;
-    if (phone && typeof phone === 'string') whereClause.customerPhone = phone;
 
     const orders = await prisma.order.findMany({
       where: whereClause,
@@ -75,6 +111,7 @@ export const getOrders = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message || 'Failed to fetch orders' });
   }
 };
+
 
 const defaultOrderCutoffMap: Record<string, string> = {
   BREAKFAST: '06:00 AM',
