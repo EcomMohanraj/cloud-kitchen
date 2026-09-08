@@ -6,12 +6,26 @@ let io: SocketIOServer | null = null;
 export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
   const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 
-  const allowedOrigins = [
+  const defaultAdditionalOrigins = [
+    'https://yazhisaicloudkitchen.in',
+    'https://www.yazhisaicloudkitchen.in',
+  ];
+
+  const envAdditionalOrigins = process.env.ADDITIONAL_ALLOWED_ORIGINS
+    ? process.env.ADDITIONAL_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+    : [];
+
+  const rawOrigins = [
     CLIENT_URL,
-    CLIENT_URL.replace(/\/$/, ''),
     'http://localhost:3000',
     'http://127.0.0.1:3000',
+    ...defaultAdditionalOrigins,
+    ...envAdditionalOrigins,
   ].filter(Boolean);
+
+  const allowedOrigins = Array.from(
+    new Set(rawOrigins.flatMap((o) => [o, o.replace(/\/$/, '')]))
+  );
 
   io = new SocketIOServer(httpServer, {
     cors: {

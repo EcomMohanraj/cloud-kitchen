@@ -24,12 +24,26 @@ const httpServer = http.createServer(app);
 initSocket(httpServer);
 
 // Dynamic CORS configuration for production deployment
-const allowedOrigins = [
+const defaultAdditionalOrigins = [
+  'https://yazhisaicloudkitchen.in',
+  'https://www.yazhisaicloudkitchen.in',
+];
+
+const envAdditionalOrigins = process.env.ADDITIONAL_ALLOWED_ORIGINS
+  ? process.env.ADDITIONAL_ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean)
+  : [];
+
+const rawOrigins = [
   CLIENT_URL,
-  CLIENT_URL.replace(/\/$/, ''),
   'http://localhost:3000',
   'http://127.0.0.1:3000',
+  ...defaultAdditionalOrigins,
+  ...envAdditionalOrigins,
 ].filter(Boolean);
+
+const allowedOrigins = Array.from(
+  new Set(rawOrigins.flatMap((o) => [o, o.replace(/\/$/, '')]))
+);
 
 app.use(
   cors({
