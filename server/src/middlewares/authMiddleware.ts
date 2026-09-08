@@ -15,6 +15,7 @@ function getJwtSecret(): string {
 export interface AuthRequest extends Request {
   admin?: any;
   rider?: any;
+  file?: Express.Multer.File;
 }
 
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {

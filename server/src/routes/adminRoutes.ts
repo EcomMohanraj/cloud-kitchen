@@ -1,5 +1,5 @@
-import { Router } from 'express';
-import multer from 'multer';
+import { Router, Request } from 'express';
+import multer, { FileFilterCallback } from 'multer';
 import { requireAdmin } from '../middlewares/authMiddleware';
 import { uploadMenuImage } from '../controllers/uploadController';
 
@@ -11,7 +11,7 @@ const upload = multer({
   limits: {
     fileSize: 5 * 1024 * 1024, // 5MB Maximum File Size
   },
-  fileFilter: (_req, file, cb) => {
+  fileFilter: (_req: Request, file: Express.Multer.File, cb: FileFilterCallback) => {
     const allowedMimeTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
     if (allowedMimeTypes.includes(file.mimetype.toLowerCase())) {
       cb(null, true);
