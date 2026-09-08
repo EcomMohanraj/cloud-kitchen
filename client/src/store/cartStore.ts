@@ -19,7 +19,7 @@ interface CartStore {
   customerName: string;
   customerPhone: string;
   deliveryAddress: string;
-  
+
   setSelectedDate: (date: string) => void;
   setSelectedSlot: (slot: string) => void;
   setIsCartOpen: (open: boolean) => void;
@@ -43,7 +43,7 @@ function getLocalDateString(d: Date = new Date()): string {
 
 export const useCartStore = create<CartStore>((set, get) => ({
   selectedDate: getLocalDateString(),
-  selectedSlot: getFirstValidUpcomingSlot(getLocalDateString()),
+  selectedSlot: getFirstValidUpcomingSlot(getLocalDateString()) || 'BREAKFAST',
   cartItems: [],
   isCartOpen: false,
   customerName: '',

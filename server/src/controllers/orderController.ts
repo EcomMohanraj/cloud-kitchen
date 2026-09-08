@@ -69,8 +69,21 @@ export const getOrders = async (req: Request, res: Response) => {
   }
 };
 
-function isOrderCutoffPassed(orderCutoffTimeStr: string | null | undefined, bookingDateStr: string): boolean {
-  if (!orderCutoffTimeStr) return false;
+const defaultOrderCutoffMap: Record<string, string> = {
+  BREAKFAST: '06:00 AM',
+  LUNCH: '11:00 AM',
+  SNACKS: '03:30 PM',
+  DINNER: '06:00 PM',
+};
+
+export function isOrderCutoffPassed(
+  orderCutoffTimeStr: string | null | undefined,
+  bookingDateStr: string,
+  slotType?: string
+): boolean {
+  const effectiveCutoffStr =
+    orderCutoffTimeStr || (slotType ? defaultOrderCutoffMap[slotType] : null) || '06:00 AM';
+
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -84,14 +97,14 @@ function isOrderCutoffPassed(orderCutoffTimeStr: string | null | undefined, book
     let cutoffHour = 6;
     let cutoffMinute = 0;
 
-    if (orderCutoffTimeStr.includes(':')) {
-      const parts = orderCutoffTimeStr.replace(/(AM|PM)/i, '').trim().split(':');
+    if (effectiveCutoffStr.includes(':')) {
+      const parts = effectiveCutoffStr.replace(/(AM|PM)/i, '').trim().split(':');
       cutoffHour = Number(parts[0]);
       cutoffMinute = Number(parts[1] || 0);
 
-      if (orderCutoffTimeStr.toUpperCase().includes('PM') && cutoffHour < 12) {
+      if (effectiveCutoffStr.toUpperCase().includes('PM') && cutoffHour < 12) {
         cutoffHour += 12;
-      } else if (orderCutoffTimeStr.toUpperCase().includes('AM') && cutoffHour === 12) {
+      } else if (effectiveCutoffStr.toUpperCase().includes('AM') && cutoffHour === 12) {
         cutoffHour = 0;
       }
     }
@@ -124,9 +137,10 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    if (schedule && isOrderCutoffPassed(schedule.orderCutoffTime, validated.bookingDate)) {
+    if (isOrderCutoffPassed(schedule?.orderCutoffTime, validated.bookingDate, validated.slotType)) {
+      const cutoffDisplay = schedule?.orderCutoffTime || defaultOrderCutoffMap[validated.slotType] || 'Closed';
       return res.status(400).json({
-        error: `Booking deadline for ${validated.slotType} on ${validated.bookingDate} has passed (Order Cutoff: ${schedule.orderCutoffTime || 'Closed'}).`,
+        error: `Booking deadline for ${validated.slotType} on ${validated.bookingDate} has passed (Order Cutoff: ${cutoffDisplay}).`,
       });
     }
 

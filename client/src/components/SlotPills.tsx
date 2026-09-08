@@ -66,7 +66,7 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
           const isSelected = selectedSlot === slot.id;
           const status = slotStatuses?.[slot.id];
           const orderCutoffDisplay = status?.orderCutoffTime || slot.orderCutoff || '06:00 AM';
-          const isExpired = isSlotBookingClosed(orderCutoffDisplay, selectedDate);
+          const isExpired = isSlotBookingClosed(orderCutoffDisplay, selectedDate, slot.id);
           const isSlotActive = isDateActive && !isExpired && (status ? Boolean(status.isActive && (status.isAvailable ?? true)) : true);
 
           return (

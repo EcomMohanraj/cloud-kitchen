@@ -68,7 +68,20 @@ export default function StorefrontPage() {
 
         // Auto-select first valid open non-expired slot
         const targetScheduleObj = data.schedule.find((s: ScheduleDate) => s.date === targetDate);
-        const validOpenSlot = getFirstValidUpcomingSlot(targetDate, targetScheduleObj?.slots);
+        let validOpenSlot = getFirstValidUpcomingSlot(targetDate, targetScheduleObj?.slots);
+
+        if (!validOpenSlot && targetDate === todayKey) {
+          const nextActive = data.schedule.find((s: ScheduleDate) => {
+            if (s.date <= todayKey || !s.isDateActive) return false;
+            return Boolean(getFirstValidUpcomingSlot(s.date, s.slots));
+          });
+          if (nextActive) {
+            targetDate = nextActive.date;
+            setSelectedDate(targetDate);
+            validOpenSlot = getFirstValidUpcomingSlot(targetDate, nextActive.slots);
+          }
+        }
+
         if (validOpenSlot) {
           setSelectedSlot(validOpenSlot);
         }
@@ -102,10 +115,12 @@ export default function StorefrontPage() {
   // Periodic time tick & focus listener to trigger lock evaluation as time passes
   useEffect(() => {
     const interval = setInterval(() => {
+      console.log('⏰ [Storefront] Periodic 30s cutoff tick check at:', new Date().toLocaleTimeString());
       setTimeTick(Date.now());
     }, 30000);
 
     const handleFocusOrVisibility = () => {
+      console.log('👁️ [Storefront] Window focus/visibility change tick check');
       setTimeTick(Date.now());
     };
 
@@ -123,23 +138,20 @@ export default function StorefrontPage() {
   const currentSlotStatuses = currentDateSchedule ? currentDateSchedule.slots : undefined;
   const isDateActive = currentDateSchedule ? Boolean(currentDateSchedule.isDateActive) : true;
 
+  const currentSelectedCutoff = currentSlotStatuses?.[selectedSlot]?.orderCutoffTime || MEAL_SLOTS.find(s => s.id === selectedSlot)?.orderCutoff || '06:00 AM';
+  const isSelectedSlotExpired = isSlotBookingClosed(currentSelectedCutoff, selectedDate, selectedSlot);
+
   // Auto-shift slot if currently selected slot is inactive or expired past order cutoff
   useEffect(() => {
     if (isDateActive) {
       const currentCutoff = currentSlotStatuses?.[selectedSlot]?.orderCutoffTime || MEAL_SLOTS.find(s => s.id === selectedSlot)?.orderCutoff || '06:00 AM';
-      const isExpired = isSlotBookingClosed(currentCutoff, selectedDate);
+      const isExpired = isSlotBookingClosed(currentCutoff, selectedDate, selectedSlot);
       const isCurrentSlotActive = !isExpired && Boolean(
         currentSlotStatuses ? (currentSlotStatuses[selectedSlot]?.isActive && (currentSlotStatuses[selectedSlot]?.isAvailable ?? true)) : true
       );
 
       if (!isCurrentSlotActive) {
-        const activeSlotKey = MEAL_SLOTS.find((s) => {
-          const slotCutoff = currentSlotStatuses?.[s.id]?.orderCutoffTime || s.orderCutoff || '06:00 AM';
-          const expired = isSlotBookingClosed(slotCutoff, selectedDate);
-          const activeInSchedule = currentSlotStatuses ? Boolean(currentSlotStatuses[s.id]?.isActive && (currentSlotStatuses[s.id]?.isAvailable ?? true)) : true;
-          return !expired && activeInSchedule;
-        })?.id;
-
+        const activeSlotKey = getFirstValidUpcomingSlot(selectedDate, currentSlotStatuses);
         if (activeSlotKey && activeSlotKey !== selectedSlot) {
           setSelectedSlot(activeSlotKey);
         }
@@ -263,7 +275,12 @@ export default function StorefrontPage() {
           ) : menuItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {menuItems.map((item) => (
-                <MenuCard key={item.id} item={item} disabled={!isDateActive} />
+                <MenuCard
+                  key={item.id}
+                  item={item}
+                  disabled={!isDateActive || isSelectedSlotExpired}
+                  isSlotExpired={isSelectedSlotExpired}
+                />
               ))}
             </div>
           ) : (

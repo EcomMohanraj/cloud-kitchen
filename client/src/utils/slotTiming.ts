@@ -54,12 +54,26 @@ export const MEAL_SLOTS: SlotWindow[] = [
   },
 ];
 
+const defaultOrderCutoffMap: Record<string, string> = {
+  BREAKFAST: '06:00 AM',
+  LUNCH: '11:00 AM',
+  SNACKS: '03:30 PM',
+  DINNER: '06:00 PM',
+};
+
 /**
  * Checks if a slot order cutoff time has expired for a given date.
  * Future dates are open for pre-ordering. Past dates are closed.
  * For TODAY: checks if current local time is past the order cutoff time.
  */
-export function isSlotBookingClosed(orderCutoffTimeStr: string, selectedDate: string): boolean {
+export function isSlotBookingClosed(
+  orderCutoffTimeStr: string | null | undefined,
+  selectedDate: string,
+  slotType?: string
+): boolean {
+  const effectiveCutoffStr =
+    orderCutoffTimeStr || (slotType ? defaultOrderCutoffMap[slotType] : null) || '06:00 AM';
+
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -76,14 +90,14 @@ export function isSlotBookingClosed(orderCutoffTimeStr: string, selectedDate: st
     let cutoffHour = 6;
     let cutoffMinute = 0;
 
-    if (orderCutoffTimeStr.includes(':')) {
-      const parts = orderCutoffTimeStr.replace(/(AM|PM)/i, '').trim().split(':');
+    if (effectiveCutoffStr && effectiveCutoffStr.includes(':')) {
+      const parts = effectiveCutoffStr.replace(/(AM|PM)/i, '').trim().split(':');
       cutoffHour = Number(parts[0]);
       cutoffMinute = Number(parts[1] || 0);
 
-      if (orderCutoffTimeStr.toUpperCase().includes('PM') && cutoffHour < 12) {
+      if (effectiveCutoffStr.toUpperCase().includes('PM') && cutoffHour < 12) {
         cutoffHour += 12;
-      } else if (orderCutoffTimeStr.toUpperCase().includes('AM') && cutoffHour === 12) {
+      } else if (effectiveCutoffStr.toUpperCase().includes('AM') && cutoffHour === 12) {
         cutoffHour = 0;
       }
     }
@@ -100,21 +114,21 @@ export function isSlotBookingClosed(orderCutoffTimeStr: string, selectedDate: st
 /**
  * Backward compatibility alias for isSlotBookingClosed
  */
-export function isSlotExpiredToday(cutoffTimeStr: string, selectedDate: string): boolean {
-  return isSlotBookingClosed(cutoffTimeStr, selectedDate);
+export function isSlotExpiredToday(cutoffTimeStr: string, selectedDate: string, slotType?: string): boolean {
+  return isSlotBookingClosed(cutoffTimeStr, selectedDate, slotType);
 }
 
 /**
- * Returns the first valid open slot for the selected date.
+ * Returns the first valid open slot for the selected date, or null if no open slot exists.
  */
-export function getFirstValidUpcomingSlot(selectedDate: string, slotStatuses?: Record<string, any>): string {
+export function getFirstValidUpcomingSlot(selectedDate: string, slotStatuses?: Record<string, any>): string | null {
   const validSlot = MEAL_SLOTS.find((s) => {
     const customCutoff = slotStatuses?.[s.type]?.orderCutoffTime || s.orderCutoffDisplay;
-    const isClosed = isSlotBookingClosed(customCutoff, selectedDate);
+    const isClosed = isSlotBookingClosed(customCutoff, selectedDate, s.type);
     const isActive = slotStatuses?.[s.type] ? Boolean(slotStatuses[s.type].isActive && (slotStatuses[s.type].isAvailable ?? true)) : true;
     return !isClosed && isActive;
   });
-  return validSlot ? validSlot.type : 'BREAKFAST';
+  return validSlot ? validSlot.type : null;
 }
 
 

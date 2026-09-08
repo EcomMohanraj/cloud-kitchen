@@ -134,6 +134,9 @@ export const updateSchedule = async (req: Request, res: Response) => {
       const targetState = Boolean(isActive);
 
       for (const slotType of SLOT_TYPES) {
+        const expectedCutoff = defaultCutoffMap[slotType] || '10:30 AM';
+        const expectedOrderCutoff = defaultOrderCutoffMap[slotType] || '06:00 AM';
+
         await prisma.slotsSchedule.upsert({
           where: { date_slotType: { date, slotType } },
           update: {
@@ -146,13 +149,16 @@ export const updateSchedule = async (req: Request, res: Response) => {
             isActive: targetState,
             isAvailable: targetState,
             maxOrders: 50,
-            cutoffTime: '09:00 AM',
+            cutoffTime: expectedCutoff,
+            orderCutoffTime: expectedOrderCutoff,
           },
         });
       }
     } else {
-      const { date, slotType, isActive, maxCapacity, cutoffTime } = body;
+      const { date, slotType, isActive, maxCapacity, cutoffTime, orderCutoffTime } = body;
       const targetState = Boolean(isActive);
+      const expectedCutoff = defaultCutoffMap[slotType] || '10:30 AM';
+      const expectedOrderCutoff = defaultOrderCutoffMap[slotType] || '06:00 AM';
 
       await prisma.slotsSchedule.upsert({
         where: {
@@ -166,6 +172,7 @@ export const updateSchedule = async (req: Request, res: Response) => {
           isAvailable: targetState,
           ...(maxCapacity !== undefined && { maxOrders: Number(maxCapacity) }),
           ...(cutoffTime !== undefined && { cutoffTime: String(cutoffTime) }),
+          ...(orderCutoffTime !== undefined ? { orderCutoffTime: String(orderCutoffTime) } : {}),
         },
         create: {
           date,
@@ -173,7 +180,8 @@ export const updateSchedule = async (req: Request, res: Response) => {
           isActive: targetState,
           isAvailable: targetState,
           maxOrders: maxCapacity ? Number(maxCapacity) : 50,
-          cutoffTime: cutoffTime ? String(cutoffTime) : '09:00 AM',
+          cutoffTime: cutoffTime ? String(cutoffTime) : expectedCutoff,
+          orderCutoffTime: orderCutoffTime ? String(orderCutoffTime) : expectedOrderCutoff,
         },
       });
     }

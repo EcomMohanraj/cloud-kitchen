@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Clock, Star, Flame, Sparkles, UserCheck } from 'lucide-react';
+import { Plus, Minus, Clock, Star, Flame, Sparkles, UserCheck, Lock } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 
 export interface MenuItemProps {
@@ -26,9 +26,10 @@ export interface MenuItemProps {
 interface MenuCardProps {
   item: MenuItemProps;
   disabled?: boolean;
+  isSlotExpired?: boolean;
 }
 
-export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false }) => {
+export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSlotExpired = false }) => {
   const { cartItems, addToCart, updateQuantity } = useCartStore();
 
   const cartItem = cartItems.find((ci) => ci.menuItemId === String(item.id));
@@ -41,7 +42,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false }) =>
   const servingSize = item.servingSize || 'Serves 1-2';
   const isChefSpecial = item.isChefSpecial !== undefined ? item.isChefSpecial : item.price > 120;
 
-  const isCardActive = item.isAvailable && !disabled;
+  const isCardActive = item.isAvailable && !disabled && !isSlotExpired;
 
   return (
     <div className="group relative flex flex-col justify-between bg-white border border-emerald-100/70 rounded-3xl overflow-hidden hover:border-emerald-400 hover:shadow-card-hover transition-all duration-300">
@@ -142,8 +143,15 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false }) =>
         {/* Animated Add / Quantity Stepper Button */}
         <div className="pt-2">
           {!isCardActive ? (
-            <div className="w-full py-2.5 text-center text-xs font-extrabold text-slate-400 bg-slate-100 rounded-xl border border-slate-200">
-              {!item.isAvailable ? 'Sold Out / Unavailable Today' : 'Slot Closed'}
+            <div className="w-full py-2.5 text-center text-xs font-extrabold rounded-xl border flex items-center justify-center gap-1.5 bg-rose-50 border-rose-200 text-rose-700">
+              <Lock className="w-3.5 h-3.5 text-rose-600" />
+              <span>
+                {isSlotExpired
+                  ? 'Slot Booking Closed for Today'
+                  : !item.isAvailable
+                  ? 'Sold Out / Unavailable Today'
+                  : 'Kitchen Closed on Date'}
+              </span>
             </div>
           ) : (
             <div className="relative w-full h-11">
