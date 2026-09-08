@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit2, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { X, Plus, Edit2, AlertCircle, CheckCircle2, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 import { MenuService } from '@/services/api';
 import { MenuItemCRUDSchema } from '@/lib/validators';
@@ -12,6 +12,9 @@ interface MenuFormModalProps {
   onClose: () => void;
   onSaveSuccess: () => void;
 }
+
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
 
 export const MenuFormModal: React.FC<MenuFormModalProps> = ({
   isOpen,
@@ -29,11 +32,23 @@ export const MenuFormModal: React.FC<MenuFormModalProps> = ({
   const [imageUrl, setImageUrl] = useState('');
   const [ingredients, setIngredients] = useState('');
   const [prepTimeMinutes, setPrepTimeMinutes] = useState(20);
+  
+  // Image Upload States
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    setUploadingImage(false);
+    setUploadError('');
+
     if (itemToEdit) {
       setName(itemToEdit.name || '');
       setNameTamil(itemToEdit.nameTamil || '');
@@ -53,13 +68,58 @@ export const MenuFormModal: React.FC<MenuFormModalProps> = ({
       setSlotCategory('BREAKFAST');
       setIsAvailable(true);
       setIsVeg(true);
-      setImageUrl('https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80');
+      setImageUrl('');
       setIngredients('Rice, Spices, Ghee');
       setPrepTimeMinutes(20);
     }
   }, [itemToEdit, isOpen]);
 
   if (!isOpen) return null;
+
+  const uploadImageFile = async (fileToUpload: File) => {
+    setUploadingImage(true);
+    setUploadError('');
+    try {
+      const res = await MenuService.uploadImage(fileToUpload);
+      if (res && res.imageUrl) {
+        setImageUrl(res.imageUrl);
+        setSuccessMsg('Image uploaded to Cloudinary successfully!');
+        setTimeout(() => setSuccessMsg(''), 3000);
+      } else {
+        throw new Error(res?.error || 'Failed to obtain Cloudinary URL from server.');
+      }
+    } catch (err: any) {
+      console.error('Image upload error:', err);
+      setUploadError(err.message || 'Image upload failed. Please try again.');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUploadError('');
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // 1. Validate File Format
+    if (!ALLOWED_MIME_TYPES.includes(file.type.toLowerCase())) {
+      setUploadError('Unsupported file format. Please choose a JPG, JPEG, PNG, or WEBP image.');
+      return;
+    }
+
+    // 2. Validate File Size (Max 5MB)
+    if (file.size > MAX_FILE_SIZE_BYTES) {
+      setUploadError('Image size exceeds 5MB limit. Please choose a smaller image.');
+      return;
+    }
+
+    setSelectedFile(file);
+    const objectUrl = URL.createObjectURL(file);
+    setPreviewUrl(objectUrl);
+
+    // Auto-upload image to backend/Cloudinary upon selection
+    uploadImageFile(file);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -226,14 +286,79 @@ export const MenuFormModal: React.FC<MenuFormModalProps> = ({
             />
           </div>
 
+          {/* Food Image Selection & Cloudinary Upload */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">Food Image URL</label>
-            <input
-              type="url"
-              value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full px-3.5 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm focus:outline-none focus:border-emerald-600 font-mono"
-            />
+            <label className="block text-slate-700 font-bold mb-1">Food Image *</label>
+            <div className="space-y-3 bg-slate-50 p-3.5 border border-slate-200 rounded-2xl">
+              
+              {/* Image Preview Window */}
+              {(previewUrl || imageUrl) ? (
+                <div className="relative w-full h-40 bg-slate-200 rounded-xl overflow-hidden group border border-slate-300 shadow-inner">
+                  <img
+                    src={previewUrl || imageUrl}
+                    alt="Food Dish Preview"
+                    className="w-full h-full object-cover"
+                  />
+                  <div className="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full backdrop-blur-sm shadow-sm">
+                    {previewUrl ? '📷 New Selection' : '🖼️ Saved Cloudinary Image'}
+                  </div>
+                </div>
+              ) : (
+                <div className="w-full h-24 bg-slate-100 border-2 border-dashed border-slate-300 rounded-xl flex flex-col items-center justify-center text-slate-400">
+                  <ImageIcon className="w-8 h-8 mb-1 text-slate-300" />
+                  <span className="text-[11px] font-semibold">No food photo selected yet</span>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <label className="flex-1 cursor-pointer inline-flex items-center justify-center space-x-2 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 rounded-xl font-extrabold text-xs transition-colors text-center shadow-sm">
+                  <Upload className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>{imageUrl || previewUrl ? 'Replace Image' : 'Choose Image'}</span>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    onChange={handleFileChange}
+                    className="hidden"
+                  />
+                </label>
+
+                {selectedFile && !uploadingImage && (
+                  <button
+                    type="button"
+                    onClick={() => uploadImageFile(selectedFile)}
+                    className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs rounded-xl shadow-sm transition-colors flex items-center justify-center space-x-1.5 shrink-0"
+                  >
+                    <Upload className="w-3.5 h-3.5" />
+                    <span>Re-Upload to Cloudinary</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Selected File Details */}
+              {selectedFile && (
+                <div className="flex items-center justify-between text-[11px] text-slate-600 font-semibold px-1">
+                  <span className="truncate max-w-[220px]">📄 {selectedFile.name}</span>
+                  <span>{(selectedFile.size / (1024 * 1024)).toFixed(2)} MB</span>
+                </div>
+              )}
+
+              {/* Upload Loading Indicator */}
+              {uploadingImage && (
+                <div className="flex items-center space-x-2 text-emerald-700 font-bold text-xs animate-pulse px-1">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-600 shrink-0" />
+                  <span>Uploading image to Cloudinary...</span>
+                </div>
+              )}
+
+              {/* Upload Error Banner */}
+              {uploadError && (
+                <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-extrabold flex items-center space-x-1.5">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{uploadError}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
@@ -271,8 +396,8 @@ export const MenuFormModal: React.FC<MenuFormModalProps> = ({
 
             <button
               type="submit"
-              disabled={loading}
-              className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-600/20"
+              disabled={loading || uploadingImage}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-black text-xs shadow-md shadow-emerald-600/20 disabled:opacity-50"
             >
               {loading ? 'Saving...' : itemToEdit ? 'Update Dish' : 'Create Dish'}
             </button>

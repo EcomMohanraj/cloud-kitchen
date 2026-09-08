@@ -9,9 +9,10 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
   const url = `${cleanBase}${cleanEndpoint}`;
 
-  const defaultHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
-  };
+  const defaultHeaders: Record<string, string> = {};
+  if (!(options.body instanceof FormData)) {
+    defaultHeaders['Content-Type'] = 'application/json';
+  }
 
   if (typeof window !== 'undefined') {
     const token =
@@ -256,6 +257,14 @@ export const MenuService = {
   createMenuItem: (data: any) => fetchApi('/menu', { method: 'POST', body: JSON.stringify(data) }),
   updateMenuItem: (data: any) => fetchApi('/menu', { method: 'PUT', body: JSON.stringify(data) }),
   deleteMenuItem: (id: string) => fetchApi(`/menu?id=${id}`, { method: 'DELETE' }),
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return fetchApi('/admin/upload-image', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 };
 
 export const OrderService = {
