@@ -144,23 +144,48 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         const lng = position.coords.longitude;
         setCapturedCoords({ latitude: lat, longitude: lng });
 
-        const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+        let addressText = '';
 
+        // 1. Try Google Maps Reverse Geocoding API if key is present
+        const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
         if (googleApiKey) {
           try {
             const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`);
             const data = await res.json();
             if (data.results && data.results[0] && data.results[0].formatted_address) {
-              const formatted = data.results[0].formatted_address;
-              if (targetField === 'EDIT') {
-                setEditFullAddress(formatted);
-              } else {
-                handleAddressChange(formatted);
-              }
+              addressText = data.results[0].formatted_address;
             }
-          } catch {
-            // Geocoding fallback: lat/lng pinned in capturedCoords
+          } catch (gErr) {
+            console.warn('Google reverse geocoding request failed, attempting OpenStreetMap fallback:', gErr);
           }
+        }
+
+        // 2. OpenStreetMap Nominatim Reverse Geocoding Fallback (Free, reliable, no API key required)
+        if (!addressText) {
+          try {
+            const osmRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
+              headers: {
+                'Accept-Language': 'en',
+              },
+            });
+            const osmData = await osmRes.json();
+            if (osmData && osmData.display_name) {
+              addressText = osmData.display_name;
+            }
+          } catch (osmErr) {
+            console.warn('OpenStreetMap reverse geocoding failed:', osmErr);
+          }
+        }
+
+        // 3. Populate address field
+        if (addressText) {
+          if (targetField === 'EDIT') {
+            setEditFullAddress(addressText);
+          } else {
+            handleAddressChange(addressText);
+          }
+        } else {
+          alert(`GPS Location pinned (${lat.toFixed(4)}, ${lng.toFixed(4)}). Could not auto-detect street address name. Please type your house/door number and street name manually.`);
         }
 
         setLocating(false);
