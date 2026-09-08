@@ -145,3 +145,11 @@ export const emitOrderAssigned = (order: any) => {
     io.emit('order-assigned', { order });
   }
 };
+
+export const emitScheduleUpdated = (schedule?: any) => {
+  if (io) {
+    console.log('📢 [Socket.io Server] Emitting schedule-updated event to all clients');
+    io.emit('schedule-updated', { schedule });
+  }
+};
+

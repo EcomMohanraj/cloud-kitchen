@@ -8,8 +8,8 @@ import { RiderService } from '@/services/api';
 export default function RiderLoginPage() {
   const router = useRouter();
 
-  const [phone, setPhone] = useState('9999999999');
-  const [password, setPassword] = useState('rider123');
+  const [phone, setPhone] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -61,13 +61,6 @@ export default function RiderLoginPage() {
           <p className="text-xs text-blue-800 font-extrabold tracking-wide">
             Yazhisai Cloud Kitchen Fleet App
           </p>
-        </div>
-
-        {/* Credentials Info Badge */}
-        <div className="bg-blue-50/80 border border-blue-200/80 rounded-2xl p-3.5 text-xs text-blue-900">
-          <div className="font-extrabold text-blue-950 mb-0.5">Test Rider Credentials:</div>
-          <div>Phone: <span className="font-mono font-bold text-blue-700">9999999999</span></div>
-          <div>Password: <span className="font-mono font-bold text-blue-700">rider123</span></div>
         </div>
 
         {error && (

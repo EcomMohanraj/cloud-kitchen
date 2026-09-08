@@ -11,6 +11,7 @@ import { CheckoutModal } from '@/components/CheckoutModal';
 import { PaymentModal } from '@/components/PaymentModal';
 import { useCartStore } from '@/store/cartStore';
 import { ScheduleService, MenuService } from '@/services/api';
+import { getSocket } from '@/services/socket';
 import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 
@@ -110,6 +111,18 @@ export default function StorefrontPage() {
 
   useEffect(() => {
     fetchSchedule();
+
+    const socket = getSocket();
+    const handleScheduleUpdated = () => {
+      console.log('⚡ [Storefront UI] Real-time schedule update event received');
+      fetchSchedule();
+    };
+
+    socket.on('schedule-updated', handleScheduleUpdated);
+
+    return () => {
+      socket.off('schedule-updated', handleScheduleUpdated);
+    };
   }, []);
 
   // Periodic time tick & focus listener to trigger lock evaluation as time passes

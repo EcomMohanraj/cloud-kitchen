@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
+import { emitScheduleUpdated } from '../socket';
 
 const SLOT_TYPES = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
 
@@ -215,9 +216,12 @@ export const updateSchedule = async (req: Request, res: Response) => {
       );
     });
 
+    const updatedSchedule = Object.values(dateMap);
+    emitScheduleUpdated(updatedSchedule);
+
     return res.json({
       success: true,
-      schedule: Object.values(dateMap),
+      schedule: updatedSchedule,
     });
   } catch (error: any) {
     return res.status(400).json({ error: error.message || 'Failed to update schedule' });

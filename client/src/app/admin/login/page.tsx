@@ -10,8 +10,8 @@ export default function AdminLoginPage() {
   const router = useRouter();
   const { setCustomerProfile } = useCartStore();
 
-  const [email, setEmail] = useState('admin@yazhisai.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
@@ -67,13 +67,6 @@ export default function AdminLoginPage() {
           <p className="text-xs text-emerald-800 font-extrabold tracking-wide">
             Yazhisai Cloud Kitchen Management Console
           </p>
-        </div>
-
-        {/* Credentials Info Badge */}
-        <div className="bg-emerald-50/80 border border-emerald-200/80 rounded-2xl p-3.5 text-xs text-emerald-900">
-          <div className="font-extrabold text-emerald-950 mb-0.5">Demo Admin Credentials:</div>
-          <div>Email: <span className="font-mono font-bold text-emerald-700">admin@yazhisai.com</span></div>
-          <div>Password: <span className="font-mono font-bold text-emerald-700">admin123</span></div>
         </div>
 
         {error && (
