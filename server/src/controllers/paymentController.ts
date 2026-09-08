@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { prisma } from '../config/db';
+import { emitOrderStatusUpdated } from '../socket';
 
 function getRazorpayInstance() {
   const key_id = process.env.RAZORPAY_KEY_ID;
@@ -17,18 +18,37 @@ function getRazorpayInstance() {
   });
 }
 
-// 1. Create Razorpay Order
+// 1. Create Razorpay Order (Secure: Uses Database Order Amount)
 export const createRazorpayOrder = async (req: Request, res: Response) => {
   try {
     const { amount, orderId } = req.body;
 
-    if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
-      return res.status(400).json({ error: 'Valid payment amount is required' });
-    }
+    let amountInPaise: number;
+    let targetOrderId: string | null = null;
+    let dbOrderRecord: any = null;
 
-    const numAmount = Number(amount);
-    // Convert to paise if passed as INR rupees (e.g., 160 -> 16000), or use directly if passed as paise >= 100
-    const amountInPaise = numAmount >= 100 && Number.isInteger(numAmount) && numAmount % 100 === 0 ? numAmount : Math.round(numAmount * 100);
+    if (orderId) {
+      // SECURE FIX: Read authoritative order from DB to determine exact totalAmount
+      dbOrderRecord = await prisma.order.findUnique({
+        where: { id: String(orderId) },
+      });
+
+      if (!dbOrderRecord) {
+        return res.status(404).json({ error: 'Order not found in database' });
+      }
+
+      targetOrderId = dbOrderRecord.id;
+      amountInPaise = Math.round(Number(dbOrderRecord.totalAmount) * 100);
+    } else {
+      // Fallback for previews before order creation
+      if (!amount || isNaN(Number(amount)) || Number(amount) <= 0) {
+        return res.status(400).json({ error: 'Valid payment amount or orderId is required' });
+      }
+      const numAmount = Number(amount);
+      amountInPaise = numAmount >= 100 && Number.isInteger(numAmount) && numAmount % 100 === 0
+        ? numAmount
+        : Math.round(numAmount * 100);
+    }
 
     if (amountInPaise < 100) {
       return res.status(400).json({ error: 'Minimum payment amount must be at least 100 paise (₹1)' });
@@ -39,16 +59,18 @@ export const createRazorpayOrder = async (req: Request, res: Response) => {
     const options = {
       amount: amountInPaise,
       currency: 'INR',
-      receipt: orderId ? String(orderId).substring(0, 40) : `rcpt_${Date.now()}`,
+      receipt: targetOrderId
+        ? String(dbOrderRecord?.orderNumber || targetOrderId).substring(0, 40)
+        : `rcpt_${Date.now()}`,
     };
 
     const razorpayOrder = await razorpay.orders.create(options);
 
     // Link razorpayOrderId to database Order record if orderId provided
-    if (orderId) {
+    if (targetOrderId) {
       try {
         await prisma.order.update({
-          where: { id: String(orderId) },
+          where: { id: targetOrderId },
           data: {
             razorpayOrderId: razorpayOrder.id,
           },
@@ -74,7 +96,7 @@ export const createRazorpayOrder = async (req: Request, res: Response) => {
   }
 };
 
-// 2. Verify Razorpay Payment Signature
+// 2. Verify Razorpay Payment Signature + Server-Side Status & Order Verification
 export const verifyRazorpayPayment = async (req: Request, res: Response) => {
   try {
     const { orderId, razorpayOrderId, razorpay_order_id, razorpayPaymentId, razorpay_payment_id, razorpaySignature, razorpay_signature } = req.body;
@@ -92,14 +114,13 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
       return res.status(500).json({ error: 'Razorpay secret key not configured on server' });
     }
 
-    // Generate expected HMAC SHA256 signature: HMAC-SHA256(order_id + "|" + payment_id, KEY_SECRET)
+    // Step 1: HMAC SHA256 Signature Check
     const payload = `${rzpOrderId}|${rzpPaymentId}`;
     const generatedSignature = crypto
       .createHmac('sha256', secret)
       .update(payload)
       .digest('hex');
 
-    // Strict signature check
     if (generatedSignature !== rzpSignature) {
       console.warn('❌ Payment signature verification failed!', {
         generatedSignature,
@@ -111,13 +132,62 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
       });
     }
 
-    console.log('✅ Payment signature verified successfully for order:', rzpOrderId);
+    // Step 2: Fetch payment details from Razorpay server-side
+    const razorpay = getRazorpayInstance();
+    let paymentDetails: any;
+    try {
+      paymentDetails = await razorpay.payments.fetch(rzpPaymentId);
+    } catch (fetchErr: any) {
+      console.error('❌ Error fetching payment details from Razorpay API:', fetchErr);
+      return res.status(500).json({ error: 'Failed to verify payment status with Razorpay servers' });
+    }
 
-    // Update database Order record if orderId provided
-    let updatedOrder = null;
+    // Step 3: Strictly verify payment status is 'captured' (authorized/failed/refunded are NOT paid)
+    if (!paymentDetails || paymentDetails.status !== 'captured') {
+      console.warn('❌ Payment status is not captured:', paymentDetails?.status);
+      return res.status(400).json({
+        success: false,
+        error: `Payment verification failed: Payment status is '${paymentDetails?.status || 'unknown'}' (must be 'captured').`,
+      });
+    }
+
+    // Step 4: Verify payment belongs to the expected Razorpay order ID
+    if (paymentDetails.order_id && paymentDetails.order_id !== rzpOrderId) {
+      console.warn(`❌ Razorpay Order ID mismatch! Payment order_id: ${paymentDetails.order_id}, Expected: ${rzpOrderId}`);
+      return res.status(400).json({ error: 'Payment gateway record does not match the expected Razorpay order ID' });
+    }
+
+    // Locate local DB order
+    let targetOrder = null;
     if (orderId) {
+      targetOrder = await prisma.order.findUnique({ where: { id: String(orderId) } });
+    }
+    if (!targetOrder && rzpOrderId) {
+      targetOrder = await prisma.order.findFirst({ where: { razorpayOrderId: rzpOrderId } });
+    }
+
+    if (!targetOrder) {
+      return res.status(404).json({ error: 'Local database order not found' });
+    }
+
+    // Verify local DB order's razorpayOrderId matches rzpOrderId (if set)
+    if (targetOrder.razorpayOrderId && targetOrder.razorpayOrderId !== rzpOrderId) {
+      console.warn(`❌ Local DB Order razorpayOrderId mismatch! DB: ${targetOrder.razorpayOrderId}, Payload: ${rzpOrderId}`);
+      return res.status(400).json({ error: 'Local order is not associated with this Razorpay order ID' });
+    }
+
+    // Step 5: Verify payment amount matches the database order total
+    const expectedPaise = Math.round(Number(targetOrder.totalAmount) * 100);
+    if (!paymentDetails.amount || Number(paymentDetails.amount) !== expectedPaise) {
+      console.warn(`❌ Payment amount mismatch! Paid: ${paymentDetails.amount}, Expected: ${expectedPaise}`);
+      return res.status(400).json({ error: 'Payment amount mismatch between gateway and order record' });
+    }
+
+    // Step 6: Idempotent DB update to PAID
+    let updatedOrder = targetOrder;
+    if (targetOrder.paymentStatus !== 'PAID') {
       updatedOrder = await prisma.order.update({
-        where: { id: String(orderId) },
+        where: { id: targetOrder.id },
         data: {
           paymentStatus: 'PAID',
           paymentId: rzpPaymentId,
@@ -127,7 +197,10 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
           orderStatus: 'ACCEPTED',
         },
       });
+      emitOrderStatusUpdated(updatedOrder);
     }
+
+    console.log('✅ Payment verified and order confirmed successfully:', targetOrder.id);
 
     return res.json({
       success: true,
@@ -140,26 +213,96 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
   }
 };
 
-// 3. Fallback direct process payment for manual/legacy updates
-export const processPayment = async (req: Request, res: Response) => {
+// 3. Handle Razorpay Webhook Events (STRICT: Uses ONLY RAZORPAY_WEBHOOK_SECRET, Requires 'captured' status)
+export const handleRazorpayWebhook = async (req: Request, res: Response) => {
   try {
-    const { orderId, paymentId, status } = req.body;
-
-    if (!orderId || !paymentId) {
-      return res.status(400).json({ error: 'orderId and paymentId are required' });
+    const signature = req.headers['x-razorpay-signature'] as string;
+    if (!signature) {
+      return res.status(400).json({ error: 'Missing x-razorpay-signature header' });
     }
 
-    const updatedOrder = await prisma.order.update({
-      where: { id: orderId },
-      data: {
-        paymentId,
-        paymentStatus: status || 'PAID',
-        orderStatus: 'ACCEPTED',
-      },
-    });
+    // SECURE FIX: Webhook secret MUST use ONLY process.env.RAZORPAY_WEBHOOK_SECRET
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (!webhookSecret) {
+      console.error('❌ RAZORPAY_WEBHOOK_SECRET is not configured on server');
+      return res.status(500).json({ error: 'Razorpay webhook secret not configured on server' });
+    }
 
-    return res.json({ success: true, order: updatedOrder });
+    // Read raw body payload for cryptographic HMAC signature verification
+    const rawPayload = (req as any).rawBody
+      ? (req as any).rawBody.toString('utf8')
+      : JSON.stringify(req.body);
+
+    const generatedSignature = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(rawPayload)
+      .digest('hex');
+
+    if (generatedSignature !== signature) {
+      console.warn('❌ Webhook signature verification failed');
+      return res.status(400).json({ error: 'Invalid webhook signature' });
+    }
+
+    const event = req.body.event;
+    const payload = req.body.payload;
+
+    console.log(`📩 Received verified Razorpay webhook event: ${event}`);
+
+    // Process payment captured / order paid events
+    if (event === 'order.paid' || event === 'payment.captured') {
+      const paymentEntity = payload?.payment?.entity;
+      const paymentStatus = paymentEntity?.status;
+
+      // SECURE FIX: If payment entity is present, payment status MUST be strictly 'captured'
+      if (paymentEntity && paymentStatus !== 'captured') {
+        console.warn(`ℹ️ [Webhook] Event '${event}' ignored because payment status is '${paymentStatus}' (not 'captured').`);
+        return res.json({ success: true, message: 'Event ignored: payment status not captured' });
+      }
+
+      const rzpOrderId = payload?.order?.entity?.id || paymentEntity?.order_id;
+      const rzpPaymentId = paymentEntity?.id;
+
+      if (rzpOrderId) {
+        const dbOrder = await prisma.order.findFirst({
+          where: { razorpayOrderId: rzpOrderId },
+        });
+
+        if (dbOrder) {
+          // IDEMPOTENCY CHECK: If order is already PAID, return 200 OK without re-processing
+          if (dbOrder.paymentStatus === 'PAID') {
+            console.log(`ℹ️ [Webhook] Order ${dbOrder.id} is already marked PAID. Idempotent return.`);
+            return res.json({ success: true, message: 'Event already processed (idempotent)' });
+          }
+
+          // Verify amount paid against database totalAmount
+          const expectedPaise = Math.round(Number(dbOrder.totalAmount) * 100);
+          const payloadAmount = paymentEntity?.amount || payload?.order?.entity?.amount_paid;
+          if (payloadAmount && Number(payloadAmount) !== expectedPaise) {
+            console.warn(`❌ [Webhook] Amount mismatch! Paid: ${payloadAmount}, Expected: ${expectedPaise}`);
+            return res.status(400).json({ error: 'Webhook payment amount mismatch' });
+          }
+
+          const updatedOrder = await prisma.order.update({
+            where: { id: dbOrder.id },
+            data: {
+              paymentStatus: 'PAID',
+              paymentId: rzpPaymentId || dbOrder.paymentId,
+              razorpayPaymentId: rzpPaymentId || dbOrder.razorpayPaymentId,
+              orderStatus: 'ACCEPTED',
+            },
+          });
+
+          emitOrderStatusUpdated(updatedOrder);
+          console.log(`✅ [Webhook] Successfully updated Order ${dbOrder.id} to PAID via webhook`);
+        } else {
+          console.warn(`⚠️ [Webhook] No local order found for razorpayOrderId: ${rzpOrderId}`);
+        }
+      }
+    }
+
+    return res.json({ success: true, message: 'Webhook processed successfully' });
   } catch (error: any) {
-    return res.status(400).json({ error: error.message || 'Payment processing failed' });
+    console.error('❌ Error processing Razorpay webhook:', error);
+    return res.status(500).json({ error: error.message || 'Webhook processing failed' });
   }
 };

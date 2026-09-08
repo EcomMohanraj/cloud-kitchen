@@ -5,6 +5,7 @@ import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle,
 import { useCartStore } from '@/store/cartStore';
 import { OrderService, AddressService, PaymentService } from '@/services/api';
 import { useRouter } from 'next/navigation';
+import { validateDeliveryAddress } from '@/utils/addressValidation';
 
 interface CheckoutModalProps {
   isOpen: boolean;
@@ -47,6 +48,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [customerName, setCustomerName] = useState('');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [isAddressConfirmed, setIsAddressConfirmed] = useState(false);
   const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('DEFAULT');
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('COD');
@@ -54,6 +56,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [capturedCoords, setCapturedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
+
+  const handleAddressChange = (val: string) => {
+    setDeliveryAddress(val);
+    setIsAddressConfirmed(false);
+    setErrorMsg('');
+  };
 
   const handleUseCurrentLocation = async () => {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
@@ -75,16 +83,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           try {
             const res = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?latlng=${lat},${lng}&key=${googleApiKey}`);
             const data = await res.json();
-            if (data.results && data.results[0]) {
-              setDeliveryAddress(data.results[0].formatted_address);
-            } else {
-              setDeliveryAddress((prev) => prev || `GPS Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            if (data.results && data.results[0] && data.results[0].formatted_address) {
+              handleAddressChange(data.results[0].formatted_address);
             }
           } catch {
-            setDeliveryAddress((prev) => prev || `GPS Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`);
+            // Keep existing typed address or prompt for door/street details
           }
-        } else {
-          setDeliveryAddress((prev) => (prev && !prev.includes('GPS') ? `${prev} (GPS Pinned: ${lat.toFixed(4)}, ${lng.toFixed(4)})` : `GPS Pinned Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`));
         }
 
         setLocating(false);
@@ -107,7 +111,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       if (savedName) setCustomerName(savedName);
       if (savedPhone) setCustomerPhone(savedPhone);
-      if (savedAddress) setDeliveryAddress(savedAddress);
+      if (savedAddress) handleAddressChange(savedAddress);
 
       if (savedPhone) {
         AddressService.getAddresses(savedPhone)
@@ -117,7 +121,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               const def = data.addresses.find((a: any) => a.isDefault) || data.addresses[0];
               if (def) {
                 setSelectedAddressId(def.id);
-                setDeliveryAddress(def.fullAddress);
+                handleAddressChange(def.fullAddress);
               }
             }
           })
@@ -146,8 +150,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    if (!deliveryAddress || deliveryAddress.trim().length < 5) {
-      setErrorMsg('Please enter complete delivery address');
+    // 1. Strict validation for complete delivery address
+    const addressCheck = validateDeliveryAddress(deliveryAddress);
+    if (!addressCheck.isValid) {
+      setErrorMsg(addressCheck.error || 'Please enter your complete delivery address. Current location alone is not sufficient.');
+      return;
+    }
+
+    // 2. Strict validation for mandatory address confirmation checkbox
+    if (!isAddressConfirmed) {
+      setErrorMsg('Please confirm that your delivery address is complete and correct.');
       return;
     }
 
@@ -162,6 +174,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       customerName,
       customerPhone,
       deliveryAddress,
+      isAddressConfirmed,
       deliveryLatitude: capturedCoords?.latitude || selectedAddrObj?.latitude || null,
       deliveryLongitude: capturedCoords?.longitude || selectedAddrObj?.longitude || null,
       bookingDate: selectedDate,
@@ -194,7 +207,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         slotType: selectedSlot,
         totalAmount: grandTotal,
         paymentMethod,
-        paymentStatus: paymentMethod === 'ONLINE' ? 'PENDING' : 'PENDING',
+        paymentStatus: 'PENDING',
         orderStatus: 'ACCEPTED',
         createdAt: new Date().toISOString(),
       };
@@ -329,7 +342,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     placeholder="e.g. Anandan Kumar"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 font-medium"
                   />
                 </div>
               </div>
@@ -346,7 +359,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     placeholder="10-digit mobile number"
                     value={customerPhone}
                     onChange={(e) => setCustomerPhone(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
+                    className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 font-medium"
                   />
                 </div>
               </div>
@@ -361,44 +374,52 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 </label>
 
                 <div className="space-y-2 mb-3">
-                  {savedAddresses.map((addr) => (
-                    <button
-                      key={addr.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedAddressId(addr.id);
-                        setDeliveryAddress(addr.fullAddress);
-                      }}
-                      className={`w-full text-left p-3 rounded-xl border transition-all flex items-start space-x-2.5 ${
-                        selectedAddressId === addr.id
-                          ? 'bg-emerald-50/80 border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
-                          : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
-                      }`}
-                    >
-                      <div className="mt-0.5 shrink-0">
-                        <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedAddressId === addr.id ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 bg-white'}`}>
-                          {selectedAddressId === addr.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                  {savedAddresses.map((addr) => {
+                    const isAddrValid = validateDeliveryAddress(addr.fullAddress).isValid;
+                    return (
+                      <button
+                        key={addr.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedAddressId(addr.id);
+                          handleAddressChange(addr.fullAddress);
+                        }}
+                        className={`w-full text-left p-3 rounded-xl border transition-all flex items-start space-x-2.5 ${
+                          selectedAddressId === addr.id
+                            ? 'bg-emerald-50/80 border-emerald-600 ring-2 ring-emerald-500/20 text-slate-900'
+                            : 'bg-slate-50 border-slate-200 hover:bg-slate-100 text-slate-700'
+                        }`}
+                      >
+                        <div className="mt-0.5 shrink-0">
+                          <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedAddressId === addr.id ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 bg-white'}`}>
+                            {selectedAddressId === addr.id && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex-1 text-xs">
-                        <div className="flex items-center gap-2">
-                          <span className="font-extrabold text-slate-900">{addr.label || 'Address'}</span>
-                          {addr.isDefault && (
-                            <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-black uppercase">
-                              Default
-                            </span>
-                          )}
+                        <div className="flex-1 text-xs">
+                          <div className="flex items-center gap-2">
+                            <span className="font-extrabold text-slate-900">{addr.label || 'Address'}</span>
+                            {addr.isDefault && (
+                              <span className="text-[9px] bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded font-black uppercase">
+                                Default
+                              </span>
+                            )}
+                            {!isAddrValid && (
+                              <span className="text-[9px] bg-rose-100 text-rose-800 px-1.5 py-0.5 rounded font-black">
+                                Incomplete - Needs Update
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">{addr.fullAddress}</p>
                         </div>
-                        <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">{addr.fullAddress}</p>
-                      </div>
-                    </button>
-                  ))}
+                      </button>
+                    );
+                  })}
 
                   <button
                     type="button"
                     onClick={() => {
                       setSelectedAddressId('NEW');
-                      setDeliveryAddress('');
+                      handleAddressChange('');
                     }}
                     className={`w-full text-left p-3 rounded-xl border transition-all flex items-center space-x-2.5 text-xs font-extrabold ${
                       selectedAddressId === 'NEW'
@@ -409,7 +430,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                     <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedAddressId === 'NEW' ? 'border-emerald-600 bg-emerald-600' : 'border-slate-300 bg-white'}`}>
                       {selectedAddressId === 'NEW' && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                     </div>
-                    <span>+ Type a new / one-off delivery address</span>
+                    <span>+ Type a new / custom complete delivery address</span>
                   </button>
                 </div>
 
@@ -434,15 +455,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                       <textarea
                         required
                         rows={2}
-                        placeholder="Door No, Street Name, Apartment / Landmark, Pincode"
+                        placeholder="House/Door No, Street Name, Landmark, Area & Pincode"
                         value={deliveryAddress}
-                        onChange={(e) => setDeliveryAddress(e.target.value)}
-                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
+                        onChange={(e) => handleAddressChange(e.target.value)}
+                        className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 font-medium"
                       />
                     </div>
                     {capturedCoords && (
                       <p className="text-[10px] text-emerald-700 font-bold mt-1 flex items-center gap-1">
-                        <span>📍 GPS Pinned:</span> ({capturedCoords.latitude.toFixed(4)}, {capturedCoords.longitude.toFixed(4)})
+                        <span>📍 GPS Coordinates Pinned:</span> ({capturedCoords.latitude.toFixed(4)}, {capturedCoords.longitude.toFixed(4)})
                       </p>
                     )}
                   </div>
@@ -469,19 +490,37 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                   <textarea
                     required
                     rows={2}
-                    placeholder="Door No, Street Name, Apartment / Landmark, Pincode"
+                    placeholder="House/Door No, Street Name, Landmark, Area & Pincode"
                     value={deliveryAddress}
-                    onChange={(e) => setDeliveryAddress(e.target.value)}
-                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600"
+                    onChange={(e) => handleAddressChange(e.target.value)}
+                    className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-300 rounded-xl text-sm text-slate-900 focus:outline-none focus:border-emerald-600 font-medium"
                   />
                 </div>
                 {capturedCoords && (
                   <p className="text-[10px] text-emerald-700 font-bold mt-1 flex items-center gap-1">
-                    <span>📍 GPS Pinned:</span> ({capturedCoords.latitude.toFixed(4)}, {capturedCoords.longitude.toFixed(4)})
+                    <span>📍 GPS Coordinates Pinned:</span> ({capturedCoords.latitude.toFixed(4)}, {capturedCoords.longitude.toFixed(4)})
                   </p>
                 )}
               </div>
             )}
+
+            {/* Mandatory Address Confirmation Checkbox */}
+            <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-start space-x-3">
+              <input
+                type="checkbox"
+                id="confirmAddressCheckbox"
+                checked={isAddressConfirmed}
+                onChange={(e) => {
+                  setErrorMsg('');
+                  setIsAddressConfirmed(e.target.checked);
+                }}
+                className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer shrink-0"
+              />
+              <label htmlFor="confirmAddressCheckbox" className="text-xs font-bold text-slate-800 cursor-pointer select-none leading-snug">
+                I confirm that the above delivery address is complete and correct (House/Door No, Street/Area, Landmark & Pincode).
+              </label>
+            </div>
+
           </div>
 
           {/* Payment Method Selector */}

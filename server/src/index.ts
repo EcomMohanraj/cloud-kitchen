@@ -66,7 +66,13 @@ app.use(
   })
 );
 
-app.use(express.json());
+app.use(
+  express.json({
+    verify: (req: any, _res, buf) => {
+      req.rawBody = buf;
+    },
+  })
+);
 app.use(cookieParser());
 
 // Routes Mount
@@ -76,7 +82,6 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/payments', paymentRoutes);
-app.use('/api', paymentRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/rider', deliveryPartnerRoutes);
 app.use('/api/admin/riders', adminRiderRoutes);

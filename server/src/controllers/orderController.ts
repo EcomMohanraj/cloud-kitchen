@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { z } from 'zod';
 import { emitNewOrder, emitOrderStatusUpdated } from '../socket';
+import { validateDeliveryAddress } from '../utils/addressValidation';
 
 const orderItemSchema = z.object({
   menuItemId: z.string().min(1, 'Invalid menu item'),
@@ -14,6 +15,7 @@ const createOrderSchema = z.object({
   customerName: z.string().min(2, 'Name must be at least 2 characters'),
   customerPhone: z.string().min(10, 'Enter a valid 10-digit phone number').max(15),
   deliveryAddress: z.string().min(5, 'Delivery address is required'),
+  isAddressConfirmed: z.boolean().optional().default(false),
   deliveryLatitude: z.number().optional().nullable(),
   deliveryLongitude: z.number().optional().nullable(),
   bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
@@ -121,6 +123,21 @@ export function isOrderCutoffPassed(
 export const createOrder = async (req: Request, res: Response) => {
   try {
     const validated = createOrderSchema.parse(req.body);
+
+    // 1. Backend validation: Address confirmation checkbox MUST be checked
+    if (!validated.isAddressConfirmed) {
+      return res.status(400).json({
+        error: 'Please confirm that your delivery address is complete and correct.',
+      });
+    }
+
+    // 2. Backend validation: Address must be complete human-readable address (not GPS-only or incomplete)
+    const addressValidation = validateDeliveryAddress(validated.deliveryAddress);
+    if (!addressValidation.isValid) {
+      return res.status(400).json({
+        error: addressValidation.error || 'Please enter your complete delivery address. Current location alone is not sufficient.',
+      });
+    }
 
     const schedule = await prisma.slotsSchedule.findUnique({
       where: {
