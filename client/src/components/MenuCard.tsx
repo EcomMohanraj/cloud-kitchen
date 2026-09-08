@@ -1,9 +1,10 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Clock, Star, Flame, Sparkles, UserCheck, Lock } from 'lucide-react';
+import { Plus, Minus, Clock, Star, Flame, Sparkles, UserCheck, Lock, MessageSquare, X, ShieldCheck } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import { ReviewService } from '@/services/api';
 
 export interface MenuItemProps {
   id: string;
@@ -32,13 +33,36 @@ interface MenuCardProps {
 export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSlotExpired = false }) => {
   const { cartItems, addToCart, updateQuantity } = useCartStore();
 
+  const [reviewsList, setReviewsList] = useState<any[]>([]);
+  const [avgRating, setAvgRating] = useState<number>(item.rating || 4.9);
+  const [reviewCount, setReviewCount] = useState<number>(item.ratingCount || 0);
+  const [isReviewsOpen, setIsReviewsOpen] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    if (item.id) {
+      ReviewService.getMenuItemReviews(item.id)
+        .then((res) => {
+          if (isMounted && res.success) {
+            setReviewsList(res.reviews || []);
+            if (res.totalCount > 0) {
+              setAvgRating(res.averageRating);
+              setReviewCount(res.totalCount);
+            }
+          }
+        })
+        .catch((err) => console.warn('Could not load reviews for item:', item.id, err));
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [item.id]);
+
   const cartItem = cartItems.find((ci) => ci.menuItemId === String(item.id));
   const quantity = cartItem ? cartItem.quantity : 0;
 
   // Defaults if missing in mock DB
   const isVeg = item.isVeg !== undefined ? item.isVeg : !item.name.toLowerCase().includes('chicken') && !item.name.toLowerCase().includes('kari') && !item.name.toLowerCase().includes('mutton') && !item.name.toLowerCase().includes('fish');
-  const rating = item.rating || 4.9;
-  const ratingCount = item.ratingCount || 128;
   const servingSize = item.servingSize || 'Serves 1-2';
   const isChefSpecial = item.isChefSpecial !== undefined ? item.isChefSpecial : item.price > 120;
 
@@ -94,11 +118,14 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
           </div>
 
           {/* Rating Badge */}
-          <div className="flex items-center gap-1 bg-black/40 backdrop-blur-md px-2 py-1 rounded-lg border border-white/20 text-xs font-bold">
+          <button
+            onClick={() => setIsReviewsOpen(true)}
+            className="flex items-center gap-1 bg-black/50 hover:bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/25 text-xs font-bold transition-all cursor-pointer"
+          >
             <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-            <span>{rating}</span>
-            <span className="text-[10px] text-slate-300 font-normal">({ratingCount})</span>
-          </div>
+            <span>{avgRating}</span>
+            <span className="text-[10px] text-slate-300 font-normal">({reviewCount})</span>
+          </button>
         </div>
       </div>
 
@@ -206,6 +233,96 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
         </div>
 
       </div>
+
+      {/* Expandable Dish Reviews Modal */}
+      {isReviewsOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 relative space-y-4 max-h-[85vh] flex flex-col">
+            
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center font-bold">
+                  <Star className="w-6 h-6 fill-amber-400 text-amber-400" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base leading-tight">
+                    {item.name}
+                  </h3>
+                  <div className="flex items-center space-x-2 text-xs font-bold text-slate-600 mt-0.5">
+                    <span className="text-amber-600 font-black">★ {avgRating}</span>
+                    <span>•</span>
+                    <span>{reviewCount} verified {reviewCount === 1 ? 'review' : 'reviews'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsReviewsOpen(false)}
+                className="p-2 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Reviews List Body */}
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1 py-1">
+              {reviewsList.length > 0 ? (
+                reviewsList.map((rev: any) => (
+                  <div key={rev.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-7 h-7 rounded-full bg-emerald-600 text-white font-black text-xs flex items-center justify-center">
+                          {rev.reviewerName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className="font-extrabold text-slate-900 block leading-tight">{rev.reviewerName}</span>
+                          <span className="text-[10px] text-emerald-700 font-bold flex items-center gap-0.5">
+                            <ShieldCheck className="w-3 h-3 text-emerald-600" /> Verified Patron
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center space-x-0.5 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-md text-amber-700 font-black text-xs">
+                        <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
+                        <span>{rev.rating}</span>
+                      </div>
+                    </div>
+
+                    {rev.comment && (
+                      <p className="text-slate-700 font-medium italic leading-relaxed pt-1">
+                        &ldquo;{rev.comment}&rdquo;
+                      </p>
+                    )}
+
+                    <span className="text-[10px] text-slate-400 block text-right font-semibold">
+                      {new Date(rev.createdAt).toLocaleDateString(undefined, { dateStyle: 'medium' })}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="py-10 text-center space-y-2 text-slate-500 text-xs">
+                  <MessageSquare className="w-10 h-10 text-slate-300 mx-auto" />
+                  <p className="font-extrabold text-slate-800">No Public Reviews Yet</p>
+                  <p className="text-[11px] text-slate-500">Be the first verified customer to order and rate this dish!</p>
+                </div>
+              )}
+            </div>
+
+            {/* Footer Close */}
+            <div className="pt-2 border-t border-slate-100 shrink-0">
+              <button
+                onClick={() => setIsReviewsOpen(false)}
+                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-bold"
+              >
+                Close Reviews
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

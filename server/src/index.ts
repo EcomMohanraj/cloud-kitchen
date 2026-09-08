@@ -12,6 +12,7 @@ import paymentRoutes from './routes/paymentRoutes';
 import addressRoutes from './routes/addressRoutes';
 import deliveryPartnerRoutes from './routes/deliveryPartnerRoutes';
 import adminRiderRoutes from './routes/adminRiderRoutes';
+import reviewRoutes from './routes/reviewRoutes';
 import { initSocket } from './socket';
 
 dotenv.config();
@@ -78,6 +79,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/rider', deliveryPartnerRoutes);
 app.use('/api/admin/riders', adminRiderRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Health Check Endpoint
 app.get('/health', (req, res) => {

@@ -10,9 +10,9 @@ import { CartDrawer } from '@/components/CartDrawer';
 import { CheckoutModal } from '@/components/CheckoutModal';
 import { PaymentModal } from '@/components/PaymentModal';
 import { useCartStore } from '@/store/cartStore';
-import { ScheduleService, MenuService } from '@/services/api';
+import { ScheduleService, MenuService, ReviewService } from '@/services/api';
 import { getSocket } from '@/services/socket';
-import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle } from 'lucide-react';
+import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle, Star, Quote, BadgeCheck } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 
 import { isSlotBookingClosed, getFirstValidUpcomingSlot } from '@/utils/slotTiming';
@@ -33,6 +33,8 @@ export default function StorefrontPage() {
 
   const [menuItems, setMenuItems] = useState<MenuItemProps[]>([]);
   const [menuLoading, setMenuLoading] = useState(true);
+
+  const [testimonials, setTestimonials] = useState<any[]>([]);
 
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [onlinePaymentOrder, setOnlinePaymentOrder] = useState<any>(null);
@@ -111,6 +113,15 @@ export default function StorefrontPage() {
 
   useEffect(() => {
     fetchSchedule();
+
+    // Fetch homepage verified testimonials
+    ReviewService.getTestimonials()
+      .then((res) => {
+        if (res.success && res.testimonials) {
+          setTestimonials(res.testimonials);
+        }
+      })
+      .catch((err) => console.warn('Testimonials load error:', err));
 
     const socket = getSocket();
     const handleScheduleUpdated = () => {
@@ -306,6 +317,58 @@ export default function StorefrontPage() {
             </div>
           )}
         </section>
+
+        {/* STEP 4: VERIFIED CUSTOMER TESTIMONIALS SECTION */}
+        {testimonials.length > 0 && (
+          <section className="pt-6 space-y-6">
+            <div className="text-center space-y-2 max-w-xl mx-auto">
+              <div className="inline-flex items-center space-x-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-900 text-xs font-black">
+                <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                <span>Verified Customer Testimonials</span>
+              </div>
+              <h3 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
+                What Our Patrons Say
+              </h3>
+              <p className="text-xs text-slate-500 font-semibold">
+                Real feedback from verified food lovers who ordered and enjoyed our home-cooked meal sessions.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {testimonials.map((test: any) => (
+                <div key={test.id} className="bg-white border border-slate-200/80 rounded-3xl p-6 shadow-sm hover:shadow-md transition-shadow relative flex flex-col justify-between space-y-4">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-1 text-amber-400">
+                        {Array.from({ length: test.rating || 5 }).map((_, i) => (
+                          <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+                        ))}
+                      </div>
+                      <span className="text-[10px] text-emerald-800 font-bold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200 flex items-center gap-1">
+                        <BadgeCheck className="w-3 h-3 text-emerald-600" /> Verified Order
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-700 font-medium italic leading-relaxed">
+                      &ldquo;{test.comment}&rdquo;
+                    </p>
+                  </div>
+
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                    <div>
+                      <h5 className="font-extrabold text-slate-900">{test.customerName}</h5>
+                      <span className="text-[10px] text-slate-500 font-semibold">Dish: {test.dishName}</span>
+                    </div>
+
+                    <span className="text-[10px] text-slate-400 font-semibold">
+                      {new Date(test.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
       </main>
 

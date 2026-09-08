@@ -442,3 +442,24 @@ export const AdminRiderService = {
   updateRiderStatus: (riderId: string, isActive: boolean) =>
     fetchApi(`/admin/riders/${riderId}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
 };
+
+export const ReviewService = {
+  createReview: (payload: { userId?: string; phone?: string; orderId: string; menuItemId: string; rating: number; comment?: string }) =>
+    fetchApi('/reviews', { method: 'POST', body: JSON.stringify(payload) }),
+  getMenuItemReviews: (menuItemId: string) =>
+    fetchApi(`/reviews/menu-item/${menuItemId}`),
+  getTestimonials: () =>
+    fetchApi('/reviews/testimonials'),
+  getAdminReviews: (filters?: { rating?: number; menuItemId?: string; search?: string }) => {
+    const params = new URLSearchParams();
+    if (filters?.rating) params.append('rating', String(filters.rating));
+    if (filters?.menuItemId) params.append('menuItemId', filters.menuItemId);
+    if (filters?.search) params.append('search', filters.search);
+    return fetchApi(`/reviews/admin/all?${params.toString()}`);
+  },
+  toggleHideReview: (id: string) =>
+    fetchApi(`/reviews/admin/${id}/hide`, { method: 'PATCH' }),
+  deleteReview: (id: string) =>
+    fetchApi(`/reviews/admin/${id}`, { method: 'DELETE' }),
+};
+

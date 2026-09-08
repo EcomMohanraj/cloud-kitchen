@@ -181,6 +181,12 @@ export const createOrder = async (req: Request, res: Response) => {
     const totalAmount = subtotal + deliveryFee;
     const orderNumber = `ORD-YZH-${Math.floor(1000 + Math.random() * 9000)}`;
 
+    const user = await prisma.user.upsert({
+      where: { phone: validated.customerPhone },
+      update: { name: validated.customerName, address: validated.deliveryAddress },
+      create: { phone: validated.customerPhone, name: validated.customerName, address: validated.deliveryAddress },
+    });
+
     const newOrder = await prisma.order.create({
       data: {
         orderNumber,
@@ -198,6 +204,7 @@ export const createOrder = async (req: Request, res: Response) => {
         subtotal,
         deliveryFee,
         totalAmount,
+        userId: user.id,
         items: {
           create: orderItemsData,
         },

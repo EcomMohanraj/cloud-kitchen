@@ -1,15 +1,21 @@
 'use client';
 
-import React from 'react';
-import { CheckCircle2, Clock, Utensils, Truck, Home, AlertCircle, Phone, MapPin, Calendar } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle2, Clock, Utensils, Truck, Home, AlertCircle, Phone, MapPin, Calendar, Star, Check } from 'lucide-react';
 
 import { LiveRiderMap } from './LiveRiderMap';
+import { ReviewModal } from './ReviewModal';
 
 interface OrderStatusTrackerProps {
   order: any;
 }
 
 export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order }) => {
+  const [reviewModalItem, setReviewModalItem] = useState<any | null>(null);
+  const [reviewedItemIds, setReviewedItemIds] = useState<string[]>([]);
+
+  const isDelivered = order.orderStatus === 'DELIVERED';
+
   const steps = [
     { key: 'PENDING', title: 'Order Received', desc: 'Pre-order recorded in kitchen queue', icon: Clock },
     { key: 'ACCEPTED', title: 'Accepted by Chef', desc: 'Slot & ingredients allocated', icon: CheckCircle2 },
@@ -209,15 +215,42 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order })
           </h3>
 
           <div className="space-y-3">
-            {order.items.map((item: any) => (
-              <div key={item.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs">
-                <div>
-                  <h4 className="font-bold text-slate-900 text-sm">{item.menuItemName}</h4>
-                  <span className="text-slate-500 font-semibold">Qty: {item.quantity} x ₹{item.unitPrice}</span>
+            {order.items.map((item: any) => {
+              const isReviewed = reviewedItemIds.includes(item.menuItemId);
+
+              return (
+                <div key={item.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs gap-3">
+                  <div className="flex-1">
+                    <h4 className="font-bold text-slate-900 text-sm">{item.menuItemName}</h4>
+                    <span className="text-slate-500 font-semibold">Qty: {item.quantity} x ₹{item.unitPrice}</span>
+                  </div>
+
+                  <div className="flex items-center space-x-3 shrink-0">
+                    <span className="font-black text-emerald-700 text-sm">₹{item.totalPrice}</span>
+
+                    {/* Rate Dish Prompt on DELIVERED Orders */}
+                    {isDelivered && (
+                      <div>
+                        {isReviewed ? (
+                          <span className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold text-[11px]">
+                            <Check className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Reviewed</span>
+                          </span>
+                        ) : (
+                          <button
+                            onClick={() => setReviewModalItem(item)}
+                            className="inline-flex items-center space-x-1 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-500 text-amber-950 font-black text-[11px] shadow-sm transition-all transform hover:scale-105"
+                          >
+                            <Star className="w-3.5 h-3.5 fill-amber-950 text-amber-950" />
+                            <span>Rate this dish</span>
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <span className="font-black text-emerald-700 text-sm">₹{item.totalPrice}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="pt-4 border-t border-slate-200 space-y-1 text-xs text-slate-600 font-medium">
@@ -237,6 +270,23 @@ export const OrderStatusTracker: React.FC<OrderStatusTrackerProps> = ({ order })
         </div>
 
       </div>
+
+      {/* Verified Review Modal */}
+      {reviewModalItem && (
+        <ReviewModal
+          isOpen={Boolean(reviewModalItem)}
+          onClose={() => setReviewModalItem(null)}
+          orderId={order.id}
+          menuItemId={reviewModalItem.menuItemId}
+          dishName={reviewModalItem.menuItemName}
+          customerPhone={order.customerPhone}
+          onSuccess={() => {
+            if (reviewModalItem) {
+              setReviewedItemIds((prev) => [...prev, reviewModalItem.menuItemId]);
+            }
+          }}
+        />
+      )}
 
     </div>
   );
