@@ -107,8 +107,14 @@ export function isSlotExpiredToday(cutoffTimeStr: string, selectedDate: string):
 /**
  * Returns the first valid open slot for the selected date.
  */
-export function getFirstValidUpcomingSlot(selectedDate: string): string {
-  const validSlot = MEAL_SLOTS.find((s) => !isSlotBookingClosed(s.orderCutoffDisplay, selectedDate));
-  return validSlot ? validSlot.type : 'DINNER';
+export function getFirstValidUpcomingSlot(selectedDate: string, slotStatuses?: Record<string, any>): string {
+  const validSlot = MEAL_SLOTS.find((s) => {
+    const customCutoff = slotStatuses?.[s.type]?.orderCutoffTime || s.orderCutoffDisplay;
+    const isClosed = isSlotBookingClosed(customCutoff, selectedDate);
+    const isActive = slotStatuses?.[s.type] ? Boolean(slotStatuses[s.type].isActive && (slotStatuses[s.type].isAvailable ?? true)) : true;
+    return !isClosed && isActive;
+  });
+  return validSlot ? validSlot.type : 'BREAKFAST';
 }
+
 

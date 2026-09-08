@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { getFirstValidUpcomingSlot } from '@/utils/slotTiming';
 
 export interface CartItem {
   menuItemId: string;
@@ -42,7 +43,7 @@ function getLocalDateString(d: Date = new Date()): string {
 
 export const useCartStore = create<CartStore>((set, get) => ({
   selectedDate: getLocalDateString(),
-  selectedSlot: 'BREAKFAST',
+  selectedSlot: getFirstValidUpcomingSlot(getLocalDateString()),
   cartItems: [],
   isCartOpen: false,
   customerName: '',

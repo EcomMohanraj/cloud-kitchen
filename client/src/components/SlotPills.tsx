@@ -10,9 +10,10 @@ import { isSlotBookingClosed } from '@/utils/slotTiming';
 interface SlotPillsProps {
   slotStatuses?: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string; orderCutoffTime?: string }>;
   isDateActive?: boolean;
+  timeTick?: number;
 }
 
-export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive = true }) => {
+export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive = true, timeTick }) => {
   const { selectedDate, selectedSlot, setSelectedSlot } = useCartStore();
 
   const getSlotIcon = (iconName: string) => {
@@ -77,7 +78,7 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
               }}
               className={`relative flex flex-col justify-between p-4 rounded-2xl border text-left transition-all duration-300 overflow-hidden ${
                 !isSlotActive
-                  ? 'opacity-50 pointer-events-none bg-slate-100 border-slate-200 cursor-not-allowed text-slate-400'
+                  ? 'opacity-60 bg-slate-100/90 border-slate-200 cursor-not-allowed text-slate-400'
                   : isSelected
                   ? 'border-emerald-500 text-white shadow-lg shadow-emerald-600/20'
                   : 'bg-emerald-50/30 border-emerald-100 hover:bg-emerald-50 hover:border-emerald-300 text-slate-800'
@@ -97,7 +98,7 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
                 <div className="flex items-center justify-between">
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                      isSelected
+                      isSelected && isSlotActive
                         ? 'bg-white/20 text-white backdrop-blur-xs'
                         : isExpired
                         ? 'bg-rose-100 text-rose-600'
@@ -109,8 +110,8 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
 
                   {/* Real-time Status Pill */}
                   {isExpired ? (
-                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 flex items-center gap-1">
-                      <Lock className="w-3 h-3 text-rose-600" /> Bookings Closed for Today / முன்பதிவு முடிந்தது
+                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-rose-100 text-rose-700 flex items-center gap-1 border border-rose-200">
+                      <Lock className="w-3 h-3 text-rose-600" /> Bookings Closed for Today
                     </span>
                   ) : isSlotActive ? (
                     <span
@@ -133,12 +134,12 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
                 {/* Title & Tamil Subtitle */}
                 <div>
                   <h3 className={`font-black text-base tracking-tight leading-snug ${
-                    isSelected ? 'text-white' : 'text-slate-900'
+                    isSelected && isSlotActive ? 'text-white' : 'text-slate-900'
                   }`}>
                     {slot.name}
                   </h3>
                   <p className={`text-xs font-bold ${
-                    isSelected ? 'text-emerald-100' : 'text-emerald-700'
+                    isSelected && isSlotActive ? 'text-emerald-100' : isExpired ? 'text-rose-600' : 'text-emerald-700'
                   }`}>
                     {slot.nameTamil}
                   </p>
@@ -146,7 +147,7 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
 
                 {/* Footer Time & Cutoff */}
                 <div className={`pt-2.5 border-t text-[11px] font-semibold flex flex-col space-y-1 ${
-                  isSelected ? 'border-white/20 text-emerald-50' : 'border-emerald-100 text-slate-500'
+                  isSelected && isSlotActive ? 'border-white/20 text-emerald-50' : 'border-emerald-100 text-slate-500'
                 }`}>
                   <div className="flex items-center justify-between">
                     <span className="truncate pr-1 flex items-center gap-1">
@@ -155,8 +156,8 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] font-bold opacity-90">
-                    <span className={isSelected ? 'text-amber-200' : 'text-amber-700'}>
-                      Book before {orderCutoffDisplay}
+                    <span className={isSelected && isSlotActive ? 'text-amber-200' : isExpired ? 'text-rose-600 font-extrabold' : 'text-amber-700'}>
+                      {isExpired ? `Cutoff Passed (${orderCutoffDisplay})` : `Book before ${orderCutoffDisplay}`}
                     </span>
                   </div>
                 </div>
@@ -168,3 +169,4 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
     </div>
   );
 };
+

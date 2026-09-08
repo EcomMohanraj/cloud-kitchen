@@ -39,6 +39,7 @@ export default function StorefrontPage() {
   // Live Chef Status State
   const [isChefOnline, setIsChefOnline] = useState(true);
   const [kitchenStatus, setKitchenStatus] = useState<'OPEN' | 'BUSY' | 'OFFLINE'>('OPEN');
+  const [timeTick, setTimeTick] = useState<number>(Date.now());
 
   const cartCount = getCartCount();
   const subtotal = getCartSubtotal();
@@ -66,7 +67,8 @@ export default function StorefrontPage() {
         setSelectedDate(targetDate);
 
         // Auto-select first valid open non-expired slot
-        const validOpenSlot = getFirstValidUpcomingSlot(targetDate);
+        const targetScheduleObj = data.schedule.find((s: ScheduleDate) => s.date === targetDate);
+        const validOpenSlot = getFirstValidUpcomingSlot(targetDate, targetScheduleObj?.slots);
         if (validOpenSlot) {
           setSelectedSlot(validOpenSlot);
         }
@@ -97,32 +99,53 @@ export default function StorefrontPage() {
     fetchSchedule();
   }, []);
 
+  // Periodic time tick & focus listener to trigger lock evaluation as time passes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTimeTick(Date.now());
+    }, 30000);
+
+    const handleFocusOrVisibility = () => {
+      setTimeTick(Date.now());
+    };
+
+    window.addEventListener('focus', handleFocusOrVisibility);
+    document.addEventListener('visibilitychange', handleFocusOrVisibility);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', handleFocusOrVisibility);
+      document.removeEventListener('visibilitychange', handleFocusOrVisibility);
+    };
+  }, []);
+
   const currentDateSchedule = scheduleList.find((s) => s.date === selectedDate);
   const currentSlotStatuses = currentDateSchedule ? currentDateSchedule.slots : undefined;
   const isDateActive = currentDateSchedule ? Boolean(currentDateSchedule.isDateActive) : true;
 
   // Auto-shift slot if currently selected slot is inactive or expired past order cutoff
   useEffect(() => {
-    if (currentSlotStatuses && isDateActive) {
-      const currentCutoff = currentSlotStatuses[selectedSlot]?.orderCutoffTime || '06:00 AM';
+    if (isDateActive) {
+      const currentCutoff = currentSlotStatuses?.[selectedSlot]?.orderCutoffTime || MEAL_SLOTS.find(s => s.id === selectedSlot)?.orderCutoff || '06:00 AM';
       const isExpired = isSlotBookingClosed(currentCutoff, selectedDate);
       const isCurrentSlotActive = !isExpired && Boolean(
-        currentSlotStatuses[selectedSlot]?.isActive && (currentSlotStatuses[selectedSlot]?.isAvailable ?? true)
+        currentSlotStatuses ? (currentSlotStatuses[selectedSlot]?.isActive && (currentSlotStatuses[selectedSlot]?.isAvailable ?? true)) : true
       );
 
       if (!isCurrentSlotActive) {
         const activeSlotKey = MEAL_SLOTS.find((s) => {
-          const slotCutoff = currentSlotStatuses[s.id]?.orderCutoffTime || s.orderCutoff || '06:00 AM';
+          const slotCutoff = currentSlotStatuses?.[s.id]?.orderCutoffTime || s.orderCutoff || '06:00 AM';
           const expired = isSlotBookingClosed(slotCutoff, selectedDate);
-          return !expired && currentSlotStatuses[s.id]?.isActive && (currentSlotStatuses[s.id]?.isAvailable ?? true);
+          const activeInSchedule = currentSlotStatuses ? Boolean(currentSlotStatuses[s.id]?.isActive && (currentSlotStatuses[s.id]?.isAvailable ?? true)) : true;
+          return !expired && activeInSchedule;
         })?.id;
 
-        if (activeSlotKey) {
+        if (activeSlotKey && activeSlotKey !== selectedSlot) {
           setSelectedSlot(activeSlotKey);
         }
       }
     }
-  }, [selectedDate, currentSlotStatuses, isDateActive, selectedSlot, setSelectedSlot]);
+  }, [selectedDate, currentSlotStatuses, isDateActive, selectedSlot, setSelectedSlot, timeTick]);
 
   useEffect(() => {
     if (selectedSlot) {
@@ -210,7 +233,7 @@ export default function StorefrontPage() {
 
         {/* STEP 2: MEAL SLOT PILLS */}
         <section>
-          <SlotPills slotStatuses={currentSlotStatuses} isDateActive={isDateActive} />
+          <SlotPills slotStatuses={currentSlotStatuses} isDateActive={isDateActive} timeTick={timeTick} />
         </section>
 
         {/* STEP 3: DYNAMIC MENU ITEMS CATALOG */}
