@@ -66,7 +66,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
       }
 
       const options = {
-        key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TYN2wPXhu0Um2a',
+        key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || '',
         amount: rzpData.amount,
         currency: rzpData.currency || 'INR',
         name: 'Yazhisai Cloud Kitchen',

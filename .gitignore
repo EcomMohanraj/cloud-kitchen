@@ -6,6 +6,7 @@ server/node_modules/
 
 # Next.js
 client/.next/
+client/.next-build/
 client/out/
 .next/
 
@@ -13,15 +14,20 @@ client/out/
 server/dist/
 server/build/
 
-# Environment Variables (NEVER commit these)
+# Environment variables
 .env
 .env.local
-.env.production
 .env.development
+.env.production
+.env.test
+.env.*
+!.env.example
 server/.env
+server/.env.*
+!server/.env.example
 client/.env
-client/.env.local
-client/.env.production
+client/.env.*
+!client/.env.example
 
 # Database
 server/prisma/*.db
