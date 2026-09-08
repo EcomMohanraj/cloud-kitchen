@@ -131,4 +131,42 @@ export function getFirstValidUpcomingSlot(selectedDate: string, slotStatuses?: R
   return validSlot ? validSlot.type : null;
 }
 
+/**
+ * Checks if current local time falls within a slot's actual delivery window for TODAY.
+ * Returns false for any date other than today.
+ */
+export function isCurrentTimeInDeliveryWindow(
+  slotType: string,
+  selectedDate: string
+): boolean {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+
+  if (selectedDate !== todayStr) return false;
+
+  const slot = MEAL_SLOTS.find(
+    (s) => s.type.toUpperCase() === slotType.toUpperCase()
+  );
+  if (!slot) return false;
+
+  try {
+    const [startH, startM] = slot.startTime.split(':').map(Number);
+    const [endH, endM] = slot.cutoffTime.split(':').map(Number);
+
+    const start = new Date();
+    start.setHours(startH, startM, 0, 0);
+
+    const end = new Date();
+    end.setHours(endH, endM, 0, 0);
+
+    return now >= start && now <= end;
+  } catch {
+    return false;
+  }
+}
+
+
 

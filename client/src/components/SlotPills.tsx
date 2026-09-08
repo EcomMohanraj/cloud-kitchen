@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Sun, Coffee, Utensils, Moon, Clock, Lock, Sparkles, Flame } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 import { useCartStore } from '@/store/cartStore';
-import { isSlotBookingClosed } from '@/utils/slotTiming';
+import { isSlotBookingClosed, isCurrentTimeInDeliveryWindow } from '@/utils/slotTiming';
 
 interface SlotPillsProps {
   slotStatuses?: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string; orderCutoffTime?: string }>;
@@ -68,6 +68,7 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
           const orderCutoffDisplay = status?.orderCutoffTime || slot.orderCutoff || '06:00 AM';
           const isExpired = isSlotBookingClosed(orderCutoffDisplay, selectedDate, slot.id);
           const isSlotActive = isDateActive && !isExpired && (status ? Boolean(status.isActive && (status.isAvailable ?? true)) : true);
+          const isLiveWindow = isCurrentTimeInDeliveryWindow(slot.id, selectedDate);
 
           return (
             <button
@@ -121,8 +122,8 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
                           : 'bg-emerald-100 text-emerald-800'
                       }`}
                     >
-                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-emerald-600 animate-ping' : 'bg-emerald-500'}`}></span>
-                      {isSelected ? 'Live' : 'Pre-Order Open'}
+                      <span className={`w-1.5 h-1.5 rounded-full ${isLiveWindow && isSelected ? 'bg-emerald-600 animate-ping' : isSelected ? 'bg-emerald-600' : 'bg-emerald-500'}`}></span>
+                      {isLiveWindow && isSelected ? 'LIVE' : isSelected ? 'Selected' : 'Pre-Order Open'}
                     </span>
                   ) : (
                     <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-slate-200 text-slate-500 flex items-center gap-1">
