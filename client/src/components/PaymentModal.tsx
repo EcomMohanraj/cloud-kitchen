@@ -88,7 +88,7 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
               clearCart();
               setTimeout(() => {
                 onClose();
-                router.push(`/track/${targetOrder.id}`);
+                router.push(`/track/${targetOrder.orderNumber || targetOrder.id}`);
               }, 1800);
             } else {
               alert('Payment verification failed!');

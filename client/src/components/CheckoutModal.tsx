@@ -344,7 +344,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 clearCart();
                 setLoading(false);
                 onClose();
-                router.push(`/track/${createdOrder.id}`);
+                router.push(`/track/${createdOrder.orderNumber || createdOrder.id}`);
               } else {
                 setLoading(false);
                 setErrorMsg('Payment verification failed! Signature invalid.');
@@ -384,7 +384,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       clearCart();
       setLoading(false);
       onClose();
-      router.push(`/track/${createdOrder.id}`);
+      router.push(`/track/${createdOrder.orderNumber || createdOrder.id}`);
     }
   };
 

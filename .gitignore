@@ -30,8 +30,11 @@ client/.env.*
 !client/.env.example
 
 # Database
+*.db
+*.db-journal
 server/prisma/*.db
 server/prisma/*.db-journal
+server/prisma/seed.js
 
 # Logs
 npm-debug.log*

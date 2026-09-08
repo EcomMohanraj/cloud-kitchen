@@ -34,8 +34,13 @@ export const getOrders = async (req: Request, res: Response) => {
     const { id, date, slot, phone } = req.query;
 
     if (id && typeof id === 'string') {
-      const order = await prisma.order.findUnique({
-        where: { id },
+      const order = await prisma.order.findFirst({
+        where: {
+          OR: [
+            { id },
+            { orderNumber: id },
+          ],
+        },
         include: {
           items: true,
           deliveryPartner: {
@@ -46,7 +51,7 @@ export const getOrders = async (req: Request, res: Response) => {
       if (!order) {
         return res.status(404).json({ error: 'Order not found' });
       }
-      return res.json({ order });
+      return res.json({ order, orders: [order] });
     }
 
     const whereClause: any = {};

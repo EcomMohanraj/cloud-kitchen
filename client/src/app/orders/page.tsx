@@ -212,7 +212,7 @@ export default function CustomerOrdersPage() {
 
                       <div className="pt-2">
                         <Link
-                          href={`/track/${order.id}`}
+                          href={`/track/${order.orderNumber || order.id}`}
                           className="inline-flex items-center gap-1 font-extrabold text-emerald-700 hover:text-emerald-800 text-xs"
                         >
                           <span>Full Live Tracking Screen</span>
