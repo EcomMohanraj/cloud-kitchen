@@ -214,7 +214,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         }
 
         const options = {
-          key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_TZXEUX6cB2Fnu1',
+          key: rzpData.key || process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_live_TZXsRKuYRSBm27',
           amount: rzpData.amount,
           currency: rzpData.currency || 'INR',
           name: 'Yazhisai Cloud Kitchen',
