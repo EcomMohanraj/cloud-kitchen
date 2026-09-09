@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useParams } from 'next/navigation';
 import { Navbar } from '@/components/Navbar';
 import { OrderStatusTracker } from '@/components/OrderStatusTracker';
@@ -10,11 +10,16 @@ import { Clock, AlertCircle } from 'lucide-react';
 
 export default function OrderTrackingPage() {
   const params = useParams();
+  // orderId from URL is the orderNumber (e.g. "ORD-YZH-1484")
   const orderId = params.orderId as string;
 
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // Keep a ref to the current DB uuid so the socket listener never
+  // closes over stale state. Populated after the first successful fetch.
+  const orderDbIdRef = useRef<string | null>(null);
 
   const fetchOrder = async (isBackground = false) => {
     try {
@@ -23,6 +28,17 @@ export default function OrderTrackingPage() {
       if (foundOrder) {
         setOrder((prev: any) => (prev ? { ...prev, ...foundOrder, deliveryPartner: foundOrder.deliveryPartner || prev.deliveryPartner } : foundOrder));
         setError('');
+
+        // ── KEY FIX ──────────────────────────────────────────────────────────
+        // The server emits order-status-updated to room `order-<uuid>` AND
+        // `order-<orderNumber>`. We join BOTH rooms so either broadcast hits us:
+        //   • orderNumber room: already joined below from the URL param
+        //   • UUID room: join now that we have the actual db id
+        if (foundOrder.id && foundOrder.id !== orderId) {
+          orderDbIdRef.current = foundOrder.id;
+          joinOrderRoom(foundOrder.id);
+        }
+        // ─────────────────────────────────────────────────────────────────────
       } else if (!isBackground) {
         setError('Order not found');
       }
@@ -41,23 +57,33 @@ export default function OrderTrackingPage() {
     if (orderId) {
       fetchOrder(false);
 
-      // 1. Join Order-specific Socket Room
+      // 1. Join Order-specific Socket Room by orderNumber (URL param)
       const socket = getSocket();
       joinOrderRoom(orderId);
 
       const handleConnect = () => {
-        console.log(`⚡ [Customer Tracking UI] Socket connected/reconnected. Re-joining order room for ${orderId}`);
+        console.log(`⚡ [Customer Tracking UI] Socket reconnected. Re-joining rooms for ${orderId}`);
         joinOrderRoom(orderId);
-        if (order?.id && order.id !== orderId) {
-          joinOrderRoom(order.id);
+        // Re-join the UUID room too (if we already resolved it)
+        if (orderDbIdRef.current && orderDbIdRef.current !== orderId) {
+          joinOrderRoom(orderDbIdRef.current);
         }
       };
 
       // 2. Listen for Real-Time Status Updates
       const handleStatusUpdated = (data: { order: any }) => {
         const updated = data.order;
-        if (updated && (updated.id === orderId || updated.orderNumber === orderId || (order && updated.id === order.id))) {
-          console.log(`⚡ [Customer Tracking UI] Received real-time order status update for ${orderId}:`, updated);
+        // Match by uuid OR orderNumber — never depend on closed-over `order` state
+        const isMyOrder =
+          updated &&
+          (
+            updated.id === orderId ||
+            updated.orderNumber === orderId ||
+            (orderDbIdRef.current && updated.id === orderDbIdRef.current)
+          );
+
+        if (isMyOrder) {
+          console.log(`⚡ [Customer Tracking UI] Real-time status update → ${updated.orderStatus} for ${orderId}`);
           setOrder((prev: any) =>
             prev ? { ...prev, ...updated, deliveryPartner: updated.deliveryPartner || prev.deliveryPartner } : updated
           );
@@ -72,15 +98,17 @@ export default function OrderTrackingPage() {
 
       return () => {
         leaveOrderRoom(orderId);
-        if (order?.id && order.id !== orderId) {
-          leaveOrderRoom(order.id);
+        if (orderDbIdRef.current && orderDbIdRef.current !== orderId) {
+          leaveOrderRoom(orderDbIdRef.current);
         }
         socket.off('connect', handleConnect);
         socket.off('order-status-updated', handleStatusUpdated);
         clearInterval(fallbackTimer);
       };
     }
-  }, [orderId, order?.id]);
+  // Only re-run when orderId changes (not on every order state update)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [orderId]);
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col justify-between">

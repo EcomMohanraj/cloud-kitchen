@@ -130,11 +130,24 @@ export const emitNewOrder = (order: any) => {
 
 export const emitOrderStatusUpdated = (order: any) => {
   if (io) {
-    const orderRoom = `order-${order.id}`;
-    console.log(`📢 [Socket.io Server] Emitting order-status-updated event for order ${order.id} (${order.orderStatus}) to ${orderRoom} & admin-room`);
+    // Emit to room keyed by internal UUID (primary)
+    const orderRoomById = `order-${order.id}`;
+    // Also emit to room keyed by orderNumber (e.g. "order-ORD-YZH-1484") —
+    // the customer tracking page joins using the orderNumber from the URL,
+    // so we must broadcast to BOTH rooms to avoid a silent miss.
+    const orderRoomByNumber = order.orderNumber ? `order-${order.orderNumber}` : null;
+
+    console.log(
+      `📢 [Socket.io Server] Emitting order-status-updated for ${order.orderNumber || order.id}` +
+      ` (${order.orderStatus}) → admin-room, ${orderRoomById}` +
+      (orderRoomByNumber ? `, ${orderRoomByNumber}` : '')
+    );
+
     io.to('admin-room').emit('order-status-updated', { order });
-    io.to(orderRoom).emit('order-status-updated', { order });
-    io.emit('order-status-updated', { order });
+    io.to(orderRoomById).emit('order-status-updated', { order });
+    if (orderRoomByNumber) {
+      io.to(orderRoomByNumber).emit('order-status-updated', { order });
+    }
   }
 };
 
