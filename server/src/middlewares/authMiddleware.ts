@@ -13,6 +13,7 @@ function getJwtSecret(): string {
 export interface AuthRequest extends Request {
   admin?: any;
   rider?: any;
+  chef?: any;
   customer?: any;
   user?: any;
   file?: Express.Multer.File;
@@ -75,6 +76,41 @@ export const requireRider = async (req: AuthRequest, res: Response, next: NextFu
   }
 };
 
+export const requireChef = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '') || req.cookies?.chef_token;
+
+    if (!token) {
+      return res.status(401).json({ error: 'Unauthorized chef access. Token missing.' });
+    }
+
+    const decoded = jwt.verify(token, getJwtSecret()) as any;
+    if (decoded.role !== 'CHEF') {
+      return res.status(403).json({ error: 'Forbidden. Access restricted to kitchen chefs.' });
+    }
+
+    // Verify chef account is active in DB
+    const chefId = decoded.chefId;
+    if (chefId) {
+      const chef = await prisma.chef.findUnique({
+        where: { id: chefId },
+        select: { id: true, isActive: true },
+      });
+
+      if (!chef || !chef.isActive) {
+        return res.status(403).json({ error: 'Chef account has been deactivated. Access denied.' });
+      }
+    }
+
+    req.chef = decoded;
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({ error: 'Invalid or expired chef token.' });
+  }
+};
+
 export const requireCustomer = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization || '';
@@ -100,7 +136,7 @@ export const requireCustomer = (req: AuthRequest, res: Response, next: NextFunct
 export const requireAuthOrCustomer = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization || '';
-    const token = authHeader.replace('Bearer ', '') || req.cookies?.admin_token || req.cookies?.rider_token || req.cookies?.auth_token || req.cookies?.customer_token;
+    const token = authHeader.replace('Bearer ', '') || req.cookies?.admin_token || req.cookies?.rider_token || req.cookies?.chef_token || req.cookies?.auth_token || req.cookies?.customer_token;
 
     if (!token) {
       return res.status(401).json({ error: 'Authentication token missing. Please sign in to view orders.' });
@@ -113,6 +149,8 @@ export const requireAuthOrCustomer = (req: AuthRequest, res: Response, next: Nex
       req.admin = decoded;
     } else if (decoded.role === 'RIDER') {
       req.rider = decoded;
+    } else if (decoded.role === 'CHEF') {
+      req.chef = decoded;
     } else if (decoded.role === 'CUSTOMER') {
       req.customer = decoded;
     }
@@ -122,4 +160,5 @@ export const requireAuthOrCustomer = (req: AuthRequest, res: Response, next: Nex
     return res.status(401).json({ error: 'Invalid or expired authentication token.' });
   }
 };
+
 

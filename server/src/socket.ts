@@ -55,6 +55,12 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
       console.log(`👨‍🍳 [Socket.io Server] Socket ${socket.id} joined admin-room`);
     });
 
+    // Chef joins chef-room
+    socket.on('join-chef-room', () => {
+      socket.join('chef-room');
+      console.log(`🍳 [Socket.io Server] Socket ${socket.id} joined chef-room`);
+    });
+
     // Customer joins specific order room
     socket.on('join-order-room', (orderId: string) => {
       if (orderId) {
@@ -123,8 +129,10 @@ export const getIO = (): SocketIOServer => {
 
 export const emitNewOrder = (order: any) => {
   if (io) {
-    console.log(`📢 [Socket.io Server] Emitting new-order event for order ${order.orderNumber || order.id} to admin-room`);
+    console.log(`📢 [Socket.io Server] Emitting new-order event for order ${order.orderNumber || order.id} to admin-room & chef-room`);
     io.to('admin-room').emit('new-order', { order });
+    io.to('chef-room').emit('new-order', { order });
+    io.to('chef-room').emit('new-order-for-chef', { order });
   }
 };
 
@@ -139,17 +147,19 @@ export const emitOrderStatusUpdated = (order: any) => {
 
     console.log(
       `📢 [Socket.io Server] Emitting order-status-updated for ${order.orderNumber || order.id}` +
-      ` (${order.orderStatus}) → admin-room, ${orderRoomById}` +
+      ` (${order.orderStatus}) → admin-room, chef-room, ${orderRoomById}` +
       (orderRoomByNumber ? `, ${orderRoomByNumber}` : '')
     );
 
     io.to('admin-room').emit('order-status-updated', { order });
+    io.to('chef-room').emit('order-status-updated', { order });
     io.to(orderRoomById).emit('order-status-updated', { order });
     if (orderRoomByNumber) {
       io.to(orderRoomByNumber).emit('order-status-updated', { order });
     }
   }
 };
+
 
 export const emitOrderAssigned = (order: any) => {
   if (io) {

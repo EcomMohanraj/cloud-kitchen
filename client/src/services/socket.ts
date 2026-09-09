@@ -62,3 +62,12 @@ export const leaveOrderRoom = (orderId: string) => {
     console.log(`📦 [Socket.io Client] Emitted leave-order-room for ${orderId}`);
   }
 };
+
+export const joinChefRoom = () => {
+  const s = getSocket();
+  if (s) {
+    s.emit('join-chef-room');
+    console.log('🍳 [Socket.io Client] Emitted join-chef-room event');
+  }
+};
+

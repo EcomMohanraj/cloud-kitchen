@@ -31,9 +31,22 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Protect all /chef routes except /chef/login
+  if (path.startsWith('/chef') && path !== '/chef/login') {
+    const chefToken = request.cookies.get('chef_token')?.value;
+
+    if (!chefToken) {
+      console.log(`[MIDDLEWARE REDIRECT] Path: ${path} | chefToken missing -> redirecting to /chef/login`);
+      const loginUrl = new URL('/chef/login', request.url);
+      loginUrl.searchParams.set('redirect', path);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/rider/:path*'],
+  matcher: ['/admin/:path*', '/rider/:path*', '/chef/:path*'],
 };
+

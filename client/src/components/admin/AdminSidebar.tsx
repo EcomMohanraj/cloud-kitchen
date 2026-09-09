@@ -23,10 +23,12 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen = false, onCl
     { href: '/admin/menu', label: 'Menu Management', icon: Utensils },
     { href: '/admin/orders', label: 'Live Orders Board', icon: ClipboardList },
     { href: '/admin/kot', label: 'Kitchen Slip (KOT)', icon: ChefHat },
+    { href: '/admin/chefs', label: 'Chefs Management', icon: ChefHat },
     { href: '/admin/riders', label: 'Delivery Partners', icon: Truck },
     { href: '/admin/reviews', label: 'Customer Reviews', icon: Star },
     { href: '/admin/settings', label: 'Store Settings', icon: Settings },
   ];
+
 
   const handleLogout = async () => {
     if (typeof window !== 'undefined') {

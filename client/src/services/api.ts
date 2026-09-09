@@ -16,15 +16,17 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
 
   if (typeof window !== 'undefined') {
     const token =
+      localStorage.getItem('chef_token') ||
+      localStorage.getItem('rider_token') ||
       localStorage.getItem('customer_token') ||
       localStorage.getItem('yazhisai_customer_token') ||
-      localStorage.getItem('rider_token') ||
       localStorage.getItem('yazhisai_admin_jwt') ||
       localStorage.getItem('admin_token');
     if (token) {
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
   }
+
 
   const response = await fetch(url, {
     ...options,
@@ -553,6 +555,27 @@ export const AnalyticsService = {
     return fetchApi(`/admin/analytics/revenue${queryString ? `?${queryString}` : ''}`);
   },
 };
+
+export const ChefService = {
+  login: (credentials: { phone: string; password: string }) =>
+    fetchApi('/chef/login', { method: 'POST', body: JSON.stringify(credentials) }),
+  getLiveOrders: () => fetchApi('/chef/live-orders'),
+  acceptOrder: (orderId: string) =>
+    fetchApi(`/chef/orders/${orderId}/accept`, { method: 'PATCH' }),
+  startPreparing: (orderId: string) =>
+    fetchApi(`/chef/orders/${orderId}/start-preparing`, { method: 'PATCH' }),
+  readyForPickup: (orderId: string) =>
+    fetchApi(`/chef/orders/${orderId}/ready-for-pickup`, { method: 'PATCH' }),
+};
+
+export const AdminChefService = {
+  createChef: (payload: { name: string; phone: string; password: string }) =>
+    fetchApi('/admin/chefs', { method: 'POST', body: JSON.stringify(payload) }),
+  getAllChefs: () => fetchApi('/admin/chefs'),
+  updateChefStatus: (chefId: string, isActive: boolean) =>
+    fetchApi(`/admin/chefs/${chefId}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
+};
+
 
 
 

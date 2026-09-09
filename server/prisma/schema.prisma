@@ -120,6 +120,15 @@ model DeliveryPartner {
   orders    Order[]
 }
 
+model Chef {
+  id        String   @id @default(uuid())
+  name      String
+  phone     String   @unique
+  password  String   // bcrypt hashed
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+}
+
 model DriverLocation {
   id                String   @id @default(uuid())
   deliveryPartnerId String   @unique
