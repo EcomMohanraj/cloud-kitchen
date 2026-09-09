@@ -327,6 +327,53 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   }
 };
 
+// ─── Public Tracking Endpoint (no auth required) ─────────────────────────────
+// Fetches order status by orderNumber for the customer tracking page.
+// Intentionally requires NO JWT so that shared tracking links (SMS, WhatsApp)
+// always return the current DB status without falling back to stale localStorage.
+// PII (full phone) is masked before returning.
+export const getOrderForTracking = async (req: Request, res: Response) => {
+  try {
+    const { orderNumber } = req.params;
+
+    if (!orderNumber) {
+      return res.status(400).json({ error: 'Order number is required' });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [
+          { orderNumber },
+          { id: orderNumber },
+        ],
+      },
+      include: {
+        items: true,
+        deliveryPartner: {
+          select: { id: true, name: true, phone: true },
+        },
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found. Please check your tracking link.' });
+    }
+
+    // Mask phone number for public endpoint (show only last 4 digits)
+    const safeOrder = {
+      ...order,
+      customerPhone: order.customerPhone
+        ? `${'*'.repeat(Math.max(0, order.customerPhone.length - 4))}${order.customerPhone.slice(-4)}`
+        : '',
+    };
+
+    return res.json({ order: safeOrder });
+  } catch (error: any) {
+    console.error('getOrderForTracking error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch order status' });
+  }
+};
+
 export const markCashCollected = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;

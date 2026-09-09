@@ -411,6 +411,48 @@ export const OrderService = {
       return OrderService.updateOrderStatus(orderId, undefined, 'PAID');
     }
   },
+
+  // ── Public tracking fetch (no auth required) ───────────────────────────────
+  // Used exclusively by /track/[orderId] page. Calls the public
+  // GET /api/orders/track/:orderNumber endpoint which requires no JWT.
+  //
+  // On success:  returns fresh DB data directly — NO localStorage merge.
+  //              Stale cached status can NEVER override the live DB value.
+  // On failure:  falls back to localStorage (genuine network/server outage only).
+  getOrderForTracking: async (orderNumber: string): Promise<{ order: any | null; fromCache: boolean }> => {
+    try {
+      const data = await fetchApi(`/orders/track/${encodeURIComponent(orderNumber)}`);
+      const order = data?.order || null;
+
+      if (order) {
+        console.log(`✅ [api.ts getOrderForTracking] Fresh DB status for ${orderNumber}: ${order.orderStatus}`);
+        // Update localStorage so background polls start from the correct status
+        const stored = getStoredOrders();
+        const map = new Map(stored.map((o: any) => [o.id, o]));
+        if (order.id) map.set(order.id, { ...(map.get(order.id) || {}), ...order });
+        saveStoredOrders(Array.from(map.values()));
+        return { order, fromCache: false };
+      }
+
+      return { order: null, fromCache: false };
+    } catch (error: any) {
+      console.warn(
+        `⚠️ [api.ts getOrderForTracking] API failed for ${orderNumber}, falling back to localStorage:`,
+        error.message
+      );
+
+      // Only fall back to localStorage on a genuine API failure (network down, 5xx)
+      const stored = getStoredOrders();
+      const q = orderNumber.trim().toLowerCase();
+      const cached = stored.find(
+        (o: any) =>
+          o.orderNumber === orderNumber ||
+          o.id === orderNumber ||
+          (o.orderNumber && o.orderNumber.toLowerCase() === q)
+      );
+      return { order: cached || null, fromCache: true };
+    }
+  },
 };
 
 export const AuthService = {

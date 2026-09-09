@@ -6,7 +6,7 @@ import { Navbar } from '@/components/Navbar';
 import { OrderStatusTracker } from '@/components/OrderStatusTracker';
 import { OrderService } from '@/services/api';
 import { getSocket, joinOrderRoom, leaveOrderRoom } from '@/services/socket';
-import { Clock, AlertCircle } from 'lucide-react';
+import { Clock, AlertCircle, WifiOff } from 'lucide-react';
 
 export default function OrderTrackingPage() {
   const params = useParams();
@@ -16,6 +16,8 @@ export default function OrderTrackingPage() {
   const [order, setOrder] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  // True when the API call failed and we're showing a stale localStorage result
+  const [fromCache, setFromCache] = useState(false);
 
   // Keep a ref to the current DB uuid so the socket listener never
   // closes over stale state. Populated after the first successful fetch.
@@ -23,24 +25,30 @@ export default function OrderTrackingPage() {
 
   const fetchOrder = async (isBackground = false) => {
     try {
-      const data = await OrderService.getOrders({ id: orderId });
-      const foundOrder = data.orders && data.orders.length > 0 ? data.orders[0] : null;
+      // ── KEY FIX ──────────────────────────────────────────────────────────────
+      // Use the dedicated public tracking endpoint (no JWT required).
+      // On success: fresh DB data is returned directly — localStorage is NEVER
+      //   allowed to override it, so stale-cache-on-refresh is impossible.
+      // On failure: localStorage is used as a genuine last-resort fallback, and
+      //   fromCache = true so a visible warning badge is shown to the customer.
+      // ─────────────────────────────────────────────────────────────────────────
+      const { order: foundOrder, fromCache: isCached } = await OrderService.getOrderForTracking(orderId);
+
       if (foundOrder) {
-        setOrder((prev: any) => (prev ? { ...prev, ...foundOrder, deliveryPartner: foundOrder.deliveryPartner || prev.deliveryPartner } : foundOrder));
+        setOrder((prev: any) => (prev
+          ? { ...prev, ...foundOrder, deliveryPartner: foundOrder.deliveryPartner || prev.deliveryPartner }
+          : foundOrder
+        ));
+        setFromCache(isCached);
         setError('');
 
-        // ── KEY FIX ──────────────────────────────────────────────────────────
-        // The server emits order-status-updated to room `order-<uuid>` AND
-        // `order-<orderNumber>`. We join BOTH rooms so either broadcast hits us:
-        //   • orderNumber room: already joined below from the URL param
-        //   • UUID room: join now that we have the actual db id
+        // After fetch we have the DB uuid — join the UUID room so socket events land
         if (foundOrder.id && foundOrder.id !== orderId) {
           orderDbIdRef.current = foundOrder.id;
           joinOrderRoom(foundOrder.id);
         }
-        // ─────────────────────────────────────────────────────────────────────
       } else if (!isBackground) {
-        setError('Order not found');
+        setError('Order not found. Please check your tracking link.');
       }
     } catch (err: any) {
       if (!isBackground) {
@@ -84,6 +92,7 @@ export default function OrderTrackingPage() {
 
         if (isMyOrder) {
           console.log(`⚡ [Customer Tracking UI] Real-time status update → ${updated.orderStatus} for ${orderId}`);
+          setFromCache(false); // live update — definitely not stale
           setOrder((prev: any) =>
             prev ? { ...prev, ...updated, deliveryPartner: updated.deliveryPartner || prev.deliveryPartner } : updated
           );
@@ -115,6 +124,16 @@ export default function OrderTrackingPage() {
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-10 flex-1 w-full space-y-6">
+        {/* Stale-cache warning — only shown when API is down and data is from localStorage */}
+        {fromCache && order && (
+          <div className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-300 rounded-xl text-amber-800 text-xs font-semibold shadow-sm">
+            <WifiOff className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>
+              Live status unavailable — showing last known status. This will auto-refresh every 30 seconds.
+            </span>
+          </div>
+        )}
+
         {loading ? (
           <div className="py-20 text-center space-y-3">
             <Clock className="w-12 h-12 text-emerald-600 animate-spin mx-auto" />
@@ -139,3 +158,4 @@ export default function OrderTrackingPage() {
     </div>
   );
 }
+
