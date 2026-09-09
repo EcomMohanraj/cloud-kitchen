@@ -58,11 +58,26 @@ export const loginAdmin = async (req: Request, res: Response) => {
   }
 };
 
-// In-memory OTP store with expiration & rate-limit attempt caps
+// ─── Startup Safety Check ───────────────────────────────────────────────────
+// Warn loudly if DEV_OTP_BYPASS is left on in production.
+// This runs once when the module is first imported (server startup).
+if (process.env.DEV_OTP_BYPASS === 'true' && process.env.NODE_ENV === 'production') {
+  console.warn(
+    '\n' +
+    '╔══════════════════════════════════════════════════════════════════╗\n' +
+    '║  ⚠️  SECURITY WARNING: DEV_OTP_BYPASS=true IN PRODUCTION!       ║\n' +
+    '║  OTP verification is DISABLED. Set DEV_OTP_BYPASS=false or      ║\n' +
+    '║  remove it from your Render environment variables immediately.   ║\n' +
+    '╚══════════════════════════════════════════════════════════════════╝\n'
+  );
+}
+
+// In-memory OTP store with expiration, rate-limit attempt caps, and send cooldown
 interface OtpRecord {
   otp: string;
   expiresAt: number;
   attempts: number;
+  lastSentAt: number; // tracks per-phone cooldown (prevents credit drain from same number)
   name?: string;
   address?: string;
 }
@@ -79,34 +94,143 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
+// ─── Fast2SMS OTP Dispatcher ─────────────────────────────────────────────────
+// Sends a 6-digit OTP via Fast2SMS's OTP route (no DLT required for OTP route).
+// Endpoint: GET https://www.fast2sms.com/dev/bulkV2?authorization=...&variables_values=OTP&route=otp&numbers=PHONE
+//
+// Returns { success: true } on successful dispatch,
+//         { success: false, error: string } on any failure.
+async function dispatchSmsOtp(
+  phone: string,
+  otp: string
+): Promise<{ success: boolean; error?: string }> {
+  const apiKey = process.env.FAST2SMS_API_KEY;
+
+  if (!apiKey) {
+    console.error('❌ [Fast2SMS] FAST2SMS_API_KEY environment variable is not set.');
+    return { success: false, error: 'SMS service is not configured. Please contact support.' };
+  }
+
+  const url =
+    `https://www.fast2sms.com/dev/bulkV2` +
+    `?authorization=${encodeURIComponent(apiKey)}` +
+    `&variables_values=${encodeURIComponent(otp)}` +
+    `&route=otp` +
+    `&numbers=${encodeURIComponent(phone)}`;
+
+  console.log(`📤 [Fast2SMS] Dispatching OTP to +91 ${phone} via Fast2SMS OTP route ...`);
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      headers: {
+        'cache-control': 'no-cache',
+      },
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    const json = await response.json() as any;
+
+    if (response.ok && json.return === true) {
+      console.log(`✅ [Fast2SMS] OTP dispatched successfully to +91 ${phone}. Request ID: ${json.request_id || 'N/A'}`);
+      return { success: true };
+    }
+
+    // Fast2SMS returns HTTP 200 even on some errors — check json.return
+    const errMsg = Array.isArray(json.message)
+      ? json.message.join(', ')
+      : (json.message || json.error || 'Unknown SMS gateway error');
+
+    console.error(`❌ [Fast2SMS] API error for +91 ${phone}:`, json);
+    return { success: false, error: `SMS delivery failed: ${errMsg}` };
+
+  } catch (err: any) {
+    clearTimeout(timeout);
+    if (err.name === 'AbortError') {
+      console.error(`❌ [Fast2SMS] Request timed out for +91 ${phone}`);
+      return { success: false, error: 'SMS gateway timed out. Please try again.' };
+    }
+    console.error(`❌ [Fast2SMS] Network error for +91 ${phone}:`, err.message);
+    return { success: false, error: 'Could not reach SMS gateway. Check your network and try again.' };
+  }
+}
+
 export const sendCustomerOtp = async (req: Request, res: Response) => {
   try {
     const { phone, name, address } = req.body;
 
-    if (!phone || String(phone).trim().length < 10) {
-      return res.status(400).json({ error: 'Valid 10-digit phone number is required.' });
+    if (!phone || !/^[6-9]\d{9}$/.test(String(phone).trim())) {
+      return res.status(400).json({ error: 'Valid 10-digit Indian mobile number is required.' });
     }
 
     const cleanPhone = String(phone).trim();
-    const isDev = process.env.NODE_ENV !== 'production';
+    const isDevBypass = process.env.DEV_OTP_BYPASS === 'true';
+    const isProduction = process.env.NODE_ENV === 'production';
 
-    // In development mode or test runner, use fixed '123456' for predictable E2E tests, otherwise generate 6 random digits
-    const otp = isDev ? '123456' : Math.floor(100000 + Math.random() * 900000).toString();
-    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiration
+    // ── Startup-level misconfiguration guard (also logged per-request in bypass mode) ──
+    if (isDevBypass && isProduction) {
+      console.warn(
+        `⚠️  [OTP Security] DEV_OTP_BYPASS=true is active in PRODUCTION for request to +91 ${cleanPhone}. ` +
+        `OTP verification is bypassed. Remove DEV_OTP_BYPASS from Render env vars immediately.`
+      );
+    }
 
+    // ── Per-phone cooldown: prevent same number from being spammed ──
+    // (IP-rate-limit on the route covers cross-number spam; this covers same-number repeat requests)
+    const existing = otpStore.get(cleanPhone);
+    const COOLDOWN_MS = 60 * 1000; // 60 seconds between OTP sends to the same number
+    if (existing && Date.now() - existing.lastSentAt < COOLDOWN_MS) {
+      const waitSeconds = Math.ceil((COOLDOWN_MS - (Date.now() - existing.lastSentAt)) / 1000);
+      return res.status(429).json({
+        error: `Please wait ${waitSeconds} seconds before requesting another OTP for this number.`,
+      });
+    }
+
+    // ── Generate OTP ──
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
+
+    // Store OTP first (before sending) so verification works even if we're in bypass mode
     otpStore.set(cleanPhone, {
       otp,
       expiresAt,
       attempts: 0,
+      lastSentAt: Date.now(),
       name: name ? String(name).trim() : undefined,
       address: address ? String(address).trim() : undefined,
     });
 
-    console.log(`📱 [OTP Engine] Generated OTP for ${cleanPhone}: ${isDev ? otp : '******'}`);
+    // ── SMS Dispatch ──
+    if (isDevBypass) {
+      // DEV_OTP_BYPASS mode: skip real SMS. Log OTP to console for local testing.
+      // In this mode the /verify-otp endpoint accepts the generated OTP (not any arbitrary value).
+      console.log(
+        `🔧 [OTP Engine] DEV_OTP_BYPASS active — skipping real SMS for +91 ${cleanPhone}. ` +
+        `Generated OTP: ${otp} (check server logs to retrieve it during local testing)`
+      );
+    } else {
+      // Production path: dispatch real SMS via Fast2SMS
+      const smsResult = await dispatchSmsOtp(cleanPhone, otp);
+
+      if (!smsResult.success) {
+        // Roll back the OTP store entry so the user can retry immediately
+        otpStore.delete(cleanPhone);
+        return res.status(502).json({
+          error: smsResult.error || 'Failed to send OTP. Please try again.',
+        });
+      }
+    }
 
     return res.json({
       success: true,
-      message: 'OTP dispatched successfully to phone number.',
+      message: isDevBypass
+        ? 'DEV mode: OTP generated and logged to server console (no SMS sent).'
+        : 'OTP sent successfully to your mobile number.',
       expiresInSeconds: 300,
     });
   } catch (error: any) {
