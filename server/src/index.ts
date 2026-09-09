@@ -16,6 +16,7 @@ import chefRoutes from './routes/chefRoutes';
 import adminChefRoutes from './routes/adminChefRoutes';
 import adminRoutes from './routes/adminRoutes';
 import reviewRoutes from './routes/reviewRoutes';
+import webhookRoutes from './routes/webhookRoutes';
 import { initSocket } from './socket';
 
 dotenv.config();
@@ -85,6 +86,7 @@ app.use('/api/orders', orderRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/payment', paymentRoutes);
 app.use('/api/payments', paymentRoutes);
+app.use('/api/webhooks', webhookRoutes);
 app.use('/api/addresses', addressRoutes);
 app.use('/api/rider', deliveryPartnerRoutes);
 app.use('/api/chef', chefRoutes);
