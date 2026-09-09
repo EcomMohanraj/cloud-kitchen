@@ -61,6 +61,7 @@ model MenuItem {
   price           Float
   slotCategory    String      // "BREAKFAST", "SNACKS", "LUNCH", "DINNER"
   isAvailable     Boolean     @default(true)
+  isVeg           Boolean     @default(true)
   imageUrl        String?
   ingredients     String?
   prepTimeMinutes Int         @default(20)
@@ -68,6 +69,12 @@ model MenuItem {
   updatedAt       DateTime    @updatedAt
   orderItems      OrderItem[]
   reviews         Review[]
+}
+
+model Settings {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
 }
 
 model Order {

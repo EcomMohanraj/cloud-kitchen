@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Trash2, Plus, Minus, Calendar, ShoppingBag, ArrowRight, ShieldCheck, CreditCard, Banknote, Sparkles, CheckCircle2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
+import { SettingsService } from '@/services/api';
 
 interface CartDrawerProps {
   onProceedToCheckout: () => void;
@@ -23,11 +24,24 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
   } = useCartStore();
 
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
+  const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
+
+  useEffect(() => {
+    if (isCartOpen) {
+      SettingsService.getDeliveryFee()
+        .then((res) => {
+          if (res && res.defaultDeliveryFee !== undefined) {
+            setConfiguredDeliveryFee(res.defaultDeliveryFee);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isCartOpen]);
 
   if (!isCartOpen) return null;
 
   const subtotal = getCartSubtotal();
-  const deliveryFee = subtotal > 500 || subtotal === 0 ? 0 : 40;
+  const deliveryFee = subtotal > 500 || subtotal === 0 ? 0 : configuredDeliveryFee;
   const packagingFee = subtotal > 0 ? 15 : 0;
   const grandTotal = subtotal + deliveryFee + packagingFee;
 

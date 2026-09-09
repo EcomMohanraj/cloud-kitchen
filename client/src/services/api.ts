@@ -484,3 +484,13 @@ export const ReviewService = {
     fetchApi(`/reviews/admin/${id}`, { method: 'DELETE' }),
 };
 
+export const SettingsService = {
+  getDeliveryFee: () => fetchApi('/admin/settings/delivery-fee'),
+  updateDeliveryFee: (defaultDeliveryFee: number) =>
+    fetchApi('/admin/settings/delivery-fee', {
+      method: 'PATCH',
+      body: JSON.stringify({ defaultDeliveryFee }),
+    }),
+};
+
+

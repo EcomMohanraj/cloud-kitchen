@@ -236,7 +236,13 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const deliveryFee = subtotal > 500 ? 0 : 40;
+    const feeSetting = await prisma.settings.findUnique({
+      where: { key: 'defaultDeliveryFee' },
+    });
+    const baseDeliveryFee = feeSetting ? parseFloat(feeSetting.value) : 40;
+    const defaultDeliveryFee = isNaN(baseDeliveryFee) ? 40 : baseDeliveryFee;
+
+    const deliveryFee = subtotal > 500 ? 0 : defaultDeliveryFee;
     const totalAmount = subtotal + deliveryFee;
     const orderNumber = `ORD-YZH-${Math.floor(1000 + Math.random() * 9000)}`;
 

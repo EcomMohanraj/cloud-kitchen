@@ -2,6 +2,7 @@ import { Router, Request } from 'express';
 import multer, { FileFilterCallback } from 'multer';
 import { requireAdmin } from '../middlewares/authMiddleware';
 import { uploadMenuImage } from '../controllers/uploadController';
+import { getDeliveryFee, updateDeliveryFee } from '../controllers/settingsController';
 
 const router = Router();
 
@@ -40,5 +41,11 @@ router.post(
   },
   uploadMenuImage
 );
+
+// GET /api/admin/settings/delivery-fee
+router.get('/settings/delivery-fee', getDeliveryFee);
+
+// PATCH /api/admin/settings/delivery-fee
+router.patch('/settings/delivery-fee', requireAdmin, updateDeliveryFee);
 
 export default router;

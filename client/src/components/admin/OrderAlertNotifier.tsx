@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
-import { Volume2, VolumeX, Bell, CheckCircle2, ShieldAlert, ShoppingBag, MapPin, User, Phone, Clock, UtensilsCrossed } from 'lucide-react';
+import { Volume2, VolumeX, Bell, CheckCircle2, ShieldAlert, ShoppingBag, MapPin, User, Phone, Clock, UtensilsCrossed, X } from 'lucide-react';
 
 export interface OrderAlertNotifierRef {
   triggerAlert: (order: any) => void;
@@ -260,6 +260,18 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
     };
   }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && activeAlertOrder) {
+        handleAcknowledge();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [activeAlertOrder]);
+
   return (
     <>
       {/* Sound Toggle & Status Pill Badge */}
@@ -316,8 +328,16 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
 
       {/* Full-Screen Acknowledgment Modal */}
       {activeAlertOrder && (
-        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
-          <div className="relative w-full max-w-lg bg-white border-2 border-amber-400 rounded-3xl shadow-2xl overflow-hidden text-slate-900 space-y-6 p-6 sm:p-8 animate-in zoom-in-95 duration-200">
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) handleAcknowledge();
+          }}
+          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-lg bg-white border-2 border-amber-400 rounded-3xl shadow-2xl overflow-hidden text-slate-900 space-y-6 p-6 sm:p-8 animate-in zoom-in-95 duration-200 cursor-default"
+          >
             
             {/* Top Glowing Alert Bar */}
             <div className="bg-gradient-to-r from-amber-500 via-amber-400 to-amber-500 -mx-6 -mt-6 sm:-mx-8 sm:-mt-8 p-4 text-slate-950 flex items-center justify-between font-black text-sm tracking-wide shadow-md">
@@ -325,9 +345,18 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
                 <Bell className="w-5 h-5 animate-bounce text-slate-950" />
                 <span>🚨 NEW LIVE ORDER RECEIVED!</span>
               </div>
-              <span className="text-[10px] bg-slate-950 text-amber-400 px-2.5 py-1 rounded-full font-mono font-bold">
-                Auto-stop in {secondsRemaining}s
-              </span>
+              <div className="flex items-center space-x-2">
+                <span className="text-[10px] bg-slate-950 text-amber-400 px-2.5 py-1 rounded-full font-mono font-bold">
+                  Auto-stop in {secondsRemaining}s
+                </span>
+                <button
+                  onClick={handleAcknowledge}
+                  className="p-1 rounded-lg bg-slate-950/20 hover:bg-slate-950/40 text-slate-950 transition-colors"
+                  title="Dismiss order alert"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Order Brief Info */}

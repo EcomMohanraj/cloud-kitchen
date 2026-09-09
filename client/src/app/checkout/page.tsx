@@ -1,18 +1,30 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { CheckoutModal } from '@/components/CheckoutModal';
 import { useCartStore } from '@/store/cartStore';
+import { SettingsService } from '@/services/api';
 import Link from 'next/link';
 import { ShoppingBag, ArrowLeft, ShieldCheck } from 'lucide-react';
 
 export default function CheckoutPage() {
   const { cartItems, getCartSubtotal } = useCartStore();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(true);
+  const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
+
+  useEffect(() => {
+    SettingsService.getDeliveryFee()
+      .then((res) => {
+        if (res && res.defaultDeliveryFee !== undefined) {
+          setConfiguredDeliveryFee(res.defaultDeliveryFee);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const subtotal = getCartSubtotal();
-  const deliveryFee = subtotal > 500 ? 0 : 40;
+  const deliveryFee = subtotal > 500 ? 0 : configuredDeliveryFee;
   const grandTotal = subtotal + deliveryFee;
 
   return (

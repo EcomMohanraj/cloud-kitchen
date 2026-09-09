@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { LayoutDashboard, Calendar, Utensils, ClipboardList, ChefHat, Truck, LogOut, ArrowLeft, X, Star } from 'lucide-react';
+import { LayoutDashboard, Calendar, Utensils, ClipboardList, ChefHat, Truck, LogOut, ArrowLeft, X, Star, Settings } from 'lucide-react';
 import { AuthService } from '@/services/api';
 import { useCartStore } from '@/store/cartStore';
 
@@ -25,6 +25,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen = false, onCl
     { href: '/admin/kot', label: 'Kitchen Slip (KOT)', icon: ChefHat },
     { href: '/admin/riders', label: 'Delivery Partners', icon: Truck },
     { href: '/admin/reviews', label: 'Customer Reviews', icon: Star },
+    { href: '/admin/settings', label: 'Store Settings', icon: Settings },
   ];
 
   const handleLogout = async () => {

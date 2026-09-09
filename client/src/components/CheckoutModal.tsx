@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle, Navigation, Loader2, Pencil, Save } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
-import { OrderService, AddressService, PaymentService } from '@/services/api';
+import { OrderService, AddressService, PaymentService, SettingsService } from '@/services/api';
 import { useRouter } from 'next/navigation';
 import { validateDeliveryAddress } from '@/utils/addressValidation';
 
@@ -199,6 +199,8 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     );
   };
 
+  const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
+
   // Auto-fill stored profile and delivery address when modal opens
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
@@ -209,6 +211,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       if (savedName) setCustomerName(savedName);
       if (savedPhone) setCustomerPhone(savedPhone);
       if (savedAddress) handleAddressChange(savedAddress);
+
+      SettingsService.getDeliveryFee()
+        .then((res) => {
+          if (res && res.defaultDeliveryFee !== undefined) {
+            setConfiguredDeliveryFee(res.defaultDeliveryFee);
+          }
+        })
+        .catch(() => {});
 
       if (savedPhone) {
         AddressService.getAddresses(savedPhone)
@@ -227,10 +237,22 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [isOpen, storeName, storePhone, storeAddress]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen && !loading) {
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpen, loading, onClose]);
+
   if (!isOpen) return null;
 
   const subtotal = getCartSubtotal();
-  const deliveryFee = subtotal > 500 ? 0 : 40;
+  const deliveryFee = subtotal > 500 ? 0 : configuredDeliveryFee;
   const grandTotal = subtotal + deliveryFee;
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
