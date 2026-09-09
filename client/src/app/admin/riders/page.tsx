@@ -45,6 +45,57 @@ export default function AdminRidersPage() {
   const [selectedRider, setSelectedRider] = useState<any | null>(null);
   const [riderOrders, setRiderOrders] = useState<any[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(false);
+  const [modalPreset, setModalPreset] = useState<'all' | 'today' | '7days' | 'custom'>('all');
+  const [modalStartDate, setModalStartDate] = useState<string>('');
+  const [modalEndDate, setModalEndDate] = useState<string>('');
+
+  const fetchRiderOrdersWithFilter = useCallback(async (riderId: string, start?: string, end?: string) => {
+    setOrdersLoading(true);
+    setRiderOrders([]);
+    try {
+      const res = await AdminRiderService.getRiderOrders(riderId, start, end);
+      if (res && res.success) {
+        setRiderOrders(res.orders || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to load rider orders:', err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
+  const handleViewRiderOrders = (rider: any) => {
+    setSelectedRider(rider);
+    setModalPreset('all');
+    setModalStartDate('');
+    setModalEndDate('');
+    fetchRiderOrdersWithFilter(rider.id);
+  };
+
+  const handleRiderPresetSelect = (preset: 'all' | 'today' | '7days') => {
+    setModalPreset(preset);
+    if (!selectedRider) return;
+
+    if (preset === 'all') {
+      setModalStartDate('');
+      setModalEndDate('');
+      fetchRiderOrdersWithFilter(selectedRider.id);
+    } else {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      let startStr = todayStr;
+
+      if (preset === '7days') {
+        const d7 = new Date();
+        d7.setDate(d7.getDate() - 6);
+        startStr = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, '0')}-${String(d7.getDate()).padStart(2, '0')}`;
+      }
+
+      setModalStartDate(startStr);
+      setModalEndDate(todayStr);
+      fetchRiderOrdersWithFilter(selectedRider.id, startStr, todayStr);
+    }
+  };
 
   // Fetch all riders
   const fetchRiders = useCallback(async () => {
@@ -63,7 +114,6 @@ export default function AdminRidersPage() {
   }, []);
 
   useEffect(() => {
-    // Verify admin token
     if (typeof window !== 'undefined') {
       const adminToken =
         localStorage.getItem('yazhisai_admin_jwt') ||
@@ -151,22 +201,20 @@ export default function AdminRidersPage() {
     }
   };
 
-  // View Rider Orders Modal
-  const handleViewRiderOrders = async (rider: any) => {
-    setSelectedRider(rider);
-    setOrdersLoading(true);
-    setRiderOrders([]);
-    try {
-      const res = await AdminRiderService.getRiderOrders(rider.id);
-      if (res.success) {
-        setRiderOrders(res.orders || []);
-      }
-    } catch (err: any) {
-      console.error('Failed to load rider orders:', err);
-    } finally {
-      setOrdersLoading(false);
+  const handleRiderCustomDateChange = (type: 'start' | 'end', val: string) => {
+    setModalPreset('custom');
+    const newStart = type === 'start' ? val : modalStartDate;
+    const newEnd = type === 'end' ? val : modalEndDate;
+
+    if (type === 'start') setModalStartDate(val);
+    else setModalEndDate(val);
+
+    if (selectedRider && (newStart || newEnd)) {
+      fetchRiderOrdersWithFilter(selectedRider.id, newStart, newEnd);
     }
   };
+
+
 
   // Filter riders by search query
   const filteredRiders = riders.filter(
@@ -566,6 +614,76 @@ export default function AdminRidersPage() {
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Date Range Filter Bar */}
+            <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-3 shrink-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {/* Presets */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleRiderPresetSelect('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      modalPreset === 'all'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    All Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRiderPresetSelect('today')}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      modalPreset === 'today'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleRiderPresetSelect('7days')}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      modalPreset === '7days'
+                        ? 'bg-emerald-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Last 7 Days
+                  </button>
+                </div>
+
+                {/* Summary Count Badge */}
+                <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-300">
+                  📦 {riderOrders.length} order{riderOrders.length === 1 ? '' : 's'} delivered in range
+                </span>
+              </div>
+
+              {/* Custom Date Inputs */}
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-500">From:</span>
+                  <input
+                    type="date"
+                    value={modalStartDate}
+                    onChange={(e) => handleRiderCustomDateChange('start', e.target.value)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 font-semibold bg-white text-slate-800"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-500">To:</span>
+                  <input
+                    type="date"
+                    value={modalEndDate}
+                    onChange={(e) => handleRiderCustomDateChange('end', e.target.value)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 font-semibold bg-white text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+
 
             {/* Orders Body List */}
             <div className="overflow-y-auto flex-1 space-y-3 pr-1 text-xs">

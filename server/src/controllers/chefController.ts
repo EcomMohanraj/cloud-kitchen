@@ -121,6 +121,7 @@ export const getLiveChefOrders = async (req: AuthRequest, res: Response) => {
 export const acceptChefOrder = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const chefId = req.chef?.chefId;
 
     const existingOrder = await prisma.order.findUnique({
       where: { id },
@@ -134,12 +135,18 @@ export const acceptChefOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: `Cannot accept order in status "${existingOrder.orderStatus}".` });
     }
 
+    const updateData: any = { orderStatus: 'ACCEPTED' };
+    if (chefId) updateData.preparedByChefId = chefId;
+
     const updatedOrder = await prisma.order.update({
       where: { id },
-      data: { orderStatus: 'ACCEPTED' },
+      data: updateData,
       include: {
         items: true,
         deliveryPartner: {
+          select: { id: true, name: true, phone: true },
+        },
+        preparedByChef: {
           select: { id: true, name: true, phone: true },
         },
         user: true,
@@ -159,6 +166,7 @@ export const acceptChefOrder = async (req: AuthRequest, res: Response) => {
 export const startPreparingOrder = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const chefId = req.chef?.chefId;
 
     const existingOrder = await prisma.order.findUnique({
       where: { id },
@@ -172,12 +180,18 @@ export const startPreparingOrder = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: `Cannot start preparing order in status "${existingOrder.orderStatus}".` });
     }
 
+    const updateData: any = { orderStatus: 'PREPARING' };
+    if (chefId) updateData.preparedByChefId = chefId;
+
     const updatedOrder = await prisma.order.update({
       where: { id },
-      data: { orderStatus: 'PREPARING' },
+      data: updateData,
       include: {
         items: true,
         deliveryPartner: {
+          select: { id: true, name: true, phone: true },
+        },
+        preparedByChef: {
           select: { id: true, name: true, phone: true },
         },
         user: true,
@@ -197,6 +211,7 @@ export const startPreparingOrder = async (req: AuthRequest, res: Response) => {
 export const markReadyForPickup = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const chefId = req.chef?.chefId;
 
     const existingOrder = await prisma.order.findUnique({
       where: { id },
@@ -210,12 +225,20 @@ export const markReadyForPickup = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: `Cannot mark order ready for pickup in status "${existingOrder.orderStatus}".` });
     }
 
+    const updateData: any = { orderStatus: 'READY_FOR_PICKUP' };
+    if (chefId && !existingOrder.preparedByChefId) {
+      updateData.preparedByChefId = chefId;
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id },
-      data: { orderStatus: 'READY_FOR_PICKUP' },
+      data: updateData,
       include: {
         items: true,
         deliveryPartner: {
+          select: { id: true, name: true, phone: true },
+        },
+        preparedByChef: {
           select: { id: true, name: true, phone: true },
         },
         user: true,
@@ -230,3 +253,4 @@ export const markReadyForPickup = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: 'Failed to update order to READY_FOR_PICKUP.' });
   }
 };
+

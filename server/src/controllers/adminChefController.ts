@@ -110,3 +110,45 @@ export const updateChefActiveStatus = async (req: AuthRequest, res: Response) =>
     return res.status(500).json({ error: error.message || 'Failed to update chef status.' });
   }
 };
+
+// GET /api/admin/chefs/:id/orders - Order history for one chef with optional date range
+export const getChefOrders = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+    const { startDate, endDate } = req.query;
+
+    const chef = await prisma.chef.findUnique({
+      where: { id },
+      select: { id: true, name: true, phone: true, isActive: true, createdAt: true },
+    });
+
+    if (!chef) {
+      return res.status(404).json({ error: 'Chef not found.' });
+    }
+
+    const whereClause: any = {
+      preparedByChefId: id,
+    };
+
+    if (startDate || endDate) {
+      const dateFilter: any = {};
+      if (startDate && typeof startDate === 'string') dateFilter.gte = startDate;
+      if (endDate && typeof endDate === 'string') dateFilter.lte = endDate;
+      whereClause.bookingDate = dateFilter;
+    }
+
+    const orders = await prisma.order.findMany({
+      where: whereClause,
+      include: {
+        items: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json({ success: true, chef, orders });
+  } catch (error: any) {
+    console.error('Admin get chef orders error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to fetch chef order history.' });
+  }
+};
+

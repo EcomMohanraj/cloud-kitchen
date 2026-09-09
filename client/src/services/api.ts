@@ -512,7 +512,13 @@ export const AdminRiderService = {
   createRider: (payload: { name: string; phone: string; password: string }) =>
     fetchApi('/admin/riders', { method: 'POST', body: JSON.stringify(payload) }),
   getAllRiders: () => fetchApi('/admin/riders'),
-  getRiderOrders: (riderId: string) => fetchApi(`/admin/riders/${riderId}/orders`),
+  getRiderOrders: (riderId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const q = params.toString();
+    return fetchApi(`/admin/riders/${riderId}/orders${q ? `?${q}` : ''}`);
+  },
   updateRiderStatus: (riderId: string, isActive: boolean) =>
     fetchApi(`/admin/riders/${riderId}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
 };
@@ -572,9 +578,17 @@ export const AdminChefService = {
   createChef: (payload: { name: string; phone: string; password: string }) =>
     fetchApi('/admin/chefs', { method: 'POST', body: JSON.stringify(payload) }),
   getAllChefs: () => fetchApi('/admin/chefs'),
+  getChefOrders: (chefId: string, startDate?: string, endDate?: string) => {
+    const params = new URLSearchParams();
+    if (startDate) params.append('startDate', startDate);
+    if (endDate) params.append('endDate', endDate);
+    const q = params.toString();
+    return fetchApi(`/admin/chefs/${chefId}/orders${q ? `?${q}` : ''}`);
+  },
   updateChefStatus: (chefId: string, isActive: boolean) =>
     fetchApi(`/admin/chefs/${chefId}`, { method: 'PATCH', body: JSON.stringify({ isActive }) }),
 };
+
 
 
 

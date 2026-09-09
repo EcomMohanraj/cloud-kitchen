@@ -103,6 +103,8 @@ model Order {
   user            User?       @relation(fields: [userId], references: [id])
   deliveryPartnerId String?
   deliveryPartner   DeliveryPartner? @relation(fields: [deliveryPartnerId], references: [id])
+  preparedByChefId  String?
+  preparedByChef    Chef?            @relation(fields: [preparedByChefId], references: [id])
   deliveryLatitude  Float?
   deliveryLongitude Float?
   items           OrderItem[]
@@ -127,7 +129,9 @@ model Chef {
   password  String   // bcrypt hashed
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
+  orders    Order[]
 }
+
 
 model DriverLocation {
   id                String   @id @default(uuid())

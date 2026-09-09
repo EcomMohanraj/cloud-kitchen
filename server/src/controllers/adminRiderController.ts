@@ -137,10 +137,11 @@ export const getAllRiders = async (req: AuthRequest, res: Response) => {
   }
 };
 
-// GET /api/admin/riders/:id/orders - Full order history for one rider
+// GET /api/admin/riders/:id/orders - Order history for one rider with optional date range
 export const getRiderOrders = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const { startDate, endDate } = req.query;
 
     const rider = await prisma.deliveryPartner.findUnique({
       where: { id },
@@ -151,8 +152,19 @@ export const getRiderOrders = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: 'Delivery partner not found.' });
     }
 
+    const whereClause: any = {
+      deliveryPartnerId: id,
+    };
+
+    if (startDate || endDate) {
+      const dateFilter: any = {};
+      if (startDate && typeof startDate === 'string') dateFilter.gte = startDate;
+      if (endDate && typeof endDate === 'string') dateFilter.lte = endDate;
+      whereClause.bookingDate = dateFilter;
+    }
+
     const orders = await prisma.order.findMany({
-      where: { deliveryPartnerId: id },
+      where: whereClause,
       include: {
         items: true,
       },
@@ -165,6 +177,7 @@ export const getRiderOrders = async (req: AuthRequest, res: Response) => {
     return res.status(500).json({ error: error.message || 'Failed to fetch rider order history.' });
   }
 };
+
 
 // PATCH /api/admin/riders/:id - Toggle rider active status (deactivate/reactivate)
 export const updateRiderActiveStatus = async (req: AuthRequest, res: Response) => {

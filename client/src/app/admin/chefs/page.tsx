@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, useCallback } from 'react';
+
 import { useRouter } from 'next/navigation';
 import {
   ChefHat,
@@ -14,6 +15,8 @@ import {
   Clock,
   X,
   Menu,
+  Package,
+  UtensilsCrossed,
 } from 'lucide-react';
 import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminChefService } from '@/services/api';
@@ -36,6 +39,75 @@ export default function AdminChefsPage() {
   const [newChefPassword, setNewChefPassword] = useState('');
   const [createLoading, setCreateLoading] = useState(false);
   const [createError, setCreateError] = useState('');
+
+  // Chef Order History Modal State
+  const [selectedChef, setSelectedChef] = useState<any | null>(null);
+  const [chefOrders, setChefOrders] = useState<any[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(false);
+  const [modalPreset, setModalPreset] = useState<'all' | 'today' | '7days' | 'custom'>('all');
+  const [modalStartDate, setModalStartDate] = useState<string>('');
+  const [modalEndDate, setModalEndDate] = useState<string>('');
+
+  const fetchChefOrdersWithFilter = useCallback(async (chefId: string, start?: string, end?: string) => {
+    setOrdersLoading(true);
+    setChefOrders([]);
+    try {
+      const res = await AdminChefService.getChefOrders(chefId, start, end);
+      if (res && res.success) {
+        setChefOrders(res.orders || []);
+      }
+    } catch (err: any) {
+      console.error('Failed to load chef orders:', err);
+    } finally {
+      setOrdersLoading(false);
+    }
+  }, []);
+
+  const handleViewChefOrders = (chef: any) => {
+    setSelectedChef(chef);
+    setModalPreset('all');
+    setModalStartDate('');
+    setModalEndDate('');
+    fetchChefOrdersWithFilter(chef.id);
+  };
+
+  const handleChefPresetSelect = (preset: 'all' | 'today' | '7days') => {
+    setModalPreset(preset);
+    if (!selectedChef) return;
+
+    if (preset === 'all') {
+      setModalStartDate('');
+      setModalEndDate('');
+      fetchChefOrdersWithFilter(selectedChef.id);
+    } else {
+      const now = new Date();
+      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      let startStr = todayStr;
+
+      if (preset === '7days') {
+        const d7 = new Date();
+        d7.setDate(d7.getDate() - 6);
+        startStr = `${d7.getFullYear()}-${String(d7.getMonth() + 1).padStart(2, '0')}-${String(d7.getDate()).padStart(2, '0')}`;
+      }
+
+      setModalStartDate(startStr);
+      setModalEndDate(todayStr);
+      fetchChefOrdersWithFilter(selectedChef.id, startStr, todayStr);
+    }
+  };
+
+  const handleChefCustomDateChange = (type: 'start' | 'end', val: string) => {
+    setModalPreset('custom');
+    const newStart = type === 'start' ? val : modalStartDate;
+    const newEnd = type === 'end' ? val : modalEndDate;
+
+    if (type === 'start') setModalStartDate(val);
+    else setModalEndDate(val);
+
+    if (selectedChef && (newStart || newEnd)) {
+      fetchChefOrdersWithFilter(selectedChef.id, newStart, newEnd);
+    }
+  };
 
   // Fetch all chefs
   const fetchChefs = useCallback(async () => {
@@ -72,15 +144,16 @@ export default function AdminChefsPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isAddModalOpen) {
-        setIsAddModalOpen(false);
+      if (e.key === 'Escape') {
+        if (isAddModalOpen) setIsAddModalOpen(false);
+        if (selectedChef) setSelectedChef(null);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isAddModalOpen]);
+  }, [isAddModalOpen, selectedChef]);
 
   // Create Chef Submit
   const handleCreateChef = async (e: React.FormEvent) => {
@@ -348,6 +421,13 @@ export default function AdminChefsPage() {
                           {/* Action Buttons */}
                           <td className="py-4 px-6 text-right space-x-2">
                             <button
+                              onClick={() => handleViewChefOrders(chef)}
+                              className="px-3 py-1.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-extrabold transition-all cursor-pointer"
+                            >
+                              Orders
+                            </button>
+
+                            <button
                               onClick={() => handleToggleStatus(chef)}
                               disabled={isActionLoading}
                               className={`px-3 py-1.5 rounded-xl text-[11px] font-extrabold transition-all cursor-pointer ${
@@ -469,6 +549,183 @@ export default function AdminChefsPage() {
         </div>
       )}
 
+      {/* CHEF ORDER HISTORY MODAL */}
+      {selectedChef && (
+        <div
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setSelectedChef(null);
+          }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs cursor-pointer"
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 max-w-3xl w-full max-h-[85vh] flex flex-col shadow-2xl space-y-5 relative cursor-default"
+          >
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-200 pb-4 shrink-0">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-600/10 text-amber-700 flex items-center justify-center">
+                  <ChefHat className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900">{selectedChef.name}'s Preparation History</h3>
+                  <p className="text-xs text-slate-500 font-semibold">
+                    Phone: {selectedChef.phone} | Status: <strong className="text-slate-700">{selectedChef.isActive ? 'Active' : 'Deactivated'}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedChef(null)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Date Range Filter Bar */}
+            <div className="bg-slate-50 border border-slate-200 p-3 rounded-2xl space-y-3 shrink-0">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                {/* Presets */}
+                <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => handleChefPresetSelect('all')}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      modalPreset === 'all'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    All Time
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChefPresetSelect('today')}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      modalPreset === 'today'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleChefPresetSelect('7days')}
+                    className={`px-3 py-1 rounded-lg text-xs font-black transition-all cursor-pointer ${
+                      modalPreset === '7days'
+                        ? 'bg-amber-600 text-white shadow-xs'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Last 7 Days
+                  </button>
+                </div>
+
+                {/* Summary Count Badge */}
+                <span className="text-xs font-extrabold text-amber-900 bg-amber-100/80 px-3 py-1 rounded-full border border-amber-300">
+                  🍳 {chefOrders.length} order{chefOrders.length === 1 ? '' : 's'} prepared in range
+                </span>
+              </div>
+
+              {/* Custom Date Inputs */}
+              <div className="flex flex-wrap items-center gap-3 text-xs">
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-500">From:</span>
+                  <input
+                    type="date"
+                    value={modalStartDate}
+                    onChange={(e) => handleChefCustomDateChange('start', e.target.value)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 font-semibold bg-white text-slate-800"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-bold text-slate-500">To:</span>
+                  <input
+                    type="date"
+                    value={modalEndDate}
+                    onChange={(e) => handleChefCustomDateChange('end', e.target.value)}
+                    className="px-2.5 py-1 rounded-lg border border-slate-300 font-semibold bg-white text-slate-800"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Orders Body List */}
+            <div className="overflow-y-auto flex-1 space-y-3 pr-1 text-xs">
+              {ordersLoading ? (
+                <div className="py-12 text-center space-y-2">
+                  <Clock className="w-8 h-8 text-amber-600 animate-spin mx-auto" />
+                  <p className="font-bold text-slate-700">Fetching order history...</p>
+                </div>
+              ) : chefOrders.length === 0 ? (
+                <div className="py-12 text-center space-y-2">
+                  <Package className="w-10 h-10 text-slate-300 mx-auto" />
+                  <p className="font-bold text-slate-700">No orders prepared yet by this chef in the selected date range.</p>
+                </div>
+              ) : (
+                chefOrders.map((order) => (
+                  <div
+                    key={order.id}
+                    className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 hover:border-slate-300 transition-all"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2">
+                      <div className="flex items-center space-x-2">
+                        <span className="font-black text-slate-900 text-sm">
+                          Order #{order.orderNumber || order.id}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500">
+                          {order.bookingDate} ({order.slotType})
+                        </span>
+                      </div>
+                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                        order.orderStatus === 'DELIVERED'
+                          ? 'bg-emerald-100 text-emerald-900 border border-emerald-300'
+                          : order.orderStatus === 'READY_FOR_PICKUP'
+                          ? 'bg-sky-100 text-sky-900 border border-sky-300'
+                          : 'bg-amber-100 text-amber-900 border border-amber-300'
+                      }`}>
+                        {order.orderStatus.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-slate-700 font-medium">
+                      <div>
+                        <span className="text-slate-400 text-[10px] block font-bold uppercase">Customer</span>
+                        <span className="font-bold text-slate-900">{order.customerName}</span> ({order.customerPhone})
+                      </div>
+
+                      <div>
+                        <span className="text-slate-400 text-[10px] block font-bold uppercase">Delivery Address</span>
+                        <span className="font-semibold text-slate-800 line-clamp-2">{order.deliveryAddress}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 text-slate-900 font-bold border-t border-slate-200/60">
+                      <span>Items: {order.items?.map((i: any) => `${i.quantity}x ${i.menuItemName || i.name}`).join(', ')}</span>
+                      <span className="text-emerald-700 text-sm font-black">₹{order.totalAmount} ({order.paymentMethod})</span>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+
+            {/* Footer Close */}
+            <div className="pt-3 border-t border-slate-200 shrink-0 text-right">
+              <button
+                onClick={() => setSelectedChef(null)}
+                className="px-5 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-xs transition-all cursor-pointer"
+              >
+                Close Window
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+
