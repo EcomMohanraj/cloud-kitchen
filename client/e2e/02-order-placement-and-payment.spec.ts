@@ -2,18 +2,19 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Order Placement & Payment Flow', () => {
   test('should place an order using Cash on Delivery', async ({ page }) => {
-    // Navigate to Storefront
-    await page.goto('/');
-    await page.waitForTimeout(2000);
+    // Navigate directly to Checkout Page
+    await page.goto('/checkout', { waitUntil: 'domcontentloaded' });
 
-    // Click ADD button if present on active slot menu items
-    const addButton = page.locator('button:has-text("ADD +"), button:has-text("ADD")').first();
-    if (await addButton.isVisible()) {
-      await addButton.click();
+    // If cart is empty banner is shown, navigate to home page and add item
+    const emptyTrayBanner = page.locator('text=Your Tray is Empty');
+    if (await emptyTrayBanner.isVisible()) {
+      await page.goto('/', { waitUntil: 'domcontentloaded' });
+      const addButton = page.locator('button:has-text("ADD +"), button:has-text("ADD")').first();
+      if (await addButton.isVisible()) {
+        await addButton.click();
+      }
+      await page.goto('/checkout', { waitUntil: 'domcontentloaded' });
     }
-
-    // Navigate to Checkout Page
-    await page.goto('/checkout');
 
     // Click "Open Checkout Window" if present
     const openCheckoutBtn = page.locator('button:has-text("Open Checkout Window")');
