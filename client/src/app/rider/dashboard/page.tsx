@@ -439,10 +439,20 @@ export default function RiderDashboardPage() {
                         <button
                           onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
                           disabled={isActionLoading}
-                          className="w-full py-3.5 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-sm shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2 transition-all"
+                          className={`w-full py-3.5 rounded-2xl text-white font-extrabold text-sm shadow-lg flex items-center justify-center gap-2 transition-all ${
+                            order.paymentMethod === 'COD' && order.paymentStatus !== 'PAID'
+                              ? 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/40 ring-2 ring-amber-400/40'
+                              : 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/30'
+                          }`}
                         >
                           <CheckCircle2 className="w-5 h-5" />
-                          <span>{isActionLoading ? 'Completing Delivery...' : '2. Complete Delivery & Mark Delivered'}</span>
+                          <span>
+                            {isActionLoading
+                              ? 'Completing Delivery...'
+                              : order.paymentMethod === 'COD' && order.paymentStatus !== 'PAID'
+                              ? `2. Collect Cash (₹${order.totalAmount}) & Complete Delivery`
+                              : '2. Complete Delivery & Mark Delivered'}
+                          </span>
                         </button>
                       )}
                     </div>

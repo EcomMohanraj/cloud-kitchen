@@ -187,9 +187,16 @@ export const updateRiderOrderStatus = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ error: 'Order must be OUT_FOR_DELIVERY before marking DELIVERED.' });
     }
 
+    const updateData: any = { orderStatus };
+    if (orderStatus === 'DELIVERED' && existingOrder.paymentMethod === 'COD' && existingOrder.paymentStatus !== 'PAID') {
+      updateData.paymentStatus = 'PAID';
+      updateData.paymentCollectedAt = new Date();
+      updateData.paymentCollectedBy = `Rider: ${req.rider?.name || req.rider?.phone || 'Delivery Partner'}`;
+    }
+
     const updatedOrder = await prisma.order.update({
       where: { id },
-      data: { orderStatus },
+      data: updateData,
       include: {
         items: true,
         deliveryPartner: {

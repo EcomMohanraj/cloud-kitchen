@@ -3,6 +3,7 @@ import { prisma } from '../config/db';
 import { z } from 'zod';
 import { emitNewOrder, emitOrderStatusUpdated } from '../socket';
 import { validateDeliveryAddress } from '../utils/addressValidation';
+import { AuthRequest } from '../middlewares/authMiddleware';
 
 const orderItemSchema = z.object({
   menuItemId: z.string().min(1, 'Invalid menu item'),
@@ -288,7 +289,7 @@ export const createOrder = async (req: Request, res: Response) => {
   }
 };
 
-export const updateOrderStatus = async (req: Request, res: Response) => {
+export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   try {
     const { orderId, orderStatus, paymentStatus } = req.body;
 
@@ -298,7 +299,13 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
 
     const updateData: any = {};
     if (orderStatus) updateData.orderStatus = orderStatus;
-    if (paymentStatus) updateData.paymentStatus = paymentStatus;
+    if (paymentStatus) {
+      updateData.paymentStatus = paymentStatus;
+      if (paymentStatus === 'PAID') {
+        updateData.paymentCollectedAt = new Date();
+        updateData.paymentCollectedBy = req.user?.name || req.user?.phone || 'Admin';
+      }
+    }
 
     const updatedOrder = await prisma.order.update({
       where: { id: orderId },
@@ -317,5 +324,70 @@ export const updateOrderStatus = async (req: Request, res: Response) => {
     return res.json({ success: true, order: updatedOrder });
   } catch (error: any) {
     return res.status(400).json({ error: error.message || 'Failed to update order status' });
+  }
+};
+
+export const markCashCollected = async (req: AuthRequest, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    if (!id) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    const userRole = req.user?.role;
+    if (userRole !== 'ADMIN' && userRole !== 'RIDER') {
+      return res.status(403).json({ error: 'Forbidden. Cash collection can only be recorded by an Admin or assigned Rider.' });
+    }
+
+    const order = await prisma.order.findFirst({
+      where: {
+        OR: [{ id }, { orderNumber: id }],
+      },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.paymentMethod !== 'COD') {
+      return res.status(400).json({ error: 'Cash collection is only applicable for Cash on Delivery (COD) orders.' });
+    }
+
+    if (order.paymentStatus === 'PAID') {
+      return res.status(400).json({ error: 'Payment for this order has already been marked as PAID.' });
+    }
+
+    if (!['OUT_FOR_DELIVERY', 'DELIVERED'].includes(order.orderStatus)) {
+      return res.status(400).json({ error: 'Cash cannot be collected until the order is OUT_FOR_DELIVERY or DELIVERED.' });
+    }
+
+    const collectorName =
+      req.user?.name ||
+      req.user?.phone ||
+      (userRole === 'ADMIN' ? 'Admin' : 'Delivery Partner');
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentStatus: 'PAID',
+        paymentCollectedAt: new Date(),
+        paymentCollectedBy: `${userRole === 'ADMIN' ? 'Admin' : 'Rider'}: ${collectorName}`,
+      },
+      include: {
+        items: true,
+        deliveryPartner: {
+          select: { id: true, name: true, phone: true },
+        },
+        user: true,
+      },
+    });
+
+    emitOrderStatusUpdated(updatedOrder);
+
+    return res.json({ success: true, order: updatedOrder });
+  } catch (error: any) {
+    console.error('Mark cash collected controller error:', error);
+    return res.status(400).json({ error: error.message || 'Failed to mark cash collected' });
   }
 };

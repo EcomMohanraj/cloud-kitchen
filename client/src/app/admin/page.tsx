@@ -30,7 +30,10 @@ export default function AdminDashboardPage() {
     fetchData();
   }, []);
 
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.orderStatus !== 'CANCELLED' ? o.totalAmount : 0), 0);
+  const totalRevenue = orders.reduce(
+    (sum, o) => sum + (o.orderStatus !== 'CANCELLED' && o.paymentStatus === 'PAID' ? o.totalAmount : 0),
+    0
+  );
   const activeDatesCount = schedule.filter((s) => s.isDateActive).length;
   const pendingOrdersCount = orders.filter((o) => o.orderStatus === 'PENDING' || o.orderStatus === 'ACCEPTED').length;
 

@@ -71,6 +71,8 @@ model Order {
   paymentMethod   String      // "COD" | "ONLINE"
   paymentStatus   String      // "PENDING" | "PAID" | "FAILED"
   paymentId       String?
+  paymentCollectedAt DateTime?
+  paymentCollectedBy String?
   orderStatus     String      @default("PENDING") // "PENDING" | "ACCEPTED" | "PREPARING" | "OUT_FOR_DELIVERY" | "DELIVERED" | "CANCELLED"
   subtotal        Float
   deliveryFee     Float

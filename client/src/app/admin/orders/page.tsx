@@ -16,6 +16,7 @@ import {
   Calendar,
   Package,
   UserCheck,
+  Banknote,
 } from 'lucide-react';
 import { ORDER_STATUSES, MEAL_SLOTS } from '@/lib/constants';
 import { OrderService } from '@/services/api';
@@ -583,10 +584,11 @@ export default function AdminOrdersPage() {
                       </div>
                     </div>
 
-                    {/* Payment Status Switch */}
-                    <div className="pt-3 border-t border-slate-200">
+                    {/* Payment Status & COD Cash Collection Controls */}
+                    <div className="pt-3 border-t border-slate-200 space-y-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-600">
+                        <span className="text-[11px] font-bold text-slate-600 flex items-center gap-1">
+                          {isCOD && <Banknote className="w-3.5 h-3.5 text-amber-600" />}
                           Payment ({isCOD ? 'Cash on Delivery' : 'Online UPI'}):
                         </span>
                         <button
@@ -597,9 +599,35 @@ export default function AdminOrdersPage() {
                               : 'bg-amber-100 text-amber-900 border-amber-300'
                           }`}
                         >
-                          {isPaid ? '✓ PAID' : 'PENDING'}
+                          {isPaid ? (isCOD ? '✓ COD Cash Collected' : '✓ Online PAID') : (isCOD ? '⏳ COD Cash Pending' : 'PENDING')}
                         </button>
                       </div>
+
+                      {/* Manual Admin Cash Collection Button for COD Orders */}
+                      {isCOD && !isPaid && ['OUT_FOR_DELIVERY', 'DELIVERED'].includes(currentStatus) && (
+                        <button
+                          onClick={async () => {
+                            try {
+                              await OrderService.markCashCollected(order.id);
+                              fetchOrders();
+                            } catch (err) {
+                              console.error('Failed to mark cash collected:', err);
+                              handleUpdatePaymentStatus(order.id, 'PAID');
+                            }
+                          }}
+                          className="w-full py-2 px-3 rounded-xl bg-amber-400 hover:bg-amber-500 text-slate-950 font-black text-xs shadow-sm flex items-center justify-center gap-1.5 transition-all border border-amber-500"
+                        >
+                          <Banknote className="w-4 h-4 text-slate-950" />
+                          <span>Mark Cash Collected (₹{order.totalAmount})</span>
+                        </button>
+                      )}
+
+                      {/* Collection Metadata info if available */}
+                      {isPaid && order.paymentCollectedBy && (
+                        <div className="text-[10px] text-slate-500 font-semibold italic text-right">
+                          Collected by: {order.paymentCollectedBy}
+                        </div>
+                      )}
                     </div>
 
                   </div>

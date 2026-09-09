@@ -402,6 +402,15 @@ export const OrderService = {
 
     return { success: true };
   },
+
+  markCashCollected: async (orderId: string) => {
+    try {
+      return await fetchApi(`/orders/${orderId}/mark-cash-collected`, { method: 'PATCH' });
+    } catch (error: any) {
+      console.warn('Backend markCashCollected failed, using fallback status update:', error);
+      return OrderService.updateOrderStatus(orderId, undefined, 'PAID');
+    }
+  },
 };
 
 export const AuthService = {
