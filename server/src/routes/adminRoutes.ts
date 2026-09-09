@@ -3,6 +3,7 @@ import multer, { FileFilterCallback } from 'multer';
 import { requireAdmin } from '../middlewares/authMiddleware';
 import { uploadMenuImage } from '../controllers/uploadController';
 import { getDeliveryFee, updateDeliveryFee } from '../controllers/settingsController';
+import { getRevenueAnalytics } from '../controllers/analyticsController';
 
 const router = Router();
 
@@ -47,5 +48,8 @@ router.get('/settings/delivery-fee', getDeliveryFee);
 
 // PATCH /api/admin/settings/delivery-fee
 router.patch('/settings/delivery-fee', requireAdmin, updateDeliveryFee);
+
+// GET /api/admin/analytics/revenue
+router.get('/analytics/revenue', requireAdmin, getRevenueAnalytics);
 
 export default router;
