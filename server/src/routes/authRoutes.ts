@@ -10,6 +10,8 @@ import {
   verifyCustomerOtp,
 } from '../controllers/authController';
 
+import { loginLimiter } from '../middlewares/rateLimiter';
+
 const router = Router();
 
 // Rate limiting for auth endpoints: max 10 requests per 15 minutes per IP
@@ -21,7 +23,7 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-router.post('/', loginAdmin);
+router.post('/', loginLimiter, loginAdmin);
 router.get('/', verifySession);
 router.delete('/', logoutAdmin);
 
@@ -31,8 +33,8 @@ router.post('/customer/verify-otp', authLimiter, verifyCustomerOtp);
 
 // Legacy Customer & Unified Authentication Endpoints
 router.post('/customer/register', authLimiter, registerCustomer);
-router.post('/customer/login', authLimiter, loginCustomer);
-router.post('/login', authLimiter, loginCustomer);
+router.post('/customer/login', loginLimiter, loginCustomer);
+router.post('/login', loginLimiter, loginCustomer);
 
 export default router;
 

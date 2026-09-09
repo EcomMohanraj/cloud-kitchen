@@ -35,7 +35,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: admin.id, email: admin.email, role: 'ADMIN' },
       getJwtSecret(),
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
     const isProd = process.env.NODE_ENV === 'production';
@@ -44,7 +44,7 @@ export const loginAdmin = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.json({
@@ -292,7 +292,7 @@ export const verifyCustomerOtp = async (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: user.id, phone: user.phone, role: 'CUSTOMER' },
       getJwtSecret(),
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
     const isProd = process.env.NODE_ENV === 'production';
@@ -301,7 +301,7 @@ export const verifyCustomerOtp = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     console.log('✅ Customer authenticated via OTP verification:', user.phone);
@@ -344,7 +344,7 @@ export const registerCustomer = async (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: user.id, phone: user.phone, role: 'CUSTOMER' },
       getJwtSecret(),
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
     const isProd = process.env.NODE_ENV === 'production';
@@ -353,7 +353,7 @@ export const registerCustomer = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.json({
@@ -396,7 +396,7 @@ export const loginCustomer = async (req: Request, res: Response) => {
         const token = jwt.sign(
           { userId: admin.id, email: admin.email, role: 'ADMIN' },
           getJwtSecret(),
-          { expiresIn: '7d' }
+          { expiresIn: '1d' }
         );
 
         const isProd = process.env.NODE_ENV === 'production';
@@ -405,7 +405,7 @@ export const loginCustomer = async (req: Request, res: Response) => {
           httpOnly: true,
           secure: isProd,
           sameSite: isProd ? 'none' : 'lax',
-          maxAge: 7 * 24 * 60 * 60 * 1000,
+          maxAge: 24 * 60 * 60 * 1000,
         });
 
         console.log('✅ Admin logged in via unified login:', admin.email);
@@ -437,7 +437,7 @@ export const loginCustomer = async (req: Request, res: Response) => {
     const token = jwt.sign(
       { userId: user.id, phone: user.phone, role: 'CUSTOMER' },
       getJwtSecret(),
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
     const isProd = process.env.NODE_ENV === 'production';
@@ -446,7 +446,7 @@ export const loginCustomer = async (req: Request, res: Response) => {
       httpOnly: true,
       secure: isProd,
       sameSite: isProd ? 'none' : 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     console.log('✅ Customer logged in and synced to PostgreSQL DB:', user);

@@ -37,6 +37,15 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     credentials: 'include',
   });
 
+  const newToken = response.headers.get('X-New-Token');
+  if (newToken && typeof window !== 'undefined') {
+    if (localStorage.getItem('admin_token')) localStorage.setItem('admin_token', newToken);
+    if (localStorage.getItem('customer_token')) localStorage.setItem('customer_token', newToken);
+    if (localStorage.getItem('yazhisai_customer_token')) localStorage.setItem('yazhisai_customer_token', newToken);
+    if (localStorage.getItem('rider_token')) localStorage.setItem('rider_token', newToken);
+    if (localStorage.getItem('chef_token')) localStorage.setItem('chef_token', newToken);
+  }
+
   const data = await response.json();
 
   if (!response.ok) {

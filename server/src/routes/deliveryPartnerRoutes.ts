@@ -9,11 +9,12 @@ import {
   getDeliveryHistory,
 } from '../controllers/deliveryPartnerController';
 import { requireRider } from '../middlewares/authMiddleware';
+import { loginLimiter } from '../middlewares/rateLimiter';
 
 const router = Router();
 
 // Public endpoints
-router.post('/login', riderLogin);
+router.post('/login', loginLimiter, riderLogin);
 router.get('/location/:orderId', getRiderLocationForOrder);
 
 // Protected rider endpoints

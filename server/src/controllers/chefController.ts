@@ -49,14 +49,14 @@ export const chefLogin = async (req: Request, res: Response) => {
         role: 'CHEF',
       },
       getJwtSecret(),
-      { expiresIn: '7d' }
+      { expiresIn: '1d' }
     );
 
     res.cookie('chef_token', token, {
       httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000,
     });
 
     return res.json({

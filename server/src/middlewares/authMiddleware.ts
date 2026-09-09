@@ -19,6 +19,22 @@ export interface AuthRequest extends Request {
   file?: Express.Multer.File;
 }
 
+function maybeRefreshOnActivity(res: Response, decoded: any) {
+  if (!decoded || !decoded.exp) return;
+  const nowInSec = Math.floor(Date.now() / 1000);
+  const remainingSec = decoded.exp - nowInSec;
+  // If token has less than 4 hours remaining, issue a fresh 1d token in response header
+  if (remainingSec > 0 && remainingSec < 4 * 60 * 60) {
+    const payload = { ...decoded };
+    delete payload.iat;
+    delete payload.exp;
+    delete payload.nbf;
+    delete payload.jti;
+    const newToken = jwt.sign(payload, getJwtSecret(), { expiresIn: '1d' });
+    res.setHeader('X-New-Token', newToken);
+  }
+}
+
 export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization || '';
@@ -33,6 +49,7 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
       return res.status(403).json({ error: 'Forbidden. Admin access required.' });
     }
 
+    maybeRefreshOnActivity(res, decoded);
     req.admin = decoded;
     req.user = decoded;
     next();
@@ -68,6 +85,7 @@ export const requireRider = async (req: AuthRequest, res: Response, next: NextFu
       }
     }
 
+    maybeRefreshOnActivity(res, decoded);
     req.rider = decoded;
     req.user = decoded;
     next();
@@ -103,6 +121,7 @@ export const requireChef = async (req: AuthRequest, res: Response, next: NextFun
       }
     }
 
+    maybeRefreshOnActivity(res, decoded);
     req.chef = decoded;
     req.user = decoded;
     next();
@@ -125,6 +144,7 @@ export const requireCustomer = (req: AuthRequest, res: Response, next: NextFunct
       return res.status(403).json({ error: 'Forbidden. Access restricted to customers.' });
     }
 
+    maybeRefreshOnActivity(res, decoded);
     req.customer = decoded;
     req.user = decoded;
     next();
@@ -143,6 +163,7 @@ export const requireAuthOrCustomer = (req: AuthRequest, res: Response, next: Nex
     }
 
     const decoded = jwt.verify(token, getJwtSecret()) as any;
+    maybeRefreshOnActivity(res, decoded);
     req.user = decoded;
 
     if (decoded.role === 'ADMIN') {

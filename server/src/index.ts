@@ -67,6 +67,7 @@ app.use(
       return callback(new Error('Not allowed by CORS policy'));
     },
     credentials: true,
+    exposedHeaders: ['X-New-Token'],
   })
 );
 

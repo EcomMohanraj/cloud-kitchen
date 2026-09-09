@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { requireChef } from '../middlewares/authMiddleware';
+import { loginLimiter } from '../middlewares/rateLimiter';
 import {
   chefLogin,
   getLiveChefOrders,
@@ -11,7 +12,7 @@ import {
 const router = Router();
 
 // Public chef route
-router.post('/login', chefLogin);
+router.post('/login', loginLimiter, chefLogin);
 
 // Protected chef routes
 router.get('/live-orders', requireChef, getLiveChefOrders);
