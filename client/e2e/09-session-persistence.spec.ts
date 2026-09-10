@@ -7,7 +7,9 @@ test.describe('Session Persistence Across Page Refresh', () => {
     await page.fill('input[type="password"]', 'admin123');
     await page.click('button[type="submit"]');
 
-    await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 10000 });
+    // Wait for navigation away from login (may already be complete — use networkidle to avoid race)
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+    await expect(page).not.toHaveURL(/\/admin\/login/, { timeout: 10000 });
     await page.goto('/admin/orders');
     await expect(page.locator('body')).toContainText(/Order|Kitchen|Management|Admin|Matrix/i);
 

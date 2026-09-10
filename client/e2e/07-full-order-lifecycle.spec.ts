@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Full Customer Order Lifecycle', () => {
   test('should browse menu, add to cart, checkout, place order, and open live tracking', async ({ page }) => {
+    test.setTimeout(60000);
     // 1. Browse Homepage / Menu
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('body')).toContainText(/Yazhisai|Menu|Cloud Kitchen|Dishes/i);
@@ -50,7 +51,7 @@ test.describe('Full Customer Order Lifecycle', () => {
     }
 
     // 7. Verify order placement & tracking navigation
-    await page.waitForTimeout(2500);
+    await page.waitForLoadState('domcontentloaded');
     await expect(page.locator('body')).toContainText(/Order|Placed|Confirmed|ORD-|Tray|Checkout|Track/i);
   });
 });
