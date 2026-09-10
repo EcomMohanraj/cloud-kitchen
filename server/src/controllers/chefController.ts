@@ -57,8 +57,9 @@ export const chefLogin = async (req: Request, res: Response) => {
     res.cookie('chef_token', token, {
       httpOnly: true,
       secure: isProd,
-      sameSite: isProd ? 'none' : 'lax',
+      sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000,
+      ...(isProd && { domain: '.yazhisaicloudkitchen.in' }),
     });
 
     return res.json({

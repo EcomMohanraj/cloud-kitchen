@@ -22,6 +22,9 @@ import { initSocket } from './socket';
 dotenv.config();
 
 const app = express();
+// Trust Render's reverse proxy for correct IP detection in express-rate-limit
+app.set('trust proxy', 1);
+
 const PORT = process.env.PORT || 5000;
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:3000';
 

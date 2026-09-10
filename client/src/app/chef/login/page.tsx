@@ -33,7 +33,7 @@ export default function ChefLoginPage() {
       setSuccess(true);
 
       const redirectPath = new URLSearchParams(window.location.search).get('redirect') || '/chef/dashboard';
-      router.push(redirectPath);
+      window.location.href = redirectPath;
     } catch (err: any) {
       setError(err.message || 'Invalid chef credentials');
     } finally {
