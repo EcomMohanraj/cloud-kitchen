@@ -18,13 +18,13 @@ import {
   Package,
   UtensilsCrossed,
 } from 'lucide-react';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
+
 import { AdminChefService } from '@/services/api';
 
 export default function AdminChefsPage() {
   const router = useRouter();
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const [chefs, setChefs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -213,22 +213,10 @@ export default function AdminChefsPage() {
   const deactivatedCount = chefs.filter((c) => !c.isActive).length;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Admin Sidebar */}
-      <AdminSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* Top Navigation Header */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20 px-4 sm:px-8 py-4 flex items-center justify-between shadow-xs">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
+    <div className="space-y-6 lg:space-y-8 animate-in fade-in slide-in-from-bottom-3 duration-500">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-card-soft">
+        <div className="flex items-center space-x-3">
 
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 rounded-xl bg-amber-600/10 text-amber-700 flex items-center justify-center border border-amber-600/20">
@@ -263,10 +251,7 @@ export default function AdminChefsPage() {
               <span>+ Add Chef Account</span>
             </button>
           </div>
-        </header>
-
-        {/* Dashboard Body */}
-        <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full flex-1">
+        </div>
           
           {/* Notifications */}
           {error && (
@@ -438,10 +423,7 @@ export default function AdminChefsPage() {
               </div>
             )}
           </div>
-        </main>
-      </div>
-
-      {/* CREATE CHEF MODAL */}
+    {/* CREATE CHEF MODAL */}
       {isAddModalOpen && (
         <div
           onClick={(e) => {
