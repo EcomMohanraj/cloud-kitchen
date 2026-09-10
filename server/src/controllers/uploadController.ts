@@ -60,7 +60,9 @@ export const uploadMenuImage = async (req: AuthRequest, res: Response) => {
         {
           folder: 'yazhisai-cloud-kitchen/menu',
           resource_type: 'image',
-          transformation: [{ quality: 'auto', fetch_format: 'auto' }],
+          transformation: [
+            { width: 1200, height: 1200, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
+          ],
         },
         (error, result) => {
           if (error || !result) {
