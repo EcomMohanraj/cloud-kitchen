@@ -457,6 +457,11 @@ export const AuthService = {
   verifySession: () => fetchApi('/auth', { method: 'GET' }),
   logout: () => fetchApi('/auth', { method: 'DELETE' }),
   logoutAdmin: () => fetchApi('/auth', { method: 'DELETE' }),
+  setup2FA: () => fetchApi('/admin/2fa/setup', { method: 'POST' }),
+  verify2FASetup: (code: string) => fetchApi('/admin/2fa/verify-setup', { method: 'POST', body: JSON.stringify({ code }) }),
+  disable2FA: () => fetchApi('/admin/2fa/disable', { method: 'POST' }),
+  get2FAStatus: () => fetchApi('/admin/2fa/status', { method: 'GET' }),
+  loginVerify2FA: (tempToken: string, code: string) => fetchApi('/admin/2fa/login-verify', { method: 'POST', body: JSON.stringify({ tempToken, code }) }),
 };
 
 export const PaymentService = {
