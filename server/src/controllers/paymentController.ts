@@ -233,18 +233,6 @@ export const handleRazorpayWebhook = async (req: Request, res: Response) => {
       ? (req as any).rawBody.toString('utf8')
       : JSON.stringify(req.body);
 
-    // --- TEMPORARY DEBUG LOGGING (TODO: Remove after fixing signature mismatch) ---
-    const maskedSecret = webhookSecret.length > 4 ? `${webhookSecret.substring(0, 4)}****` : '****';
-    const hasRawBody = !!(req as any).rawBody;
-    const rawBodyLength = hasRawBody ? (req as any).rawBody.length : 0;
-    const rawPayloadPrefix = rawPayload.substring(0, 20);
-    
-    console.log('🔍 [WEBHOOK DEBUG]:');
-    console.log(`   - Secret (Masked): ${maskedSecret}`);
-    console.log(`   - Has req.rawBody: ${hasRawBody} (Length: ${rawBodyLength})`);
-    console.log(`   - rawPayload (first 20 chars): ${rawPayloadPrefix}...`);
-    // -----------------------------------------------------------------------------
-
     const generatedSignature = crypto
       .createHmac('sha256', webhookSecret)
       .update(rawPayload)
