@@ -1,0 +1,39 @@
+# Render.com Blueprint for STAGING environment
+# Tracks the 'staging' branch — NEVER touches production Neon DB or live Razorpay keys
+services:
+  - type: web
+    name: yazhisai-cloud-kitchen-server-staging
+    env: node
+    branch: staging
+    rootDir: server
+    buildCommand: npm install && npx prisma generate && npm run build
+    startCommand: npm start
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: NODE_ENV
+        value: staging
+      - key: DATABASE_URL
+        # Point this to the Neon 'staging' database branch connection string
+        # In Neon Console: Project -> Branches -> Create Branch from main -> copy pooled connection string
+        sync: false
+      - key: JWT_SECRET
+        # Use a DIFFERENT secret from production — generate a new one
+        generateValue: true
+      - key: CLIENT_URL
+        # Set to your Vercel staging preview URL
+        sync: false
+      - key: RAZORPAY_KEY_ID
+        # MUST be rzp_test_xxx — never live keys
+        sync: false
+      - key: RAZORPAY_KEY_SECRET
+        # MUST be test secret
+        sync: false
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+      - key: DEV_OTP_BYPASS
+        value: 'true'
