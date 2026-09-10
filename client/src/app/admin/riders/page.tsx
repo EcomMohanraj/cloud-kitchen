@@ -19,13 +19,11 @@ import {
   ChevronRight,
   Menu,
 } from 'lucide-react';
-import { AdminSidebar } from '@/components/admin/AdminSidebar';
 import { AdminRiderService } from '@/services/api';
 
 export default function AdminRidersPage() {
   const router = useRouter();
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [riders, setRiders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -202,8 +200,6 @@ export default function AdminRidersPage() {
     }
   };
 
-
-
   // Filter riders by search query
   const filteredRiders = riders.filter(
     (r) =>
@@ -218,60 +214,42 @@ export default function AdminRidersPage() {
   const totalTodayDeliveries = riders.reduce((sum, r) => sum + (r.todayCount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Admin Sidebar */}
-      <AdminSidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
-
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        
-        {/* Top Navigation Header */}
-        <header className="bg-white border-b border-slate-200 sticky top-0 z-20 px-4 sm:px-8 py-4 flex items-center justify-between shadow-xs">
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl text-slate-600 hover:bg-slate-100"
-            >
-              <Menu className="w-6 h-6" />
-            </button>
-
-            <div className="flex items-center space-x-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center border border-emerald-600/20">
-                <Truck className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-lg font-black text-slate-900 leading-tight">
-                  Delivery Fleet Console
-                </h1>
-                <p className="text-xs text-slate-500 font-semibold">
-                  Manage rider accounts, active assignments & delivery histories
-                </p>
-              </div>
-            </div>
+    <div className="space-y-6 lg:space-y-8 animate-in fade-in slide-in-from-bottom-3 duration-500">
+      {/* Page Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200/80 shadow-card-soft">
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-600/10 text-emerald-700 flex items-center justify-center border border-emerald-600/20">
+            <Truck className="w-5 h-5" />
           </div>
-
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={fetchRiders}
-              className="p-2 sm:px-3 sm:py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-extrabold flex items-center gap-1.5 transition-all"
-              title="Refresh Fleet Data"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span className="hidden sm:inline">Sync Fleet</span>
-            </button>
-
-            <button
-              onClick={() => setIsAddModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all"
-            >
-              <UserPlus className="w-4 h-4" />
-              <span>+ Add Delivery Partner</span>
-            </button>
+          <div>
+            <h1 className="text-lg font-black text-slate-900 leading-tight">
+              Delivery Fleet Console
+            </h1>
+            <p className="text-xs text-slate-500 font-semibold">
+              Manage rider accounts, active assignments & delivery histories
+            </p>
           </div>
-        </header>
+        </div>
 
-        {/* Dashboard Body */}
-        <main className="p-4 sm:p-8 space-y-6 max-w-7xl mx-auto w-full flex-1">
+        <div className="flex items-center space-x-3">
+          <button
+            onClick={fetchRiders}
+            className="p-2 sm:px-3 sm:py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-extrabold flex items-center gap-1.5 transition-all"
+            title="Refresh Fleet Data"
+          >
+            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+            <span className="hidden sm:inline">Sync Fleet</span>
+          </button>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-md shadow-emerald-600/20 flex items-center gap-2 transition-all"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>+ Add Delivery Partner</span>
+          </button>
+        </div>
+      </div>
           
           {/* Notifications */}
           {error && (
@@ -471,8 +449,6 @@ export default function AdminRidersPage() {
               </div>
             )}
           </div>
-        </main>
-      </div>
 
       {/* CREATE RIDER MODAL */}
       {isAddModalOpen && (
