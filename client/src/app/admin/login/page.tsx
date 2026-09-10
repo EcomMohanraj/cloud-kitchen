@@ -25,19 +25,8 @@ export default function AdminLoginPage() {
     try {
       // 1. Authenticate against Express backend Admin table
       const res = await AuthService.login({ email, password });
-      if (!res || !res.token) {
+      if (!res || (!res.success && !res.token)) {
         throw new Error('Invalid email or password credentials');
-      }
-
-      const activeToken = res.token;
-
-      // 2. Set Admin Auth JWT Token in LocalStorage & Cookies
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yazhisai_admin_jwt', activeToken);
-        localStorage.setItem('yazhisai_admin_active', 'true');
-        document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
       }
 
       setSuccess(true);

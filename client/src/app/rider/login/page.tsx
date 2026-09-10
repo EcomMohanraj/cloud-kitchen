@@ -22,16 +22,12 @@ export default function RiderLoginPage() {
 
     try {
       const res = await RiderService.login({ phone, password });
-      if (!res || !res.token) {
+      if (!res || (!res.success && !res.token)) {
         throw new Error('Invalid phone number or password credentials');
       }
 
-      const activeToken = res.token;
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('rider_token', activeToken);
+      if (typeof window !== 'undefined' && res.rider) {
         localStorage.setItem('rider_info', JSON.stringify(res.rider));
-        document.cookie = `rider_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
       }
 
       setSuccess(true);

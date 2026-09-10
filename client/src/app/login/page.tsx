@@ -94,13 +94,6 @@ export default function LoginPage() {
       });
 
       if (res.success && res.user) {
-        if (res.token && typeof window !== 'undefined') {
-          localStorage.setItem('customer_token', res.token);
-          localStorage.setItem('yazhisai_customer_token', res.token);
-          document.cookie = `customer_token=${res.token}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `auth_token=${res.token}; path=/; max-age=604800; SameSite=Lax`;
-        }
-
         setCustomerProfile(res.user.name || name || 'Customer', res.user.phone || phone, res.user.address || '');
         router.push('/');
       } else {
@@ -134,13 +127,7 @@ export default function LoginPage() {
     try {
       const data = await AuthService.loginAdmin({ email: adminEmail, password: adminPassword });
 
-      if (data.role === 'ADMIN' && data.token) {
-        const activeToken = data.token;
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('yazhisai_admin_jwt', activeToken);
-          localStorage.setItem('admin_token', activeToken);
-          document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        }
+      if (data.role === 'ADMIN') {
         router.push('/admin/orders');
       } else {
         setErrorMsg('Invalid admin credentials.');

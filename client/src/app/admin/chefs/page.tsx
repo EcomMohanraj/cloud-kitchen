@@ -126,21 +126,8 @@ export default function AdminChefsPage() {
   }, []);
 
   useEffect(() => {
-    // Verify admin token
-    if (typeof window !== 'undefined') {
-      const adminToken =
-        localStorage.getItem('yazhisai_admin_jwt') ||
-        document.cookie.includes('admin_token') ||
-        document.cookie.includes('yazhisai_admin');
-
-      if (!adminToken) {
-        router.push('/admin/login');
-        return;
-      }
-    }
-
     fetchChefs();
-  }, [fetchChefs, router]);
+  }, [fetchChefs]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

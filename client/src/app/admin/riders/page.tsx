@@ -114,20 +114,8 @@ export default function AdminRidersPage() {
   }, []);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const adminToken =
-        localStorage.getItem('yazhisai_admin_jwt') ||
-        document.cookie.includes('admin_token') ||
-        document.cookie.includes('yazhisai_admin');
-
-      if (!adminToken) {
-        router.push('/admin/login');
-        return;
-      }
-    }
-
     fetchRiders();
-  }, [fetchRiders, router]);
+  }, [fetchRiders]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

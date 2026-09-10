@@ -14,20 +14,6 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     defaultHeaders['Content-Type'] = 'application/json';
   }
 
-  if (typeof window !== 'undefined') {
-    const token =
-      localStorage.getItem('chef_token') ||
-      localStorage.getItem('rider_token') ||
-      localStorage.getItem('customer_token') ||
-      localStorage.getItem('yazhisai_customer_token') ||
-      localStorage.getItem('yazhisai_admin_jwt') ||
-      localStorage.getItem('admin_token');
-    if (token) {
-      defaultHeaders['Authorization'] = `Bearer ${token}`;
-    }
-  }
-
-
   const response = await fetch(url, {
     ...options,
     headers: {
@@ -36,15 +22,6 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
     },
     credentials: 'include',
   });
-
-  const newToken = response.headers.get('X-New-Token');
-  if (newToken && typeof window !== 'undefined') {
-    if (localStorage.getItem('admin_token')) localStorage.setItem('admin_token', newToken);
-    if (localStorage.getItem('customer_token')) localStorage.setItem('customer_token', newToken);
-    if (localStorage.getItem('yazhisai_customer_token')) localStorage.setItem('yazhisai_customer_token', newToken);
-    if (localStorage.getItem('rider_token')) localStorage.setItem('rider_token', newToken);
-    if (localStorage.getItem('chef_token')) localStorage.setItem('chef_token', newToken);
-  }
 
   const data = await response.json();
 

@@ -59,31 +59,19 @@ export const Navbar: React.FC = () => {
     loadSavedProfile();
   }, [loadSavedProfile]);
 
-  // Strict & Robust Admin Access Detection & Cookie Sync
+  // Strict & Robust Admin Access Detection via Session API
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedJwt = localStorage.getItem('yazhisai_admin_jwt');
-
-      // Clean up legacy dummy tokens if present
-      if (storedJwt === 'demo_admin_jwt_session') {
-        localStorage.removeItem('yazhisai_admin_jwt');
-        localStorage.removeItem('yazhisai_admin_active');
-      }
-
-      const activeToken = (storedJwt && storedJwt !== 'demo_admin_jwt_session') ? storedJwt : null;
-      const hasCookieToken = document.cookie.includes('admin_token=') || document.cookie.includes('yazhisai_admin_jwt=') || document.cookie.includes('yazhisai_admin_token=');
-
-      // 1. Re-sync cookie from localStorage if cookie is missing
-      if (activeToken && !hasCookieToken) {
-        document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-      }
-
-      // 2. Strict verification: Admin is ONLY true when a real server JWT token exists
-      const isAdmin = Boolean(activeToken);
-      setIsAdminLoggedIn(isAdmin);
-    }
+    AuthService.verifySession()
+      .then((res) => {
+        if (res && res.authenticated && res.admin) {
+          setIsAdminLoggedIn(true);
+        } else {
+          setIsAdminLoggedIn(false);
+        }
+      })
+      .catch(() => {
+        setIsAdminLoggedIn(false);
+      });
   }, [pathname]);
 
   // Customer Routes
@@ -105,13 +93,11 @@ export const Navbar: React.FC = () => {
 
   const routes = isAdminLoggedIn ? adminRoutes : customerRoutes;
 
-  const handleAdminLogout = () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('yazhisai_admin_jwt');
-      localStorage.removeItem('yazhisai_admin_active');
-      document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'yazhisai_admin_jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'yazhisai_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+  const handleAdminLogout = async () => {
+    try {
+      await AuthService.logoutAdmin();
+    } catch (e) {
+      console.error(e);
     }
     logoutCustomer();
     setIsAdminLoggedIn(false);
@@ -159,15 +145,7 @@ export const Navbar: React.FC = () => {
       // SIGN_IN tab
       try {
         const data = await AuthService.loginCustomer({ email: userEmail, password: userPassword });
-        if (data.role === 'ADMIN' && data.token) {
-          const activeToken = data.token;
-          if (typeof window !== 'undefined') {
-            localStorage.setItem('yazhisai_admin_jwt', activeToken);
-            localStorage.setItem('yazhisai_admin_active', 'true');
-            document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-            document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-            document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-          }
+        if (data.role === 'ADMIN') {
           setIsAdminLoggedIn(true);
           setIsAuthModalOpen(false);
           router.push('/admin/orders');
@@ -195,19 +173,10 @@ export const Navbar: React.FC = () => {
 
     try {
       const res = await AuthService.login({ email: adminEmail, password: adminPassword });
-      if (!res || !res.token) {
+      if (!res || (!res.success && !res.token)) {
         throw new Error('Invalid admin email or password');
       }
 
-      const activeToken = res.token;
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('yazhisai_admin_jwt', activeToken);
-        localStorage.setItem('yazhisai_admin_active', 'true');
-        document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-      }
       setIsAdminLoggedIn(true);
       setAdminLoading(false);
       setIsAuthModalOpen(false);

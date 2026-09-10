@@ -481,16 +481,16 @@ export const verifySession = async (req: Request, res: Response) => {
 
 export const logoutAdmin = async (req: Request, res: Response) => {
   const isProd = process.env.NODE_ENV === 'production';
-  res.clearCookie('admin_token', {
+  const cookieOpts = {
     httpOnly: true,
     secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
-  });
-  res.clearCookie('auth_token', {
-    httpOnly: true,
-    secure: isProd,
-    sameSite: isProd ? 'none' : 'lax',
-  });
+    sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+  };
+  res.clearCookie('admin_token', cookieOpts);
+  res.clearCookie('auth_token', cookieOpts);
+  res.clearCookie('customer_token', cookieOpts);
+  res.clearCookie('chef_token', cookieOpts);
+  res.clearCookie('rider_token', cookieOpts);
   return res.json({ success: true, message: 'Logged out successfully' });
 };
 

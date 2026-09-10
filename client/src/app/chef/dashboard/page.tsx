@@ -18,7 +18,7 @@ import {
   Calendar,
   Filter,
 } from 'lucide-react';
-import { ChefService } from '@/services/api';
+import { ChefService, AuthService } from '@/services/api';
 import { getSocket, joinChefRoom } from '@/services/socket';
 import { ChefOrderAlertNotifier, ChefOrderAlertNotifierRef } from '@/components/chef/ChefOrderAlertNotifier';
 
@@ -54,15 +54,6 @@ export default function ChefDashboardPage() {
   // Check authentication & setup socket room
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const token =
-        localStorage.getItem('chef_token') ||
-        document.cookie.includes('chef_token');
-
-      if (!token) {
-        router.push('/chef/login');
-        return;
-      }
-
       const storedInfo = localStorage.getItem('chef_info');
       if (storedInfo) {
         try {
@@ -156,11 +147,12 @@ export default function ChefDashboardPage() {
   };
 
   // Logout handler
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await AuthService.logoutAdmin();
+    } catch (e) {}
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('chef_token');
       localStorage.removeItem('chef_info');
-      document.cookie = 'chef_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
     router.push('/chef/login');
   };

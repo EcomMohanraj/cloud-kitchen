@@ -31,13 +31,6 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({ isOpen = false, onCl
 
 
   const handleLogout = async () => {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('yazhisai_admin_jwt');
-      localStorage.removeItem('yazhisai_admin_active');
-      document.cookie = 'admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'yazhisai_admin_jwt=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-      document.cookie = 'yazhisai_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
-    }
     try {
       await AuthService.logout();
     } catch (e) {

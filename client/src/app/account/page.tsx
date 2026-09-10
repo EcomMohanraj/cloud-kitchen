@@ -275,15 +275,7 @@ export default function AccountPage() {
     setLoading(true);
     try {
       const data = await AuthService.loginCustomer({ email, password });
-      if (data.role === 'ADMIN' && data.token) {
-        const activeToken = data.token;
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('yazhisai_admin_jwt', activeToken);
-          localStorage.setItem('yazhisai_admin_active', 'true');
-          document.cookie = `admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `yazhisai_admin_jwt=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-          document.cookie = `yazhisai_admin_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
-        }
+      if (data.role === 'ADMIN') {
         router.push('/admin/orders');
       } else {
         const savedName = data.user?.name || email.split('@')[0];

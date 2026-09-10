@@ -100,7 +100,6 @@ export const useCartStore = create<CartStore>((set, get) => ({
         localStorage.removeItem('yazhisai_user_phone');
         localStorage.removeItem('yazhisai_user_address');
         localStorage.removeItem('yazhisai_admin_active');
-        document.cookie = 'yazhisai_admin_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
       } catch (e) {
         console.error(e);
       }

@@ -17,7 +17,7 @@ import {
   User,
   Navigation,
 } from 'lucide-react';
-import { RiderService } from '@/services/api';
+import { RiderService, AuthService } from '@/services/api';
 import { getSocket } from '@/services/socket';
 
 export default function RiderDashboardPage() {
@@ -39,11 +39,12 @@ export default function RiderDashboardPage() {
   const lastEmitTimeRef = useRef<number>(0);
 
   // Logout helper
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await AuthService.logoutAdmin();
+    } catch (e) {}
     if (typeof window !== 'undefined') {
-      localStorage.removeItem('rider_token');
       localStorage.removeItem('rider_info');
-      document.cookie = 'rider_token=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT';
     }
     router.push('/rider/login');
   };
@@ -137,16 +138,9 @@ export default function RiderDashboardPage() {
   }, [myOrders, riderInfo?.id]);
 
   useEffect(() => {
-    // 1. Verify Rider authentication locally
+    // 1. Load Rider info locally if present
     if (typeof window !== 'undefined') {
-      const token = localStorage.getItem('rider_token');
       const rawInfo = localStorage.getItem('rider_info');
-
-      if (!token) {
-        router.push('/rider/login');
-        return;
-      }
-
       if (rawInfo) {
         try {
           setRiderInfo(JSON.parse(rawInfo));

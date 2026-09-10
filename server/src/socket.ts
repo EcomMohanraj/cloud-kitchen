@@ -1,5 +1,20 @@
+
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
+
+function parseCookies(cookieHeader?: string): Record<string, string> {
+  const list: Record<string, string> = {};
+  if (!cookieHeader) return list;
+  cookieHeader.split(';').forEach((cookie) => {
+    const parts = cookie.split('=');
+    const name = parts.shift()?.trim();
+    if (!name) return;
+    const value = parts.join('=').trim();
+    if (!value) return;
+    list[name] = decodeURIComponent(value);
+  });
+  return list;
+}
 
 let io: SocketIOServer | null = null;
 
@@ -44,6 +59,13 @@ export const initSocket = (httpServer: HTTPServer): SocketIOServer => {
       credentials: true,
     },
     transports: ['websocket', 'polling'],
+  });
+
+  io.use((socket: Socket, next) => {
+    const rawCookies = socket.request.headers.cookie || '';
+    const cookies = parseCookies(rawCookies);
+    (socket as any).cookies = cookies;
+    next();
   });
 
   io.on('connection', (socket: Socket) => {

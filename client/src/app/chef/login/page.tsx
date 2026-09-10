@@ -22,16 +22,12 @@ export default function ChefLoginPage() {
 
     try {
       const res = await ChefService.login({ phone, password });
-      if (!res || !res.token) {
+      if (!res || (!res.success && !res.token)) {
         throw new Error('Invalid phone number or password credentials');
       }
 
-      const activeToken = res.token;
-
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('chef_token', activeToken);
+      if (typeof window !== 'undefined' && res.chef) {
         localStorage.setItem('chef_info', JSON.stringify(res.chef));
-        document.cookie = `chef_token=${activeToken}; path=/; max-age=604800; SameSite=Lax`;
       }
 
       setSuccess(true);

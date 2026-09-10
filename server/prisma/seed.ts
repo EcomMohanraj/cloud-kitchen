@@ -45,7 +45,7 @@ async function main() {
   const riderPasswordHash = await bcrypt.hash('rider123', 10);
   await prisma.deliveryPartner.upsert({
     where: { phone: '9999999999' },
-    update: { password: riderPasswordHash },
+    update: { password: riderPasswordHash, isActive: true },
     create: {
       name: 'Test Rider',
       phone: '9999999999',
@@ -55,6 +55,20 @@ async function main() {
     },
   });
   console.log('DeliveryPartner test account verified: 9999999999 / rider123');
+
+  // 1c. Create Test Chef (Using upsert so existing chef accounts remain untouched)
+  const chefPasswordHash = await bcrypt.hash('chef123', 10);
+  await prisma.chef.upsert({
+    where: { phone: '8888888888' },
+    update: { password: chefPasswordHash },
+    create: {
+      name: 'Master Chef Yazhisai',
+      phone: '8888888888',
+      password: chefPasswordHash,
+      isActive: true,
+    },
+  });
+  console.log('Chef test account verified: 8888888888 / chef123');
 
   // 2. Generate 7-Day Dynamic Schedule starting TODAY (Preserve existing Admin toggles)
   const today = new Date();
