@@ -51,12 +51,12 @@ export const loginAdmin = async (req: Request, res: Response) => {
       success: true,
       role: 'ADMIN',
       user: { id: admin.id, email: admin.email, role: 'ADMIN' },
-      token,
     });
   } catch (error: any) {
     return res.status(500).json({ error: error.message || 'Authentication failed' });
   }
 };
+
 
 // ─── Startup Safety Check ───────────────────────────────────────────────────
 // Warn loudly if DEV_OTP_BYPASS is left on in production.
@@ -414,7 +414,6 @@ export const loginCustomer = async (req: Request, res: Response) => {
           success: true,
           role: 'ADMIN',
           user: { id: admin.id, email: admin.email, role: 'ADMIN' },
-          token,
         });
       }
     }
