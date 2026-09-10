@@ -36,8 +36,10 @@ NODE_ENV=staging
 DATABASE_URL=<paste Neon staging branch connection string>
 
 # Staging JWT Secret (DIFFERENT from production)
-# Generated: 5d19ba6dedd92d7eda08da321dd6df91c3ff97cb625da08b0863807eb7ddf3b6
-JWT_SECRET=5d19ba6dedd92d7eda08da321dd6df91c3ff97cb625da08b0863807eb7ddf3b6
+# ⚠️  NEVER store the real value here. Generate fresh when setting up Render:
+#     python -c "import secrets; print(secrets.token_hex(32))"
+#     Paste the output ONLY into Render's environment variables dashboard.
+JWT_SECRET=<generate-fresh-do-not-store-here>
 
 # Staging Client URL (set after Vercel staging URL is known)
 CLIENT_URL=https://cloud-kitchen-staging.vercel.app   # ← update after Vercel step
@@ -47,10 +49,11 @@ CLIENT_URL=https://cloud-kitchen-staging.vercel.app   # ← update after Vercel 
 RAZORPAY_KEY_ID=rzp_test_<your_test_key_id>
 RAZORPAY_KEY_SECRET=<your_test_key_secret>
 
-# Cloudinary (same account is fine, staging uploads won't affect production data)
-CLOUDINARY_CLOUD_NAME=mdbkqdcd
-CLOUDINARY_API_KEY=386869811267277
-CLOUDINARY_API_SECRET=3wId-r1l6TWdSsCK2U6PfLLQFFI
+# Cloudinary (same account is fine — staging uploads are isolated by Cloudinary folder)
+# ⚠️  Copy values from your Render production service or local .env — do NOT paste here.
+CLOUDINARY_CLOUD_NAME=<your_cloudinary_cloud_name>
+CLOUDINARY_API_KEY=<your_cloudinary_api_key>
+CLOUDINARY_API_SECRET=<your_cloudinary_api_secret>
 
 # OTP bypass for staging
 DEV_OTP_BYPASS=true
