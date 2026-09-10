@@ -104,6 +104,12 @@ export const getLiveChefOrders = async (req: AuthRequest, res: Response) => {
             menuItemId: true,
             menuItemName: true,
             quantity: true,
+            menuItem: {
+              select: {
+                imageUrl: true,
+                nameTamil: true,
+              },
+            },
           },
         },
       },

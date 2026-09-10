@@ -22,6 +22,29 @@ import { ChefService, AuthService } from '@/services/api';
 import { getSocket, joinChefRoom } from '@/services/socket';
 import { ChefOrderAlertNotifier, ChefOrderAlertNotifierRef } from '@/components/chef/ChefOrderAlertNotifier';
 
+// Dish Image Thumbnail Component with graceful fallback icon
+const DishThumbnail: React.FC<{ src?: string; alt: string }> = ({ src, alt }) => {
+  const [imgError, setImgError] = useState(false);
+
+  if (!src || imgError) {
+    return (
+      <div className="w-11 h-11 rounded-xl bg-stone-100 border border-stone-200 text-stone-400 flex items-center justify-center shrink-0">
+        <UtensilsCrossed className="w-5 h-5" />
+      </div>
+    );
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      onError={() => setImgError(true)}
+      className="w-11 h-11 rounded-xl object-cover border border-stone-200 shrink-0 bg-stone-100"
+      loading="lazy"
+    />
+  );
+};
+
 export default function ChefDashboardPage() {
   const router = useRouter();
 
@@ -393,23 +416,44 @@ export default function ChefDashboardPage() {
                       </div>
                     </div>
 
-                    {/* Dish Items (Quantity + Name ONLY — NO PRICING) */}
+                    {/* Dish Items (Quantity + Thumbnail + Bilingual Name ONLY — NO PRICING) */}
                     <div className="space-y-2">
                       <span className="text-[10px] uppercase font-black text-slate-400 tracking-wider block">
                         Items to Prepare ({order.items?.length || 0})
                       </span>
-                      <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
-                        {order.items?.map((item: any, idx: number) => (
-                          <div
-                            key={idx}
-                            className="flex justify-between items-center bg-stone-50/80 px-3 py-2 rounded-xl border border-stone-200/70 font-bold text-xs"
-                          >
-                            <span className="text-slate-900">
-                              <strong className="text-orange-600 text-sm font-black mr-2">{item.quantity}x</strong>
-                              {item.menuItemName || item.name}
-                            </span>
-                          </div>
-                        ))}
+                      <div className="space-y-1.5 max-h-56 overflow-y-auto pr-1">
+                        {order.items?.map((item: any, idx: number) => {
+                          const imageUrl = item.menuItem?.imageUrl || item.imageUrl;
+                          const tamilName = item.menuItem?.nameTamil || item.nameTamil;
+
+                          return (
+                            <div
+                              key={idx}
+                              className="flex items-center space-x-2.5 bg-stone-50/90 p-1.5 rounded-2xl border border-stone-200/80 transition-all hover:bg-stone-100/80"
+                            >
+                              {/* Dish Image Thumbnail */}
+                              <DishThumbnail src={imageUrl} alt={item.menuItemName || item.name} />
+
+                              {/* Quantity Badge & Bilingual Dish Name */}
+                              <div className="flex-1 min-w-0 flex items-center justify-between space-x-2">
+                                <div className="min-w-0 pr-1 text-left">
+                                  <h5 className="font-extrabold text-slate-900 text-xs leading-snug truncate">
+                                    {item.menuItemName || item.name}
+                                  </h5>
+                                  {tamilName && (
+                                    <p className="text-[11px] font-extrabold text-amber-700 truncate leading-tight mt-0.5">
+                                      {tamilName}
+                                    </p>
+                                  )}
+                                </div>
+
+                                <span className="w-8 h-8 rounded-xl bg-orange-100 text-orange-800 font-black text-xs flex items-center justify-center shrink-0 border border-orange-200/80 shadow-2xs">
+                                  {item.quantity}x
+                                </span>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   </div>

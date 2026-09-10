@@ -25,6 +25,8 @@ function formatDateKey(d: Date): string {
   return `${year}-${month}-${day}`;
 }
 
+import { Footer } from '@/components/Footer';
+
 export default function StorefrontPage() {
   const { selectedDate, selectedSlot, setSelectedDate, setSelectedSlot, getCartCount, getCartSubtotal, setIsCartOpen } = useCartStore();
 
@@ -192,73 +194,92 @@ export default function StorefrontPage() {
   const activeSlotObj = MEAL_SLOTS.find((s) => s.id === selectedSlot);
 
   return (
-    <div className="min-h-screen bg-[#fcfdfa] text-slate-900 font-sans">
+    <div className="min-h-screen bg-[#faf8f5] text-slate-900 font-sans">
       <Navbar />
 
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
         
         {/* Hero Section Banner */}
-        <section className="relative rounded-3xl bg-gradient-to-r from-forest-900 via-emerald-900 to-teal-900 text-white p-6 sm:p-10 shadow-xl overflow-hidden">
-          <div className="absolute top-0 right-0 -mt-10 -mr-10 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        <section className="relative rounded-3xl bg-gradient-to-br from-emerald-950 via-emerald-900 to-teal-900 text-white p-6 sm:p-10 shadow-2xl overflow-hidden border border-emerald-800/40">
+          <div className="absolute top-0 right-0 -mt-16 -mr-16 w-96 h-96 bg-emerald-500/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute bottom-0 left-1/3 -mb-16 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
           
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-8">
-            <div className="max-w-2xl space-y-4">
+          <div className="relative z-10 grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+            
+            {/* Left Copy & Info */}
+            <div className="lg:col-span-7 space-y-5 text-left">
               
               {/* LIVE CHEF STATUS BADGE */}
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-emerald-200 text-xs font-bold border border-white/15">
+              <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md text-emerald-200 text-xs font-extrabold border border-white/15 shadow-sm">
                 <span className="relative flex h-2.5 w-2.5">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-400"></span>
                 </span>
                 <span>
                   {isChefOnline
-                    ? 'Chef Yazhisai Online • Accepting Fresh Pre-Orders'
+                    ? 'Chef Yazhisai Online • Accepting Fresh Slot Pre-Orders'
                     : 'Chef Offline • Kitchen Currently Closed'}
                 </span>
               </div>
 
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-serif font-black tracking-tight text-white leading-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight text-white leading-[1.15]">
                 Authentic South Indian <br />
-                <span className="text-mint-300">Home-Cooked Meals</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-mint-300 via-emerald-200 to-amber-300">
+                  Home-Cooked Meals
+                </span>
               </h1>
               
-              <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-medium">
-                100% Zero Preservatives • Crafted fresh daily in small batch kitchen sessions. Reserve your operating meal slot below.
+              <p className="text-xs sm:text-sm text-emerald-100/90 leading-relaxed font-medium max-w-xl">
+                100% Preservative-Free • Prepared fresh per session in small batches using wood-pressed oils and traditional hand-ground spices.
               </p>
 
               {/* Trust Badges Bar */}
-              <div className="pt-2 flex flex-wrap items-center gap-4 text-xs font-bold text-emerald-100">
-                <div className="flex items-center space-x-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+              <div className="pt-2 flex flex-wrap items-center gap-3 text-xs font-bold text-emerald-100">
+                <div className="flex items-center space-x-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 shadow-sm">
                   <ShieldCheck className="w-4 h-4 text-mint-300" />
                   <span>100% Home Cooked</span>
                 </div>
-                <div className="flex items-center space-x-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                <div className="flex items-center space-x-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 shadow-sm">
                   <Flame className="w-4 h-4 text-amber-300" />
-                  <span>Fresh Daily Batch</span>
+                  <span>Fresh Daily Sessions</span>
                 </div>
-                <div className="flex items-center space-x-1.5 bg-white/10 px-3 py-1 rounded-full border border-white/10">
+                <div className="flex items-center space-x-1.5 bg-white/10 backdrop-blur-md px-3.5 py-1.5 rounded-full border border-white/15 shadow-sm">
                   <HeartHandshake className="w-4 h-4 text-rose-300" />
                   <span>Hygiene Certified</span>
                 </div>
               </div>
             </div>
 
-            {/* Quick Chef Card Widget */}
-            <div className="bg-white/10 backdrop-blur-md border border-white/15 rounded-2xl p-5 text-white space-y-3 shrink-0 lg:w-72">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-lg border-2 border-mint-300">
-                  👨‍🍳
-                </div>
-                <div>
-                  <h4 className="font-extrabold text-sm text-white">Chef Yazhisai</h4>
-                  <p className="text-[11px] text-emerald-200">Master Cloud Chef</p>
+            {/* Right Food Showcase Card */}
+            <div className="lg:col-span-5 relative">
+              <div className="relative rounded-2xl overflow-hidden border-2 border-white/20 shadow-2xl bg-emerald-900/60 backdrop-blur-md group">
+                <img
+                  src="https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?w=800&auto=format&fit=crop&q=80"
+                  alt="Authentic South Indian Meals Showcase"
+                  className="w-full h-56 sm:h-64 object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-transparent to-transparent"></div>
+                
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-full bg-emerald-600 flex items-center justify-center font-bold text-base border-2 border-mint-300 shadow-md">
+                      👨‍🍳
+                    </div>
+                    <div>
+                      <h4 className="font-black text-sm text-white drop-shadow">Chef Yazhisai</h4>
+                      <p className="text-[11px] text-emerald-200 font-semibold drop-shadow">Master Cloud Kitchen Chef</p>
+                    </div>
+                  </div>
+
+                  <span className="text-[10px] font-black bg-amber-400 text-slate-950 px-2.5 py-1 rounded-full uppercase tracking-wider shadow-md">
+                    Signature Batch
+                  </span>
                 </div>
               </div>
-              <p className="text-xs text-emerald-100/80 leading-snug italic">
-                &ldquo;Every dish is prepared using wood-pressed oils and hand-ground spices.&rdquo;
-              </p>
             </div>
+
           </div>
         </section>
 
@@ -274,12 +295,12 @@ export default function StorefrontPage() {
 
         {/* STEP 3: DYNAMIC MENU ITEMS CATALOG */}
         <section className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-emerald-100/80">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-emerald-200/60">
             <div>
-              <h3 className="text-xl sm:text-2xl font-serif font-black text-slate-900 tracking-tight flex items-center gap-2">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-2">
                 <Utensils className="w-6 h-6 text-emerald-600" />
                 Available Gourmet Menu
-                <span className="text-xs font-semibold text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+                <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-300">
                   {menuItems.length} dishes for {activeSlotObj?.name}
                 </span>
               </h3>
@@ -293,7 +314,7 @@ export default function StorefrontPage() {
           {menuLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {Array.from({ length: 6 }).map((_, i) => (
-                <div key={i} className="h-80 bg-slate-100 rounded-3xl animate-pulse"></div>
+                <div key={i} className="h-80 bg-slate-200/70 rounded-3xl animate-pulse"></div>
               ))}
             </div>
           ) : menuItems.length > 0 ? (
@@ -308,7 +329,7 @@ export default function StorefrontPage() {
               ))}
             </div>
           ) : (
-            <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center space-y-3">
+            <div className="bg-white border border-slate-200/80 rounded-3xl p-12 text-center space-y-3 shadow-sm">
               <Lock className="w-12 h-12 text-slate-300 mx-auto" />
               <h4 className="text-base font-extrabold text-slate-800">No Dishes Available for this Slot</h4>
               <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
@@ -326,7 +347,7 @@ export default function StorefrontPage() {
                 <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
                 <span>Verified Customer Testimonials</span>
               </div>
-              <h3 className="text-2xl sm:text-3xl font-serif font-black text-slate-900 tracking-tight">
+              <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
                 What Our Patrons Say
               </h3>
               <p className="text-xs text-slate-500 font-semibold">
@@ -371,6 +392,9 @@ export default function StorefrontPage() {
         )}
 
       </main>
+
+      {/* Modern Footer Component */}
+      <Footer />
 
       {/* Floating Bottom Cart Bar for Mobile */}
       {cartCount > 0 && (
