@@ -23,7 +23,7 @@ function maybeRefreshOnActivity(res: Response, decoded: any) {
   if (!decoded || !decoded.exp) return;
   const nowInSec = Math.floor(Date.now() / 1000);
   const remainingSec = decoded.exp - nowInSec;
-  // If token has less than 4 hours remaining, issue a fresh 1d token in response header
+  // If token has less than 4 hours remaining, issue a fresh 1d token via cookie
   if (remainingSec > 0 && remainingSec < 4 * 60 * 60) {
     const payload = { ...decoded };
     delete payload.iat;
@@ -31,7 +31,25 @@ function maybeRefreshOnActivity(res: Response, decoded: any) {
     delete payload.nbf;
     delete payload.jti;
     const newToken = jwt.sign(payload, getJwtSecret(), { expiresIn: '1d' });
-    res.setHeader('X-New-Token', newToken);
+    
+    const isProd = process.env.NODE_ENV === 'production';
+    const cookieOpts = {
+      httpOnly: true,
+      secure: isProd,
+      sameSite: 'lax' as const,
+      maxAge: 24 * 60 * 60 * 1000,
+      ...(isProd && { domain: '.yazhisaicloudkitchen.in' }),
+    };
+
+    if (decoded.role === 'ADMIN') {
+      res.cookie('admin_token', newToken, cookieOpts);
+    } else if (decoded.role === 'RIDER') {
+      res.cookie('rider_token', newToken, cookieOpts);
+    } else if (decoded.role === 'CHEF') {
+      res.cookie('chef_token', newToken, cookieOpts);
+    } else if (decoded.role === 'CUSTOMER') {
+      res.cookie('auth_token', newToken, cookieOpts);
+    }
   }
 }
 
