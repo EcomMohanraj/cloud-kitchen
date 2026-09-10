@@ -47,34 +47,31 @@ export const DatePicker: React.FC<DatePickerProps> = ({ scheduleData, loading })
   const effectiveData = getEffectiveScheduleData(scheduleData);
 
   return (
-    <div className="w-full bg-white/90 backdrop-blur-md border border-emerald-100/80 rounded-3xl p-5 sm:p-7 shadow-card-soft">
+    <div className="w-full bg-white/90 backdrop-blur-md border border-emerald-100/80 rounded-3xl p-3.5 sm:p-5 shadow-card-soft">
       {/* Header Info */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
         <div>
           <div className="flex items-center space-x-2">
-            <span className="w-6 h-6 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs">
+            <span className="w-5 h-5 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-[11px]">
               1
             </span>
-            <h2 className="text-lg sm:text-xl font-extrabold text-slate-900 flex items-center gap-2 tracking-tight">
+            <h2 className="text-base sm:text-lg font-black text-slate-900 flex items-center gap-2 tracking-tight">
               Select Delivery Date
-              <span className="text-xs text-emerald-700 font-semibold bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200/60">
+              <span className="text-[10px] text-emerald-800 font-extrabold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/60">
                 தேதியைத் தேர்ந்தெடுக்கவும்
               </span>
             </h2>
           </div>
-          <p className="text-xs text-slate-500 mt-1 max-w-xl">
-            Choose an available date on Chef Yazhisai&apos;s kitchen calendar for fresh on-demand meal prep.
-          </p>
         </div>
 
         {/* Legend */}
-        <div className="flex items-center gap-4 text-xs font-bold self-start sm:self-auto bg-slate-50 px-3.5 py-1.5 rounded-full border border-slate-200/80">
+        <div className="flex items-center gap-3 text-[11px] font-extrabold self-start sm:self-auto bg-slate-50 px-3 py-1 rounded-full border border-slate-200/80">
           <div className="flex items-center gap-1.5 text-emerald-700">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
             Kitchen Active
           </div>
           <div className="flex items-center gap-1.5 text-slate-400">
-            <Lock className="w-3.5 h-3.5 text-slate-400" />
+            <Lock className="w-3 h-3 text-slate-400" />
             Chef Off
           </div>
         </div>
@@ -82,12 +79,12 @@ export const DatePicker: React.FC<DatePickerProps> = ({ scheduleData, loading })
 
       {/* Horizontal Scrollable Date Strip */}
       <div className="relative">
-        <div className="flex space-x-3.5 overflow-x-auto no-scrollbar py-2.5 px-1 scroll-smooth">
+        <div className="flex space-x-2.5 overflow-x-auto no-scrollbar py-1 px-0.5 scroll-smooth">
           {loading ? (
             Array.from({ length: 7 }).map((_, i) => (
               <div
                 key={i}
-                className="w-28 sm:w-32 h-36 rounded-2xl bg-slate-100 animate-pulse shrink-0"
+                className="w-24 sm:w-28 h-26 rounded-2xl bg-slate-100 animate-pulse shrink-0"
               ></div>
             ))
           ) : (
@@ -103,28 +100,28 @@ export const DatePicker: React.FC<DatePickerProps> = ({ scheduleData, loading })
                 <motion.button
                   key={item.date}
                   disabled={!isActive}
-                  whileHover={isActive ? { scale: 1.04, y: -2 } : {}}
-                  whileTap={isActive ? { scale: 0.96 } : {}}
+                  whileHover={isActive ? { scale: 1.03, y: -1 } : {}}
+                  whileTap={isActive ? { scale: 0.97 } : {}}
                   onClick={() => {
                     if (isActive) {
                       setSelectedDate(item.date);
                     }
                   }}
-                  className={`relative shrink-0 w-28 sm:w-32 h-36 rounded-2xl border p-3.5 flex flex-col justify-between transition-all duration-300 text-center select-none cursor-pointer ${
+                  className={`relative shrink-0 w-[94px] sm:w-28 h-26 rounded-2xl border p-2.5 flex flex-col justify-between transition-all duration-200 text-center select-none cursor-pointer ${
                     !isActive
                       ? 'bg-slate-50 border-slate-200 opacity-40 cursor-not-allowed text-slate-400'
                       : isSelected
-                      ? 'bg-gradient-to-b from-emerald-600 to-emerald-700 border-emerald-500 text-white shadow-xl shadow-emerald-600/30 scale-[1.03] ring-2 ring-emerald-400/50'
+                      ? 'bg-gradient-to-b from-emerald-600 to-emerald-700 border-emerald-500 text-white shadow-lg shadow-emerald-600/25 ring-2 ring-emerald-400/50'
                       : 'bg-white border-emerald-100 hover:border-emerald-400 hover:shadow-card-hover text-slate-800'
                   }`}
                 >
                   {/* Top Day Badge */}
-                  <div className="w-full flex items-center justify-between text-[11px] font-extrabold tracking-wider">
+                  <div className="w-full flex items-center justify-between text-[10px] font-black tracking-wider">
                     <span className={isSelected ? 'text-emerald-100' : 'text-slate-500'}>
                       {dayName}
                     </span>
                     {isActive ? (
-                      <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white shadow-sm' : 'bg-emerald-500'}`}></span>
+                      <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white shadow-xs' : 'bg-emerald-500'}`}></span>
                     ) : (
                       <Lock className="w-3 h-3 text-slate-400" />
                     )}
@@ -132,16 +129,16 @@ export const DatePicker: React.FC<DatePickerProps> = ({ scheduleData, loading })
 
                   {/* Date & Month Number */}
                   <div className="my-auto">
-                    <div className={`text-3xl font-black tracking-tight leading-none ${
+                    <div className={`text-2xl font-black tracking-tight leading-none ${
                       !isActive
                         ? 'line-through text-slate-400'
                         : isSelected
-                        ? 'text-white drop-shadow-sm'
+                        ? 'text-white drop-shadow-xs'
                         : 'text-slate-900'
                     }`}>
                       {dayNum}
                     </div>
-                    <div className={`text-[11px] font-bold mt-1 tracking-widest ${
+                    <div className={`text-[10px] font-extrabold tracking-widest mt-0.5 ${
                       isSelected ? 'text-emerald-100' : 'text-emerald-700'
                     }`}>
                       {monthName}
@@ -149,19 +146,19 @@ export const DatePicker: React.FC<DatePickerProps> = ({ scheduleData, loading })
                   </div>
 
                   {/* Bottom Status Pill */}
-                  <div className="w-full pt-1">
+                  <div className="w-full">
                     {isActive ? (
                       <span
-                        className={`block text-[10px] font-black py-1 px-2 rounded-full uppercase tracking-wider ${
+                        className={`block text-[9px] font-black py-0.5 px-1.5 rounded-full uppercase tracking-wider ${
                           isSelected
-                            ? 'bg-white text-emerald-800 shadow-sm'
+                            ? 'bg-white text-emerald-800 shadow-xs'
                             : 'bg-emerald-50 text-emerald-800 border border-emerald-200/80'
                         }`}
                       >
                         Available
                       </span>
                     ) : (
-                      <span className="block text-[10px] font-bold py-1 px-2 rounded-full bg-slate-100 text-slate-400 uppercase tracking-wider line-through">
+                      <span className="block text-[9px] font-bold py-0.5 px-1.5 rounded-full bg-slate-100 text-slate-400 uppercase tracking-wider line-through">
                         Closed
                       </span>
                     )}

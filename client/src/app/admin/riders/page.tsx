@@ -363,19 +363,22 @@ export default function AdminRidersPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-200 text-xs">
-                    {filteredRiders.map((rider) => {
+                    {filteredRiders.map((rider, idx) => {
                       const isActionLoading = actionLoadingId === rider.id;
                       const isDeactivated = !rider.isActive;
                       const isOnDelivery = rider.statusLabel === 'On Delivery';
                       const isOnlineIdle = rider.statusLabel === 'Online / Idle';
+                      const refCode = `RDR-${String((riders.findIndex((r) => r.id === rider.id) + 1 || idx + 1)).padStart(3, '0')}`;
 
                       return (
                         <tr key={rider.id} className="hover:bg-slate-50/80 transition-colors">
                           
-                          {/* Name & ID */}
+                          {/* Name & Clean Reference Code */}
                           <td className="py-4 px-6">
                             <div className="font-black text-slate-900 text-sm">{rider.name}</div>
-                            <span className="text-[10px] text-slate-400 font-mono">ID: {rider.id.slice(0, 8)}...</span>
+                            <span className="inline-block text-[10px] text-emerald-800 font-extrabold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200/80 font-mono mt-0.5">
+                              {refCode}
+                            </span>
                           </td>
 
                           {/* Phone */}
