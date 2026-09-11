@@ -3,6 +3,16 @@ import { test, expect } from '@playwright/test';
 test.describe('Full Customer Order Lifecycle', () => {
   test('should browse menu, add to cart, checkout, place order, and open live tracking', async ({ page }) => {
     test.setTimeout(60000);
+    // 0. Register customer to establish valid server auth session
+    const timestamp = Date.now().toString().slice(-6);
+    await page.goto('/register', { waitUntil: 'domcontentloaded' });
+    await page.fill('input[placeholder*="Anandan"]', 'Lifecycle Test Customer');
+    await page.fill('input[placeholder="9876543210"]', `987${timestamp}`);
+    await page.fill('input[placeholder*="gourmet@yazhisai.com"]', `lifecycle_${timestamp}@yazhisai.com`);
+    await page.fill('input[type="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForTimeout(2000);
+
     // 1. Browse Homepage / Menu
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     await expect(page.locator('body')).toContainText(/Yazhisai|Menu|Cloud Kitchen|Dishes/i);

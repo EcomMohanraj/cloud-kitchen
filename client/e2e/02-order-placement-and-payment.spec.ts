@@ -2,6 +2,16 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Order Placement & Payment Flow', () => {
   test('should place an order using Cash on Delivery', async ({ page }) => {
+    // 0. Register customer to establish valid server auth session
+    const timestamp = Date.now().toString().slice(-6);
+    await page.goto('/register', { waitUntil: 'domcontentloaded' });
+    await page.fill('input[placeholder*="Anandan"]', 'Test Customer');
+    await page.fill('input[placeholder="9876543210"]', `987${timestamp}`);
+    await page.fill('input[placeholder*="gourmet@yazhisai.com"]', `order_${timestamp}@yazhisai.com`);
+    await page.fill('input[type="password"]', 'password123');
+    await page.click('button[type="submit"]');
+    await page.waitForTimeout(2000);
+
     // Navigate to homepage first to add item
     await page.goto('/', { waitUntil: 'domcontentloaded' });
     
