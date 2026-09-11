@@ -4,6 +4,8 @@ import { z } from 'zod';
 import { emitNewOrder, emitOrderStatusUpdated } from '../socket';
 import { validateDeliveryAddress } from '../utils/addressValidation';
 import { AuthRequest } from '../middlewares/authMiddleware';
+import { sendCodOrderConfirmedEmail, sendOrderDeliveredEmail } from '../services/emailService';
+
 
 const orderItemSchema = z.object({
   menuItemId: z.string().min(1, 'Invalid menu item'),
@@ -282,6 +284,12 @@ export const createOrder = async (req: Request, res: Response) => {
 
     emitNewOrder(newOrder);
 
+    if (newOrder.paymentMethod === 'COD') {
+      sendCodOrderConfirmedEmail(newOrder).catch((err) =>
+        console.warn('⚠️ [Resend] Non-blocking COD order confirmation email error:', err)
+      );
+    }
+
     return res.json({ success: true, order: newOrder });
   } catch (error: any) {
     console.error('Create order controller error:', error);
@@ -296,6 +304,11 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
     if (!orderId) {
       return res.status(400).json({ error: 'Order ID required' });
     }
+
+    const existingOrder = await prisma.order.findUnique({ where: { id: orderId } });
+    const isTransitioningToDelivered =
+      orderStatus === 'DELIVERED' && existingOrder?.orderStatus !== 'DELIVERED';
+
 
     const updateData: any = {};
     if (orderStatus) updateData.orderStatus = orderStatus;
@@ -320,6 +333,12 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
     });
 
     emitOrderStatusUpdated(updatedOrder);
+
+    if (isTransitioningToDelivered && updatedOrder.orderStatus === 'DELIVERED') {
+      sendOrderDeliveredEmail(updatedOrder).catch((err) =>
+        console.warn('⚠️ [Resend] Non-blocking order delivery email error:', err)
+      );
+    }
 
     return res.json({ success: true, order: updatedOrder });
   } catch (error: any) {

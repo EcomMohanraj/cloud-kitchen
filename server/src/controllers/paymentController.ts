@@ -3,6 +3,8 @@ import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { prisma } from '../config/db';
 import { emitOrderStatusUpdated } from '../socket';
+import { sendOrderConfirmedEmail } from '../services/emailService';
+
 
 function getRazorpayInstance() {
   const key_id = process.env.RAZORPAY_KEY_ID;
@@ -196,8 +198,13 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
           razorpaySignature: rzpSignature,
           orderStatus: 'ACCEPTED',
         },
+        include: { items: true, user: true },
       });
       emitOrderStatusUpdated(updatedOrder);
+      // Fire-and-forget non-blocking order confirmation email
+      sendOrderConfirmedEmail(updatedOrder).catch((err) =>
+        console.warn('⚠️ [Resend] Non-blocking online payment confirmation email error:', err)
+      );
     }
 
     console.log('✅ Payment verified and order confirmed successfully:', targetOrder.id);
@@ -290,10 +297,15 @@ export const handleRazorpayWebhook = async (req: Request, res: Response) => {
               razorpayPaymentId: rzpPaymentId || dbOrder.razorpayPaymentId,
               orderStatus: 'ACCEPTED',
             },
+            include: { items: true, user: true },
           });
 
           emitOrderStatusUpdated(updatedOrder);
           console.log(`✅ [Webhook] Successfully updated Order ${dbOrder.id} to PAID via webhook`);
+          // Fire-and-forget non-blocking order confirmation email
+          sendOrderConfirmedEmail(updatedOrder).catch((err) =>
+            console.warn('⚠️ [Resend] Non-blocking webhook payment confirmation email error:', err)
+          );
         } else {
           console.warn(`⚠️ [Webhook] No local order found for razorpayOrderId: ${rzpOrderId}`);
         }

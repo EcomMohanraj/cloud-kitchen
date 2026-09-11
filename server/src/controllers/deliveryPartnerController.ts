@@ -4,6 +4,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { emitOrderStatusUpdated, emitOrderAssigned } from '../socket';
+import { sendOrderDeliveredEmail } from '../services/emailService';
+
 
 const prisma = new PrismaClient();
 
@@ -190,6 +192,9 @@ export const updateRiderOrderStatus = async (req: AuthRequest, res: Response) =>
       return res.status(400).json({ error: 'Order must be OUT_FOR_DELIVERY before marking DELIVERED.' });
     }
 
+    const isTransitioningToDelivered =
+      orderStatus === 'DELIVERED' && existingOrder.orderStatus !== 'DELIVERED';
+
     const updateData: any = { orderStatus };
     if (orderStatus === 'DELIVERED' && existingOrder.paymentMethod === 'COD' && existingOrder.paymentStatus !== 'PAID') {
       updateData.paymentStatus = 'PAID';
@@ -210,6 +215,12 @@ export const updateRiderOrderStatus = async (req: AuthRequest, res: Response) =>
     });
 
     emitOrderStatusUpdated(updatedOrder);
+
+    if (isTransitioningToDelivered && updatedOrder.orderStatus === 'DELIVERED') {
+      sendOrderDeliveredEmail(updatedOrder).catch((err) =>
+        console.warn('⚠️ [Resend] Non-blocking rider order delivery email error:', err)
+      );
+    }
 
     return res.json({ success: true, order: updatedOrder });
   } catch (error: any) {
