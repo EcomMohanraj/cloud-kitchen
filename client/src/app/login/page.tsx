@@ -640,7 +640,6 @@ export default function LoginPage() {
                 </button>
               </div>
             </form>
-          )}</form>
           )}
 
         </div>
