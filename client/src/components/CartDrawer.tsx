@@ -21,6 +21,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
     removeFromCart,
     getCartSubtotal,
     clearCart,
+    isCustomerSignedIn,
+    setIsSignInPromptOpen,
   } = useCartStore();
 
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
@@ -260,7 +262,11 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                 <button
                   onClick={() => {
                     setIsCartOpen(false);
-                    onProceedToCheckout();
+                    if (!isCustomerSignedIn()) {
+                      setIsSignInPromptOpen(true);
+                    } else {
+                      onProceedToCheckout();
+                    }
                   }}
                   className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-mint-500 hover:from-emerald-700 hover:to-mint-600 text-white font-black text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all active:scale-98"
                 >

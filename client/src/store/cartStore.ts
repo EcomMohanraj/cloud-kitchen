@@ -16,6 +16,8 @@ interface CartStore {
   selectedSlot: string; // 'BREAKFAST' | 'SNACKS' | 'LUNCH' | 'DINNER'
   cartItems: CartItem[];
   isCartOpen: boolean;
+  isServiceAreaModalOpen: boolean;
+  isSignInPromptOpen: boolean;
   customerName: string;
   customerPhone: string;
   deliveryAddress: string;
@@ -23,6 +25,9 @@ interface CartStore {
   setSelectedDate: (date: string) => void;
   setSelectedSlot: (slot: string) => void;
   setIsCartOpen: (open: boolean) => void;
+  setIsServiceAreaModalOpen: (open: boolean) => void;
+  setIsSignInPromptOpen: (open: boolean) => void;
+  isCustomerSignedIn: () => boolean;
   setCustomerProfile: (name: string, phone: string, address?: string) => void;
   loadSavedProfile: () => void;
   logoutCustomer: () => void;
@@ -46,6 +51,8 @@ export const useCartStore = create<CartStore>((set, get) => ({
   selectedSlot: getFirstValidUpcomingSlot(getLocalDateString()) || 'BREAKFAST',
   cartItems: [],
   isCartOpen: false,
+  isServiceAreaModalOpen: false,
+  isSignInPromptOpen: false,
   customerName: '',
   customerPhone: '',
   deliveryAddress: '',
@@ -53,6 +60,24 @@ export const useCartStore = create<CartStore>((set, get) => ({
   setSelectedDate: (date: string) => set({ selectedDate: date }),
   setSelectedSlot: (slot: string) => set({ selectedSlot: slot }),
   setIsCartOpen: (open: boolean) => set({ isCartOpen: open }),
+  setIsServiceAreaModalOpen: (open: boolean) => set({ isServiceAreaModalOpen: open }),
+  setIsSignInPromptOpen: (open: boolean) => set({ isSignInPromptOpen: open }),
+
+  isCustomerSignedIn: () => {
+    const { customerName, customerPhone } = get();
+    if (customerName && customerName.trim().length > 0) return true;
+    if (customerPhone && customerPhone.trim().length > 0) return true;
+    if (typeof window !== 'undefined') {
+      try {
+        const name = localStorage.getItem('yazhisai_user_name');
+        const phone = localStorage.getItem('yazhisai_user_phone');
+        if ((name && name.trim().length > 0) || (phone && phone.trim().length > 0)) {
+          return true;
+        }
+      } catch (e) {}
+    }
+    return false;
+  },
 
   loadSavedProfile: () => {
     if (typeof window !== 'undefined') {
@@ -113,6 +138,19 @@ export const useCartStore = create<CartStore>((set, get) => ({
   },
 
   addToCart: (item: any) => {
+    // Trigger Service Area popup the FIRST time a customer clicks Add to Cart per session
+    if (typeof window !== 'undefined') {
+      try {
+        const hasSeen = sessionStorage.getItem('yazhisai_service_area_seen');
+        if (!hasSeen) {
+          sessionStorage.setItem('yazhisai_service_area_seen', 'true');
+          set({ isServiceAreaModalOpen: true });
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     const { cartItems } = get();
     const itemId = String(item.id);
     const existing = cartItems.find((ci) => ci.menuItemId === itemId);
