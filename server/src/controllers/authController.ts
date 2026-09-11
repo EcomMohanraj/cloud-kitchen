@@ -317,32 +317,65 @@ export const verifyCustomerOtp = async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     console.error('❌ Verify OTP error:', error);
-    return res.status(500).json({ error: error.message || 'OTP verification failed.' });
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 };
 
 export const registerCustomer = async (req: Request, res: Response) => {
   try {
-    const { name, phone, address } = req.body;
+    const { name, phone, email, password, address } = req.body;
 
-    if (!name || !phone) {
-      return res.status(400).json({ error: 'Name and valid phone number are required' });
+    if (!name || String(name).trim().length === 0) {
+      return res.status(400).json({ error: 'Please enter your full name.' });
     }
 
-    const cleanPhone = String(phone).trim();
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+    const cleanPhone = phone && String(phone).trim() !== '' ? String(phone).trim() : null;
 
-    const user = await prisma.user.upsert({
-      where: { phone: cleanPhone },
-      update: {
-        name: String(name).trim(),
-        address: address ? String(address).trim() : undefined,
-      },
-      create: {
-        phone: cleanPhone,
-        name: String(name).trim(),
-        address: address ? String(address).trim() : '',
-      },
-    });
+    if (!cleanEmail && !cleanPhone) {
+      return res.status(400).json({ error: 'Please provide an email address or phone number to register.' });
+    }
+
+    // 1. Explicit duplicate checks before database insertion
+    if (cleanEmail) {
+      const existingEmailUser = await prisma.user.findFirst({ where: { email: cleanEmail } });
+      if (existingEmailUser) {
+        return res.status(409).json({ error: 'An account with this email already exists. Please sign in instead.' });
+      }
+    }
+
+    if (cleanPhone) {
+      const existingPhoneUser = await prisma.user.findUnique({ where: { phone: cleanPhone } });
+      if (existingPhoneUser) {
+        return res.status(409).json({ error: 'This phone number is already registered with another account.' });
+      }
+    }
+
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          name: String(name).trim(),
+          email: cleanEmail,
+          phone: cleanPhone,
+          password: hashedPassword,
+          address: address ? String(address).trim() : null,
+        },
+      });
+    } catch (dbError: any) {
+      if (dbError.code === 'P2002') {
+        const target = JSON.stringify(dbError.meta?.target || '');
+        if (target.includes('email')) {
+          return res.status(409).json({ error: 'An account with this email already exists. Please sign in instead.' });
+        }
+        if (target.includes('phone')) {
+          return res.status(409).json({ error: 'This phone number is already registered with another account.' });
+        }
+      }
+      throw dbError;
+    }
 
     const token = jwt.sign(
       { userId: user.id, phone: user.phone, role: 'CUSTOMER' },
@@ -367,34 +400,36 @@ export const registerCustomer = async (req: Request, res: Response) => {
       token,
     });
   } catch (error: any) {
-    console.error('❌ Customer registration database error:', error);
-    return res.status(500).json({ error: error.message || 'Customer registration failed' });
+    console.error('❌ Customer registration error:', error);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 };
 
 export const loginCustomer = async (req: Request, res: Response) => {
   try {
-    const { email, password, phone, name } = req.body;
+    const { email, password, phone } = req.body;
 
-    if (!phone && !email) {
-      return res.status(400).json({ error: 'Phone number or email is required' });
+    const cleanEmail = email ? String(email).trim().toLowerCase() : null;
+    const cleanPhone = phone && String(phone).trim() !== '' ? String(phone).trim() : null;
+
+    if (!cleanEmail && !cleanPhone) {
+      return res.status(400).json({ error: 'Please enter your email or phone number to sign in.' });
     }
 
-    // 1. First check if email matches an entry in the Admin table
-    if (email && String(email).trim()) {
-      const cleanEmail = String(email).trim().toLowerCase();
+    // 1. Check if email matches Admin table
+    if (cleanEmail) {
       const admin = await prisma.admin.findUnique({
         where: { email: cleanEmail },
       });
 
       if (admin) {
         if (!password) {
-          return res.status(400).json({ error: 'Password is required for admin login' });
+          return res.status(400).json({ error: 'Password is required for admin login.' });
         }
 
         const isMatch = await bcrypt.compare(password, admin.password);
         if (!isMatch) {
-          return res.status(401).json({ error: 'Invalid credentials' });
+          return res.status(401).json({ error: 'Incorrect password. Please try again.' });
         }
 
         const token = jwt.sign(
@@ -423,43 +458,33 @@ export const loginCustomer = async (req: Request, res: Response) => {
       }
     }
 
-    // 2. If no Admin match, check User (customer) table
-    const cleanEmail = email ? String(email).trim().toLowerCase() : undefined;
-    const userPhone = phone ? String(phone).trim() : '9876543210';
-    const userName = name || (email ? String(email).split('@')[0] : 'Valued Patron');
-
-    let user = cleanEmail ? await prisma.user.findFirst({ where: { email: cleanEmail } }) : null;
-    if (!user && phone) {
-      user = await prisma.user.findUnique({ where: { phone: userPhone } });
+    // 2. Customer table check
+    let user: any = null;
+    if (cleanEmail) {
+      user = await prisma.user.findFirst({ where: { email: cleanEmail } });
+    } else if (cleanPhone) {
+      user = await prisma.user.findUnique({ where: { phone: cleanPhone } });
     }
 
-    if (user && user.password && password) {
-      const isPasswordMatch = await bcrypt.compare(password, user.password);
-      if (!isPasswordMatch) {
-        return res.status(401).json({ error: 'Invalid email/phone or password.' });
+    if (!user) {
+      if (cleanEmail) {
+        return res.status(404).json({ error: 'No account found with this email. Please sign up first.' });
+      } else {
+        return res.status(404).json({ error: 'No account found with this phone number. Please sign up first.' });
       }
     }
 
-    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required to sign in.' });
+    }
 
-    if (!user) {
-      user = await prisma.user.create({
-        data: {
-          phone: userPhone,
-          email: cleanEmail,
-          password: hashedPassword,
-          name: userName,
-        },
-      });
-    } else {
-      user = await prisma.user.update({
-        where: { id: user.id },
-        data: {
-          name: userName || user.name,
-          ...(cleanEmail && !user.email ? { email: cleanEmail } : {}),
-          ...(hashedPassword && !user.password ? { password: hashedPassword } : {}),
-        },
-      });
+    if (!user.password) {
+      return res.status(401).json({ error: 'No password set for this account. Please sign in via OTP or Reset Password.' });
+    }
+
+    const isPasswordMatch = await bcrypt.compare(password, user.password);
+    if (!isPasswordMatch) {
+      return res.status(401).json({ error: 'Incorrect password. Please try again.' });
     }
 
     const token = jwt.sign(
@@ -478,8 +503,6 @@ export const loginCustomer = async (req: Request, res: Response) => {
       ...(isProd && { domain: '.yazhisaicloudkitchen.in' }),
     });
 
-    console.log('✅ Customer logged in and synced to PostgreSQL DB:', user.phone);
-
     return res.json({
       success: true,
       role: 'CUSTOMER',
@@ -487,8 +510,8 @@ export const loginCustomer = async (req: Request, res: Response) => {
       token,
     });
   } catch (error: any) {
-    console.error('❌ Login database error:', error);
-    return res.status(500).json({ error: error.message || 'Authentication failed' });
+    console.error('❌ Customer login error:', error);
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 };
 

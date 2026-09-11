@@ -364,8 +364,8 @@ export default function AccountPage() {
         router.push('/');
       }
     } catch (err: any) {
-      console.warn('Backend login error:', err);
-      setErrorMsg(err.message || 'Invalid email or password.');
+      console.error('Sign in error:', err);
+      setErrorMsg(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -397,13 +397,12 @@ export default function AccountPage() {
 
     setLoading(true);
     try {
-      const data = await AuthService.registerCustomer({ name, phone, email });
+      const data = await AuthService.registerCustomer({ name, phone, email, password });
       setCustomerProfile(data.user?.name || name, data.user?.phone || phone, data.user?.address || '');
       router.push('/');
     } catch (err: any) {
-      console.warn('Backend register fallback:', err);
-      setCustomerProfile(name, phone);
-      router.push('/');
+      console.error('Customer signup error:', err);
+      setErrorMsg(err.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -479,9 +478,35 @@ export default function AccountPage() {
 
             {/* Error Alert */}
             {errorMsg && (
-              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold text-left">
-                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
-                <span>{errorMsg}</span>
+              <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex flex-col gap-2 font-bold text-left">
+                <div className="flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                  <span>{errorMsg}</span>
+                </div>
+                {errorMsg.toLowerCase().includes('sign in') && authMode === 'SIGN_UP' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMsg('');
+                      setAuthMode('SIGN_IN');
+                    }}
+                    className="mt-1 self-start px-3 py-1.5 rounded-xl bg-rose-600 text-white text-[11px] font-extrabold hover:bg-rose-700 transition-colors shadow-sm"
+                  >
+                    Go to Sign In →
+                  </button>
+                )}
+                {errorMsg.toLowerCase().includes('sign up') && authMode === 'SIGN_IN' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMsg('');
+                      setAuthMode('SIGN_UP');
+                    }}
+                    className="mt-1 self-start px-3 py-1.5 rounded-xl bg-rose-600 text-white text-[11px] font-extrabold hover:bg-rose-700 transition-colors shadow-sm"
+                  >
+                    Go to Sign Up →
+                  </button>
+                )}
               </div>
             )}
 

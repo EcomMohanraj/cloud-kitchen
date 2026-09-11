@@ -450,7 +450,7 @@ export const AuthService = {
     fetchApi('/auth/customer/send-otp', { method: 'POST', body: JSON.stringify(payload) }),
   verifyCustomerOtp: (payload: { phone: string; otp: string; name?: string; address?: string }) =>
     fetchApi('/auth/customer/verify-otp', { method: 'POST', body: JSON.stringify(payload) }),
-  registerCustomer: (payload: { name: string; phone: string; email?: string; address?: string }) =>
+  registerCustomer: (payload: { name: string; phone: string; email?: string; password?: string; address?: string }) =>
     fetchApi('/auth/customer/register', { method: 'POST', body: JSON.stringify(payload) }),
   loginCustomer: (payload: { email?: string; phone?: string; name?: string; password?: string }) =>
     fetchApi('/auth/customer/login', { method: 'POST', body: JSON.stringify(payload) }),
