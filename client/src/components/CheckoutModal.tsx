@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle, Navigation, Loader2, Pencil, Save } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
-import { OrderService, AddressService, PaymentService, SettingsService } from '@/services/api';
+import { OrderService, AddressService, PaymentService, SettingsService, AuthService } from '@/services/api';
 import { useRouter } from 'next/navigation';
 import { validateDeliveryAddress } from '@/utils/addressValidation';
 
@@ -41,6 +41,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     customerPhone: storePhone,
     deliveryAddress: storeAddress,
     setCustomerProfile,
+    logoutCustomer,
     getCartSubtotal,
     clearCart,
   } = useCartStore();
@@ -56,6 +57,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [capturedCoords, setCapturedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
+
+  // Authentication Session Verification State
+  const [isVerifyingSession, setIsVerifyingSession] = useState(true);
+  const [isSessionAuthenticated, setIsSessionAuthenticated] = useState<boolean | null>(null);
 
   // Address Editing State
   const [editingAddressId, setEditingAddressId] = useState<string | null>(null);
@@ -237,6 +242,29 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     }
   }, [isOpen, storeName, storePhone, storeAddress]);
 
+  // Verify real server session authentication whenever checkout modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setIsVerifyingSession(true);
+      AuthService.verifySession()
+        .then((res) => {
+          if (res && res.authenticated) {
+            setIsSessionAuthenticated(true);
+          } else {
+            setIsSessionAuthenticated(false);
+            logoutCustomer();
+          }
+        })
+        .catch(() => {
+          setIsSessionAuthenticated(false);
+          logoutCustomer();
+        })
+        .finally(() => {
+          setIsVerifyingSession(false);
+        });
+    }
+  }, [isOpen, logoutCustomer]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen && !loading) {
@@ -251,8 +279,20 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen) return null;
 
-  // STRICT AUTHENTICATION GATE: Customer must be signed in to an account
-  if (!storeName || !storeName.trim()) {
+  // Render Spinner while verifying server authentication session
+  if (isVerifyingSession) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+        <div className="bg-white border border-emerald-100 rounded-3xl p-8 shadow-2xl flex flex-col items-center space-y-3">
+          <Loader2 className="w-8 h-8 text-emerald-600 animate-spin" />
+          <p className="text-sm font-bold text-slate-700">Verifying security session...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // STRICT AUTHENTICATION GATE: Customer must have a valid server auth session and signed-in profile
+  if (!isSessionAuthenticated || !storeName || !storeName.trim()) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
         <div className="relative w-full max-w-md bg-white border border-emerald-100 rounded-3xl shadow-2xl p-6 sm:p-8 text-center space-y-5">
