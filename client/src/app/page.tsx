@@ -9,6 +9,8 @@ import { MenuCard, MenuItemProps } from '@/components/MenuCard';
 import { CartDrawer } from '@/components/CartDrawer';
 import { CheckoutModal } from '@/components/CheckoutModal';
 import { PaymentModal } from '@/components/PaymentModal';
+import { ServiceAreaModal } from '@/components/ServiceAreaModal';
+import { SignInPromptModal } from '@/components/SignInPromptModal';
 import { useCartStore } from '@/store/cartStore';
 import { ScheduleService, MenuService, ReviewService } from '@/services/api';
 import { getSocket } from '@/services/socket';
@@ -28,7 +30,19 @@ function formatDateKey(d: Date): string {
 import { Footer } from '@/components/Footer';
 
 export default function StorefrontPage() {
-  const { selectedDate, selectedSlot, setSelectedDate, setSelectedSlot, getCartCount, getCartSubtotal, setIsCartOpen } = useCartStore();
+  const {
+    selectedDate,
+    selectedSlot,
+    setSelectedDate,
+    setSelectedSlot,
+    getCartCount,
+    getCartSubtotal,
+    setIsCartOpen,
+    isServiceAreaModalOpen,
+    setIsServiceAreaModalOpen,
+    isSignInPromptOpen,
+    setIsSignInPromptOpen,
+  } = useCartStore();
 
   const [scheduleList, setScheduleList] = useState<ScheduleDate[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
@@ -419,6 +433,16 @@ export default function StorefrontPage() {
 
       {/* Drawers & Modals */}
       <CartDrawer onProceedToCheckout={() => setIsCheckoutOpen(true)} />
+
+      <ServiceAreaModal
+        isOpen={isServiceAreaModalOpen}
+        onClose={() => setIsServiceAreaModalOpen(false)}
+      />
+
+      <SignInPromptModal
+        isOpen={isSignInPromptOpen}
+        onClose={() => setIsSignInPromptOpen(false)}
+      />
 
       <CheckoutModal
         isOpen={isCheckoutOpen}
