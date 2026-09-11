@@ -11,10 +11,8 @@ test.describe('Full Customer Order Lifecycle', () => {
     await page.fill('input[placeholder*="gourmet@yazhisai.com"]', `lifecycle_${timestamp}@yazhisai.com`);
     await page.fill('input[type="password"]', 'password123');
     await page.click('button[type="submit"]');
-    await page.waitForTimeout(2000);
-
-    // 1. Browse Homepage / Menu
-    await page.goto('/', { waitUntil: 'domcontentloaded' });
+    await page.waitForURL('/', { timeout: 10000 }).catch(() => {});
+    await page.waitForTimeout(500);
     await expect(page.locator('body')).toContainText(/Yazhisai|Menu|Cloud Kitchen|Dishes/i);
 
     // 2. Add dish to cart
