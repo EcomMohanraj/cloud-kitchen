@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
+import { sendPasswordResetEmail } from '../services/emailService';
 
 function getJwtSecret(): string {
   const secret = process.env.JWT_SECRET;
@@ -422,20 +423,44 @@ export const loginCustomer = async (req: Request, res: Response) => {
       }
     }
 
-    // 2. If no Admin match, check User (customer) table as normal
+    // 2. If no Admin match, check User (customer) table
+    const cleanEmail = email ? String(email).trim().toLowerCase() : undefined;
     const userPhone = phone ? String(phone).trim() : '9876543210';
     const userName = name || (email ? String(email).split('@')[0] : 'Valued Patron');
 
-    const user = await prisma.user.upsert({
-      where: { phone: userPhone },
-      update: {
-        name: userName,
-      },
-      create: {
-        phone: userPhone,
-        name: userName,
-      },
-    });
+    let user = cleanEmail ? await prisma.user.findFirst({ where: { email: cleanEmail } }) : null;
+    if (!user && phone) {
+      user = await prisma.user.findUnique({ where: { phone: userPhone } });
+    }
+
+    if (user && user.password && password) {
+      const isPasswordMatch = await bcrypt.compare(password, user.password);
+      if (!isPasswordMatch) {
+        return res.status(401).json({ error: 'Invalid email/phone or password.' });
+      }
+    }
+
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : undefined;
+
+    if (!user) {
+      user = await prisma.user.create({
+        data: {
+          phone: userPhone,
+          email: cleanEmail,
+          password: hashedPassword,
+          name: userName,
+        },
+      });
+    } else {
+      user = await prisma.user.update({
+        where: { id: user.id },
+        data: {
+          name: userName || user.name,
+          ...(cleanEmail && !user.email ? { email: cleanEmail } : {}),
+          ...(hashedPassword && !user.password ? { password: hashedPassword } : {}),
+        },
+      });
+    }
 
     const token = jwt.sign(
       { userId: user.id, phone: user.phone, role: 'CUSTOMER' },
@@ -453,7 +478,7 @@ export const loginCustomer = async (req: Request, res: Response) => {
       ...(isProd && { domain: '.yazhisaicloudkitchen.in' }),
     });
 
-    console.log('✅ Customer logged in and synced to PostgreSQL DB:', user);
+    console.log('✅ Customer logged in and synced to PostgreSQL DB:', user.phone);
 
     return res.json({
       success: true,
@@ -496,5 +521,114 @@ export const logoutAdmin = async (req: Request, res: Response) => {
   res.clearCookie('chef_token', cookieOpts);
   res.clearCookie('rider_token', cookieOpts);
   return res.json({ success: true, message: 'Logged out successfully' });
+};
+
+// ─── Customer Forgot Password & Reset Flow ──────────────────────────────────
+export const forgotPasswordCustomer = async (req: Request, res: Response) => {
+  try {
+    const { email } = req.body;
+
+    const GENERIC_RESPONSE = {
+      success: true,
+      message: 'If an account exists with this email address, a 6-digit password reset code has been sent.',
+    };
+
+    if (!email || typeof email !== 'string' || !email.includes('@')) {
+      return res.status(400).json({ error: 'Please enter a valid email address.' });
+    }
+
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if customer exists by email
+    const user = await prisma.user.findFirst({
+      where: { email: cleanEmail },
+    });
+
+    // SECURITY: Always return generic response even if email is not found to prevent email enumeration attacks
+    if (!user) {
+      console.log(`ℹ️ [Forgot Password] Email ${cleanEmail} not found in database. Returning generic response.`);
+      return res.json(GENERIC_RESPONSE);
+    }
+
+    // Generate 6-digit numeric OTP and set 10-minute expiry
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetOtp: otp,
+        resetOtpExpires: expiresAt,
+      },
+    });
+
+    // Email dispatch (Resend API or Console Fallback)
+    await sendPasswordResetEmail(cleanEmail, otp, user.name || undefined);
+
+    return res.json(GENERIC_RESPONSE);
+  } catch (error: any) {
+    console.error('❌ Forgot password controller error:', error);
+    return res.status(500).json({ error: 'Failed to process request. Please try again.' });
+  }
+};
+
+export const resetPasswordCustomer = async (req: Request, res: Response) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+
+    if (!email || !otp || !newPassword) {
+      return res.status(400).json({ error: 'Email, verification code, and new password are required.' });
+    }
+
+    const cleanEmail = String(email).trim().toLowerCase();
+    const cleanOtp = String(otp).trim();
+
+    if (cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
+      return res.status(400).json({ error: 'Please enter the complete 6-digit verification code.' });
+    }
+
+    if (typeof newPassword !== 'string' || newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long.' });
+    }
+
+    const user = await prisma.user.findFirst({
+      where: { email: cleanEmail },
+    });
+
+    if (!user || !user.resetOtp || !user.resetOtpExpires) {
+      return res.status(400).json({ error: 'Invalid or expired verification code.' });
+    }
+
+    if (user.resetOtp !== cleanOtp) {
+      return res.status(400).json({ error: 'Invalid verification code. Please check your email and try again.' });
+    }
+
+    if (user.resetOtpExpires < new Date()) {
+      return res.status(400).json({ error: 'Verification code has expired. Please request a new code.' });
+    }
+
+    // Hash the new password using bcrypt
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update password and invalidate the reset OTP
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetOtp: null,
+        resetOtpExpires: null,
+      },
+    });
+
+    console.log(`✅ Password reset successfully for customer: ${cleanEmail}`);
+
+    return res.json({
+      success: true,
+      message: 'Password reset successful. You can now sign in with your new password.',
+    });
+  } catch (error: any) {
+    console.error('❌ Reset password controller error:', error);
+    return res.status(500).json({ error: 'Failed to reset password. Please try again.' });
+  }
 };
 

@@ -454,6 +454,10 @@ export const AuthService = {
     fetchApi('/auth/customer/register', { method: 'POST', body: JSON.stringify(payload) }),
   loginCustomer: (payload: { email?: string; phone?: string; name?: string; password?: string }) =>
     fetchApi('/auth/customer/login', { method: 'POST', body: JSON.stringify(payload) }),
+  forgotPassword: (payload: { email: string }) =>
+    fetchApi('/auth/customer/forgot-password', { method: 'POST', body: JSON.stringify(payload) }),
+  resetPassword: (payload: { email: string; otp: string; newPassword: string }) =>
+    fetchApi('/auth/customer/reset-password', { method: 'POST', body: JSON.stringify(payload) }),
   verifySession: () => fetchApi('/auth', { method: 'GET' }),
   logout: () => fetchApi('/auth', { method: 'DELETE' }),
   logoutAdmin: () => fetchApi('/auth', { method: 'DELETE' }),

@@ -22,8 +22,10 @@ export default function LoginPage() {
   const router = useRouter();
   const { setCustomerProfile } = useCartStore();
 
-  // Mode: 'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN'
-  const [authMode, setAuthMode] = useState<'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN'>('PHONE_OTP');
+  // Mode: 'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'
+  const [authMode, setAuthMode] = useState<
+    'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'
+  >('PHONE_OTP');
 
   // Customer Phone & OTP State
   const [phone, setPhone] = useState('');
@@ -33,6 +35,12 @@ export default function LoginPage() {
   // Admin Email & Password State
   const [adminEmail, setAdminEmail] = useState('');
   const [adminPassword, setAdminPassword] = useState('');
+
+  // Forgot / Reset Password State
+  const [resetEmail, setResetEmail] = useState('');
+  const [resetOtp, setResetOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
 
   // Alerts & Progress
   const [loading, setLoading] = useState(false);
@@ -140,6 +148,79 @@ export default function LoginPage() {
     }
   };
 
+  // Forgot Password Step 1: Send Reset OTP to Email
+  const handleForgotPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+    setInfoMsg('');
+
+    const cleanEmail = resetEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await AuthService.forgotPassword({ email: cleanEmail });
+      setInfoMsg(res.message || 'If an account exists with this email address, a 6-digit password reset code has been sent.');
+      setAuthMode('FORGOT_PASSWORD_RESET');
+    } catch (err: any) {
+      console.warn('Forgot password request error:', err);
+      setErrorMsg(err.message || 'Failed to process password reset request. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Forgot Password Step 2: Verify Email OTP and Reset Password
+  const handleResetPasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMsg('');
+
+    const cleanOtp = resetOtp.trim();
+    if (!cleanOtp || cleanOtp.length !== 6 || !/^\d{6}$/.test(cleanOtp)) {
+      setErrorMsg('Please enter the complete 6-digit verification code.');
+      return;
+    }
+
+    if (!newPassword || newPassword.length < 6) {
+      setErrorMsg('New password must be at least 6 characters long.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setErrorMsg('Passwords do not match. Please verify your new password.');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const res = await AuthService.resetPassword({
+        email: resetEmail.trim().toLowerCase(),
+        otp: cleanOtp,
+        newPassword,
+      });
+
+      if (res.success) {
+        setInfoMsg(res.message || 'Password reset successful! You can now log in.');
+        setResetOtp('');
+        setNewPassword('');
+        setConfirmPassword('');
+        setAuthMode('PHONE_OTP');
+      } else {
+        setErrorMsg(res.error || 'Failed to reset password.');
+      }
+    } catch (err: any) {
+      console.warn('Reset password error:', err);
+      setErrorMsg(err.message || 'Invalid or expired verification code. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#fbf9f4] text-slate-900 font-sans flex flex-col justify-between">
       
@@ -184,7 +265,11 @@ export default function LoginPage() {
           
           <div>
             <span className="inline-block font-black text-[11px] uppercase tracking-widest text-[#059669] mb-2">
-              {authMode === 'ADMIN_LOGIN' ? 'ADMINISTRATOR PORTAL' : 'SECURE PHONE OTP AUTHENTICATION'}
+              {authMode === 'ADMIN_LOGIN'
+                ? 'ADMINISTRATOR PORTAL'
+                : authMode.startsWith('FORGOT_PASSWORD')
+                ? 'PASSWORD RECOVERY'
+                : 'SECURE PHONE OTP AUTHENTICATION'}
             </span>
 
             {authMode === 'PHONE_OTP' && (
@@ -216,6 +301,28 @@ export default function LoginPage() {
                 </h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
                   Kitchen Command Center Dashboard Access
+                </p>
+              </>
+            )}
+
+            {authMode === 'FORGOT_PASSWORD_EMAIL' && (
+              <>
+                <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight">
+                  Forgot Password?
+                </h1>
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  Enter your registered email to receive a password reset OTP
+                </p>
+              </>
+            )}
+
+            {authMode === 'FORGOT_PASSWORD_RESET' && (
+              <>
+                <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight">
+                  Reset Password
+                </h1>
+                <p className="text-xs text-slate-500 font-semibold mt-1">
+                  Enter code sent to {resetEmail} and your new password
                 </p>
               </>
             )}
@@ -280,6 +387,20 @@ export default function LoginPage() {
               >
                 {loading ? 'Sending Verification OTP...' : 'Send Verification OTP →'}
               </button>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-center text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg('');
+                    setInfoMsg('');
+                    setAuthMode('FORGOT_PASSWORD_EMAIL');
+                  }}
+                  className="text-slate-500 hover:text-[#059669] transition-colors"
+                >
+                  Forgot Password?
+                </button>
+              </div>
             </form>
           )}
 
@@ -375,7 +496,151 @@ export default function LoginPage() {
               >
                 {loading ? 'Authenticating Admin...' : 'Sign In as Admin'}
               </button>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-center text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg('');
+                    setInfoMsg('');
+                    setAuthMode('FORGOT_PASSWORD_EMAIL');
+                  }}
+                  className="text-slate-500 hover:text-[#059669] transition-colors"
+                >
+                  Forgot Password?
+                </button>
+              </div>
             </form>
+          )}
+
+          {/* FORGOT PASSWORD STEP 1: EMAIL INPUT */}
+          {authMode === 'FORGOT_PASSWORD_EMAIL' && (
+            <form onSubmit={handleForgotPasswordSubmit} className="space-y-4 text-left font-semibold">
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  REGISTERED EMAIL ADDRESS
+                </label>
+                <div className="relative">
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="email"
+                    required
+                    placeholder="customer@example.com"
+                    value={resetEmail}
+                    onChange={(e) => setResetEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
+              >
+                {loading ? 'Sending Reset Code...' : 'Send Reset Code →'}
+              </button>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg('');
+                    setInfoMsg('');
+                    setAuthMode('PHONE_OTP');
+                  }}
+                  className="text-slate-500 hover:text-slate-900"
+                >
+                  ← Back to Sign In
+                </button>
+              </div>
+            </form>
+          )}
+
+          {/* FORGOT PASSWORD STEP 2: VERIFY OTP & RESET PASSWORD */}
+          {authMode === 'FORGOT_PASSWORD_RESET' && (
+            <form onSubmit={handleResetPasswordSubmit} className="space-y-4 text-left font-semibold">
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  6-DIGIT VERIFICATION CODE
+                </label>
+                <div className="relative">
+                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="text"
+                    required
+                    placeholder="123456"
+                    maxLength={6}
+                    value={resetOtp}
+                    onChange={(e) => setResetOtp(e.target.value.replace(/\D/g, ''))}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-black tracking-widest text-center text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  NEW PASSWORD
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="password"
+                    required
+                    placeholder="Min 6 characters"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
+                  CONFIRM NEW PASSWORD
+                </label>
+                <div className="relative">
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <input
+                    type="password"
+                    required
+                    placeholder="Re-enter new password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
+              >
+                {loading ? 'Resetting Password...' : 'Reset Password & Sign In →'}
+              </button>
+
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorMsg('');
+                    setAuthMode('FORGOT_PASSWORD_EMAIL');
+                  }}
+                  className="text-slate-500 hover:text-slate-900"
+                >
+                  ← Change Email
+                </button>
+                <button
+                  type="button"
+                  onClick={handleForgotPasswordSubmit}
+                  className="text-[#059669] hover:underline"
+                >
+                  Resend Code
+                </button>
+              </div>
+            </form>
+          )}</form>
           )}
 
         </div>

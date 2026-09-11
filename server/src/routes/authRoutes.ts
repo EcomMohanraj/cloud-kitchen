@@ -8,6 +8,8 @@ import {
   loginCustomer,
   sendCustomerOtp,
   verifyCustomerOtp,
+  forgotPasswordCustomer,
+  resetPasswordCustomer,
 } from '../controllers/authController';
 
 import { loginLimiter } from '../middlewares/rateLimiter';
@@ -30,6 +32,10 @@ router.delete('/', logoutAdmin);
 // Customer OTP Authentication Endpoints
 router.post('/customer/send-otp', authLimiter, sendCustomerOtp);
 router.post('/customer/verify-otp', authLimiter, verifyCustomerOtp);
+
+// Customer Forgot & Reset Password Endpoints (Rate limited)
+router.post('/customer/forgot-password', loginLimiter, forgotPasswordCustomer);
+router.post('/customer/reset-password', loginLimiter, resetPasswordCustomer);
 
 // Legacy Customer & Unified Authentication Endpoints
 router.post('/customer/register', authLimiter, registerCustomer);
