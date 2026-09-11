@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import { LogIn, UserPlus, ShieldCheck, ArrowRight, Clock, MapPin, Sparkles, X } from 'lucide-react';
@@ -12,6 +12,24 @@ interface SignInPromptModalProps {
 
 export const SignInPromptModal: React.FC<SignInPromptModalProps> = ({ isOpen, onClose }) => {
   const router = useRouter();
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  // Auto-close popup after 10 seconds if user takes no action
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const timer = setTimeout(() => {
+      onCloseRef.current();
+    }, 10000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [isOpen]);
 
   if (!isOpen) return null;
 
@@ -24,6 +42,7 @@ export const SignInPromptModal: React.FC<SignInPromptModalProps> = ({ isOpen, on
     onClose();
     router.push('/register');
   };
+
 
   return (
     <AnimatePresence>
