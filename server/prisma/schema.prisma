@@ -8,14 +8,18 @@ datasource db {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  phone     String    @unique
-  name      String?
-  address   String?
-  addresses Address[]
-  orders    Order[]
-  reviews   Review[]
-  createdAt DateTime  @default(now())
+  id              String    @id @default(uuid())
+  phone           String    @unique
+  email           String?   @unique
+  password        String?
+  name            String?
+  address         String?
+  resetOtp        String?
+  resetOtpExpires DateTime?
+  addresses       Address[]
+  orders          Order[]
+  reviews         Review[]
+  createdAt       DateTime  @default(now())
 }
 
 model Address {
