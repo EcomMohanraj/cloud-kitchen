@@ -251,6 +251,61 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   if (!isOpen) return null;
 
+  // STRICT AUTHENTICATION GATE: Customer must be signed in to an account
+  if (!storeName || !storeName.trim()) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm">
+        <div className="relative w-full max-w-md bg-white border border-emerald-100 rounded-3xl shadow-2xl p-6 sm:p-8 text-center space-y-5">
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 rounded-xl bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+
+          <div className="mx-auto w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-lg shadow-emerald-600/30">
+            <ShieldCheck className="w-8 h-8 stroke-[2.2]" />
+          </div>
+
+          <div className="space-y-2">
+            <span className="inline-block px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200/80 text-emerald-800 text-[11px] font-black uppercase tracking-wider">
+              AUTHENTICATION REQUIRED
+            </span>
+            <h3 className="text-xl sm:text-2xl font-serif font-black text-slate-900 tracking-tight">
+              Sign In Required to Place Order
+            </h3>
+          </div>
+
+          <p className="text-xs sm:text-sm text-slate-600 font-semibold leading-relaxed">
+            You must be signed in to your Yazhisai account (Email & Password) before placing your order.
+          </p>
+
+          <div className="pt-2 flex flex-col gap-2.5">
+            <button
+              onClick={() => {
+                onClose();
+                router.push('/account');
+              }}
+              className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all hover:from-emerald-700 hover:to-teal-700"
+            >
+              <span>Sign In with Email & Password →</span>
+            </button>
+
+            <button
+              onClick={() => {
+                onClose();
+                router.push('/register');
+              }}
+              className="w-full py-3.5 px-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 font-extrabold text-sm flex items-center justify-center space-x-2 transition-all"
+            >
+              <span>Create New Account</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const subtotal = getCartSubtotal();
   const deliveryFee = subtotal > 500 ? 0 : configuredDeliveryFee;
   const grandTotal = subtotal + deliveryFee;

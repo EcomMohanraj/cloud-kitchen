@@ -449,9 +449,20 @@ export const Navbar: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
-                    PASSWORD
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                      PASSWORD
+                    </label>
+                    {authTab === 'SIGN_IN' && (
+                      <Link
+                        href="/account"
+                        onClick={() => setIsAuthModalOpen(false)}
+                        className="text-[10px] font-bold text-emerald-700 hover:underline"
+                      >
+                        Forgot Password?
+                      </Link>
+                    )}
+                  </div>
                   <div className="relative">
                     <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
                     <input
