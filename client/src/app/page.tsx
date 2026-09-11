@@ -42,7 +42,28 @@ export default function StorefrontPage() {
     setIsServiceAreaModalOpen,
     isSignInPromptOpen,
     setIsSignInPromptOpen,
+    isCustomerSignedIn,
   } = useCartStore();
+
+  // Sign-In Prompt Popup: 5-second timer on page load for unauthenticated guest visitors (once per session)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const signedIn = isCustomerSignedIn();
+    if (signedIn) return; // Skip timer completely if customer is authenticated
+
+    const hasSeenPrompt = sessionStorage.getItem('yazhisai_signin_prompt_seen');
+    if (hasSeenPrompt === 'true') return; // Skip if already shown in current session
+
+    const timer = setTimeout(() => {
+      if (!isCustomerSignedIn() && sessionStorage.getItem('yazhisai_signin_prompt_seen') !== 'true') {
+        sessionStorage.setItem('yazhisai_signin_prompt_seen', 'true');
+        setIsSignInPromptOpen(true);
+      }
+    }, 5000);
+
+    return () => clearTimeout(timer);
+  }, [isCustomerSignedIn, setIsSignInPromptOpen]);
 
   const [scheduleList, setScheduleList] = useState<ScheduleDate[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
@@ -440,7 +461,7 @@ export default function StorefrontPage() {
       />
 
       <SignInPromptModal
-        isOpen={isSignInPromptOpen}
+        isOpen={isSignInPromptOpen && !isServiceAreaModalOpen}
         onClose={() => setIsSignInPromptOpen(false)}
       />
 

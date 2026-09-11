@@ -3,20 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { Navbar } from '@/components/Navbar';
 import { CheckoutModal } from '@/components/CheckoutModal';
-import { SignInPromptModal } from '@/components/SignInPromptModal';
 import { useCartStore } from '@/store/cartStore';
 import { SettingsService } from '@/services/api';
 import Link from 'next/link';
 import { ShoppingBag, ArrowLeft, ShieldCheck } from 'lucide-react';
-import { useRouter } from 'next/navigation';
 
 export default function CheckoutPage() {
-  const router = useRouter();
-  const { cartItems, getCartSubtotal, isCustomerSignedIn, isSignInPromptOpen, setIsSignInPromptOpen } = useCartStore();
+  const { cartItems, getCartSubtotal } = useCartStore();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(true);
   const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
-
-  const isSignedIn = isCustomerSignedIn();
 
   useEffect(() => {
     SettingsService.getDeliveryFee()
@@ -31,14 +26,6 @@ export default function CheckoutPage() {
   const subtotal = getCartSubtotal();
   const deliveryFee = subtotal > 500 ? 0 : configuredDeliveryFee;
   const grandTotal = subtotal + deliveryFee;
-
-  const handleOpenCheckout = () => {
-    if (!isSignedIn) {
-      setIsSignInPromptOpen(true);
-    } else {
-      setIsCheckoutModalOpen(true);
-    }
-  };
 
   return (
     <div className="min-h-screen bg-[#fcfdfa] text-slate-900 font-sans">
@@ -86,7 +73,7 @@ export default function CheckoutPage() {
               Total items in tray: <span className="font-extrabold text-slate-900">{cartItems.length}</span> • Total Payable: <span className="font-black text-emerald-800">₹{grandTotal}</span>
             </p>
             <button
-              onClick={handleOpenCheckout}
+              onClick={() => setIsCheckoutModalOpen(true)}
               className="px-8 py-3.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm shadow-md shadow-emerald-600/25 hover:from-emerald-700 hover:to-teal-700 transition-all"
             >
               Open Checkout Window
@@ -95,16 +82,8 @@ export default function CheckoutPage() {
         )}
       </main>
 
-      <SignInPromptModal
-        isOpen={isSignInPromptOpen || (!isSignedIn && cartItems.length > 0 && isCheckoutModalOpen)}
-        onClose={() => {
-          setIsSignInPromptOpen(false);
-          setIsCheckoutModalOpen(false);
-        }}
-      />
-
       <CheckoutModal
-        isOpen={isCheckoutModalOpen && cartItems.length > 0 && isSignedIn}
+        isOpen={isCheckoutModalOpen && cartItems.length > 0}
         onClose={() => setIsCheckoutModalOpen(false)}
       />
     </div>
