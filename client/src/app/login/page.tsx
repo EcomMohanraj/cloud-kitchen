@@ -5,16 +5,13 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   UtensilsCrossed,
-  User,
   Mail,
   Lock,
-  Phone,
-  CheckCircle2,
   AlertCircle,
   KeyRound,
   ShieldCheck,
+  ArrowRight,
 } from 'lucide-react';
-import { Navbar } from '@/components/Navbar';
 import { useCartStore } from '@/store/cartStore';
 import { AuthService } from '@/services/api';
 
@@ -22,15 +19,14 @@ export default function LoginPage() {
   const router = useRouter();
   const { setCustomerProfile } = useCartStore();
 
-  // Mode: 'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'
+  // Mode: 'CUSTOMER_EMAIL_LOGIN' | 'ADMIN_LOGIN' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'
   const [authMode, setAuthMode] = useState<
-    'PHONE_OTP' | 'VERIFY_OTP' | 'ADMIN_LOGIN' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'
-  >('PHONE_OTP');
+    'CUSTOMER_EMAIL_LOGIN' | 'ADMIN_LOGIN' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'
+  >('CUSTOMER_EMAIL_LOGIN');
 
-  // Customer Phone & OTP State
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
-  const [otp, setOtp] = useState('');
+  // Customer Email & Password State
+  const [customerEmail, setCustomerEmail] = useState('');
+  const [customerPassword, setCustomerPassword] = useState('');
 
   // Admin Email & Password State
   const [adminEmail, setAdminEmail] = useState('');
@@ -47,69 +43,44 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState('');
   const [infoMsg, setInfoMsg] = useState('');
 
-  // Step 1: Send OTP to Customer Phone
-  const handleSendOtp = async (e: React.FormEvent) => {
+  // Customer Email + Password Sign In Handler
+  const handleCustomerSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
     setInfoMsg('');
 
-    const cleanPhone = phone.trim();
-    if (!cleanPhone || !/^[6-9]\d{9}$/.test(cleanPhone)) {
-      setErrorMsg('Please enter a valid 10-digit mobile number.');
+    const cleanEmail = customerEmail.trim().toLowerCase();
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      setErrorMsg('Please enter a valid email address.');
+      return;
+    }
+
+    if (!customerPassword) {
+      setErrorMsg('Password is required.');
       return;
     }
 
     setLoading(true);
 
     try {
-      const res = await AuthService.sendCustomerOtp({
-        phone: cleanPhone,
-        name: name.trim() || undefined,
-      });
-
-      if (res.success) {
-        setInfoMsg(`OTP dispatched to +91 ${cleanPhone}. (Dev Code: 123456)`);
-        setAuthMode('VERIFY_OTP');
-      } else {
-        setErrorMsg(res.error || 'Failed to dispatch OTP.');
-      }
-    } catch (err: any) {
-      console.warn('Send OTP error:', err);
-      setInfoMsg(`Enter 6-digit OTP code sent to +91 ${cleanPhone}.`);
-      setAuthMode('VERIFY_OTP');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Step 2: Verify OTP and Obtain Customer Session Token
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setErrorMsg('');
-
-    if (!otp || otp.trim().length !== 6) {
-      setErrorMsg('Please enter the complete 6-digit verification OTP code.');
-      return;
-    }
-
-    setLoading(true);
-
-    try {
-      const res = await AuthService.verifyCustomerOtp({
-        phone: phone.trim(),
-        otp: otp.trim(),
-        name: name.trim() || undefined,
+      const res = await AuthService.loginCustomer({
+        email: cleanEmail,
+        password: customerPassword,
       });
 
       if (res.success && res.user) {
-        setCustomerProfile(res.user.name || name || 'Customer', res.user.phone || phone, res.user.address || '');
+        setCustomerProfile(
+          res.user.name || cleanEmail.split('@')[0],
+          res.user.phone || '',
+          res.user.address || ''
+        );
         router.push('/');
       } else {
-        setErrorMsg(res.error || 'Invalid verification OTP code.');
+        setErrorMsg(res.error || 'Invalid email or password.');
       }
     } catch (err: any) {
-      console.warn('Verify OTP error:', err);
-      setErrorMsg(err.message || 'OTP verification failed. Please try again.');
+      console.warn('Customer Sign In error:', err);
+      setErrorMsg(err.message || 'Invalid email or password.');
     } finally {
       setLoading(false);
     }
@@ -209,7 +180,8 @@ export default function LoginPage() {
         setResetOtp('');
         setNewPassword('');
         setConfirmPassword('');
-        setAuthMode('PHONE_OTP');
+        setCustomerEmail(resetEmail.trim().toLowerCase());
+        setAuthMode('CUSTOMER_EMAIL_LOGIN');
       } else {
         setErrorMsg(res.error || 'Failed to reset password.');
       }
@@ -248,11 +220,11 @@ export default function LoginPage() {
                 onClick={() => {
                   setErrorMsg('');
                   setInfoMsg('');
-                  setAuthMode(authMode === 'ADMIN_LOGIN' ? 'PHONE_OTP' : 'ADMIN_LOGIN');
+                  setAuthMode(authMode === 'ADMIN_LOGIN' ? 'CUSTOMER_EMAIL_LOGIN' : 'ADMIN_LOGIN');
                 }}
                 className="px-4 py-2 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 font-extrabold text-xs transition-all border border-slate-300"
               >
-                {authMode === 'ADMIN_LOGIN' ? 'Customer OTP Login' : 'Admin Portal Access'}
+                {authMode === 'ADMIN_LOGIN' ? 'Customer Sign In' : 'Admin Portal Access'}
               </button>
             </div>
           </div>
@@ -269,27 +241,16 @@ export default function LoginPage() {
                 ? 'ADMINISTRATOR PORTAL'
                 : authMode.startsWith('FORGOT_PASSWORD')
                 ? 'PASSWORD RECOVERY'
-                : 'SECURE PHONE OTP AUTHENTICATION'}
+                : 'CUSTOMER ACCESS'}
             </span>
 
-            {authMode === 'PHONE_OTP' && (
+            {authMode === 'CUSTOMER_EMAIL_LOGIN' && (
               <>
                 <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight">
-                  Welcome to Yazhisai
+                  Welcome Back
                 </h1>
                 <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Enter your mobile number to receive a 6-digit OTP
-                </p>
-              </>
-            )}
-
-            {authMode === 'VERIFY_OTP' && (
-              <>
-                <h1 className="text-3xl font-serif font-black text-slate-900 tracking-tight">
-                  Verify OTP Code
-                </h1>
-                <p className="text-xs text-slate-500 font-semibold mt-1">
-                  Enter code sent to +91 {phone}
+                  Sign in with your email & password
                 </p>
               </>
             )}
@@ -343,38 +304,52 @@ export default function LoginPage() {
             </div>
           )}
 
-          {/* STEP 1: PHONE NUMBER INPUT */}
-          {authMode === 'PHONE_OTP' && (
-            <form onSubmit={handleSendOtp} className="space-y-4 text-left font-semibold">
+          {/* DEFAULT FORM: CUSTOMER EMAIL + PASSWORD SIGN IN */}
+          {authMode === 'CUSTOMER_EMAIL_LOGIN' && (
+            <form onSubmit={handleCustomerSignIn} className="space-y-4 text-left font-semibold">
               <div>
                 <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  YOUR NAME (OPTIONAL)
+                  EMAIL ADDRESS
                 </label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
-                    type="text"
-                    placeholder="e.g. Ramesh Kumar"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    type="email"
+                    required
+                    placeholder="customer@example.com"
+                    value={customerEmail}
+                    onChange={(e) => setCustomerEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  MOBILE NUMBER
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider">
+                    PASSWORD
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMsg('');
+                      setInfoMsg('');
+                      setResetEmail(customerEmail);
+                      setAuthMode('FORGOT_PASSWORD_EMAIL');
+                    }}
+                    className="text-[11px] font-bold text-[#059669] hover:underline"
+                  >
+                    Forgot Password?
+                  </button>
+                </div>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
+                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                   <input
-                    type="tel"
+                    type="password"
                     required
-                    placeholder="9876543210"
-                    maxLength={10}
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
+                    placeholder="••••••••"
+                    value={customerPassword}
+                    onChange={(e) => setCustomerPassword(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
                   />
                 </div>
@@ -383,71 +358,16 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
+                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all flex items-center justify-center space-x-2 mt-2"
               >
-                {loading ? 'Sending Verification OTP...' : 'Send Verification OTP →'}
+                <span>{loading ? 'Signing In...' : 'Sign In →'}</span>
               </button>
 
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-center text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorMsg('');
-                    setInfoMsg('');
-                    setAuthMode('FORGOT_PASSWORD_EMAIL');
-                  }}
-                  className="text-slate-500 hover:text-[#059669] transition-colors"
-                >
-                  Forgot Password?
-                </button>
-              </div>
-            </form>
-          )}
-
-          {/* STEP 2: VERIFY OTP INPUT */}
-          {authMode === 'VERIFY_OTP' && (
-            <form onSubmit={handleVerifyOtp} className="space-y-4 text-left font-semibold">
-              <div>
-                <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1.5">
-                  ENTER 6-DIGIT OTP
-                </label>
-                <div className="relative">
-                  <KeyRound className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
-                  <input
-                    type="text"
-                    required
-                    placeholder="123456"
-                    maxLength={6}
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                    className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-black tracking-widest text-center text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
-                  />
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 rounded-2xl bg-[#059669] hover:bg-[#047857] text-white font-extrabold text-sm shadow-md shadow-emerald-700/20 transition-all"
-              >
-                {loading ? 'Verifying OTP Code...' : 'Verify OTP & Log In'}
-              </button>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => setAuthMode('PHONE_OTP')}
-                  className="text-slate-500 hover:text-slate-900"
-                >
-                  ← Change Number
-                </button>
-                <button
-                  type="button"
-                  onClick={handleSendOtp}
-                  className="text-[#059669] hover:underline"
-                >
-                  Resend OTP
-                </button>
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-center text-xs font-bold text-slate-600">
+                <span>Don't have an account?</span>
+                <Link href="/register" className="ml-1.5 text-[#059669] hover:underline font-extrabold">
+                  Register Here
+                </Link>
               </div>
             </form>
           )}
@@ -496,20 +416,6 @@ export default function LoginPage() {
               >
                 {loading ? 'Authenticating Admin...' : 'Sign In as Admin'}
               </button>
-
-              <div className="pt-3 border-t border-slate-100 flex items-center justify-center text-xs font-bold">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setErrorMsg('');
-                    setInfoMsg('');
-                    setAuthMode('FORGOT_PASSWORD_EMAIL');
-                  }}
-                  className="text-slate-500 hover:text-[#059669] transition-colors"
-                >
-                  Forgot Password?
-                </button>
-              </div>
             </form>
           )}
 
@@ -547,7 +453,7 @@ export default function LoginPage() {
                   onClick={() => {
                     setErrorMsg('');
                     setInfoMsg('');
-                    setAuthMode('PHONE_OTP');
+                    setAuthMode('CUSTOMER_EMAIL_LOGIN');
                   }}
                   className="text-slate-500 hover:text-slate-900"
                 >
