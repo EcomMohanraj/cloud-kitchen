@@ -2,9 +2,8 @@ import { Request, Response } from 'express';
 import Razorpay from 'razorpay';
 import crypto from 'crypto';
 import { prisma } from '../config/db';
-import { emitOrderStatusUpdated } from '../socket';
+import { emitNewOrder, emitOrderStatusUpdated } from '../socket';
 import { sendOrderConfirmedEmail } from '../services/emailService';
-
 
 function getRazorpayInstance() {
   const key_id = process.env.RAZORPAY_KEY_ID;
@@ -188,6 +187,19 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
     // Step 6: Idempotent DB update to PAID
     let updatedOrder = targetOrder;
     if (targetOrder.paymentStatus !== 'PAID') {
+      const isFirstConfirmation =
+        targetOrder.paymentStatus === 'PAYMENT_PENDING' ||
+        targetOrder.orderStatus === 'PAYMENT_PENDING' ||
+        targetOrder.orderStatus === 'PENDING' ||
+        targetOrder.paymentStatus === 'FAILED' ||
+        targetOrder.orderStatus === 'PAYMENT_FAILED';
+
+      if (targetOrder.orderStatus === 'PAYMENT_FAILED' || targetOrder.paymentStatus === 'FAILED') {
+        console.warn(
+          `⚠️ [RECOVERY ALERT] Order ${targetOrder.id} (${targetOrder.orderNumber}) was previously marked PAYMENT_FAILED, but payment was subsequently verified as PAID via Razorpay! Auto-recovering order to ACCEPTED & PAID.`
+        );
+      }
+
       updatedOrder = await prisma.order.update({
         where: { id: targetOrder.id },
         data: {
@@ -200,6 +212,10 @@ export const verifyRazorpayPayment = async (req: Request, res: Response) => {
         },
         include: { items: true, user: true },
       });
+
+      if (isFirstConfirmation) {
+        emitNewOrder(updatedOrder);
+      }
       emitOrderStatusUpdated(updatedOrder);
       // Fire-and-forget non-blocking order confirmation email
       sendOrderConfirmedEmail(updatedOrder).catch((err) =>
@@ -289,6 +305,19 @@ export const handleRazorpayWebhook = async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Webhook payment amount mismatch' });
           }
 
+          const isFirstConfirmation =
+            dbOrder.paymentStatus === 'PAYMENT_PENDING' ||
+            dbOrder.orderStatus === 'PAYMENT_PENDING' ||
+            dbOrder.orderStatus === 'PENDING' ||
+            dbOrder.paymentStatus === 'FAILED' ||
+            dbOrder.orderStatus === 'PAYMENT_FAILED';
+
+          if (dbOrder.orderStatus === 'PAYMENT_FAILED' || dbOrder.paymentStatus === 'FAILED') {
+            console.warn(
+              `⚠️ [RECOVERY ALERT] Order ${dbOrder.id} (${dbOrder.orderNumber}) was previously marked PAYMENT_FAILED, but payment was subsequently verified as PAID via webhook! Auto-recovering order to ACCEPTED & PAID.`
+            );
+          }
+
           const updatedOrder = await prisma.order.update({
             where: { id: dbOrder.id },
             data: {
@@ -300,6 +329,9 @@ export const handleRazorpayWebhook = async (req: Request, res: Response) => {
             include: { items: true, user: true },
           });
 
+          if (isFirstConfirmation) {
+            emitNewOrder(updatedOrder);
+          }
           emitOrderStatusUpdated(updatedOrder);
           console.log(`✅ [Webhook] Successfully updated Order ${dbOrder.id} to PAID via webhook`);
           // Fire-and-forget non-blocking order confirmation email
@@ -310,11 +342,65 @@ export const handleRazorpayWebhook = async (req: Request, res: Response) => {
           console.warn(`⚠️ [Webhook] No local order found for razorpayOrderId: ${rzpOrderId}`);
         }
       }
+    } else if (event === 'payment.failed') {
+      const rzpOrderId = payload?.payment?.entity?.order_id || payload?.order?.entity?.id;
+      if (rzpOrderId) {
+        const dbOrder = await prisma.order.findFirst({
+          where: { razorpayOrderId: rzpOrderId },
+        });
+
+        if (dbOrder && dbOrder.paymentStatus !== 'PAID') {
+          await prisma.order.update({
+            where: { id: dbOrder.id },
+            data: {
+              paymentStatus: 'FAILED',
+              orderStatus: 'PAYMENT_FAILED',
+            },
+          });
+          console.log(`ℹ️ [Webhook] Marked order ${dbOrder.id} (${rzpOrderId}) as PAYMENT_FAILED due to payment.failed event.`);
+        }
+      }
     }
 
     return res.json({ success: true, message: 'Webhook processed successfully' });
   } catch (error: any) {
     console.error('❌ Error processing Razorpay webhook:', error);
     return res.status(500).json({ error: error.message || 'Webhook processing failed' });
+  }
+};
+
+// 4. Cancel Razorpay Payment (Customer closed modal or payment failed)
+export const cancelRazorpayPayment = async (req: Request, res: Response) => {
+  try {
+    const { orderId } = req.body;
+    if (!orderId) {
+      return res.status(400).json({ error: 'Order ID is required' });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: String(orderId) },
+    });
+
+    if (!order) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    if (order.paymentStatus === 'PAID') {
+      return res.status(400).json({ error: 'Cannot cancel an order that is already paid.' });
+    }
+
+    const updatedOrder = await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        paymentStatus: 'FAILED',
+        orderStatus: 'PAYMENT_FAILED',
+      },
+    });
+
+    console.log(`ℹ️ Marked order ${order.id} as PAYMENT_FAILED due to customer cancellation / payment failure.`);
+    return res.json({ success: true, order: updatedOrder });
+  } catch (error: any) {
+    console.error('Error cancelling payment order:', error);
+    return res.status(500).json({ error: error.message || 'Failed to cancel payment' });
   }
 };

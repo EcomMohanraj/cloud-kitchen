@@ -5,7 +5,7 @@ import { emitNewOrder, emitOrderStatusUpdated } from '../socket';
 import { validateDeliveryAddress } from '../utils/addressValidation';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendCodOrderConfirmedEmail, sendOrderDeliveredEmail } from '../services/emailService';
-
+import { cleanupAbandonedOrders } from '../services/orderCleanupService';
 
 const orderItemSchema = z.object({
   menuItemId: z.string().min(1, 'Invalid menu item'),
@@ -75,7 +75,9 @@ export const getOrders = async (req: any, res: Response) => {
     }
 
     // 2. Orders List Query
-    const whereClause: any = {};
+    const whereClause: any = {
+      orderStatus: { notIn: ['PAYMENT_PENDING', 'PAYMENT_FAILED'] },
+    };
 
     if (userRole === 'CUSTOMER') {
       const customerPhone = req.user.phone;
@@ -255,6 +257,10 @@ export const createOrder = async (req: Request, res: Response) => {
       create: { phone: validated.customerPhone, name: validated.customerName, address: validated.deliveryAddress },
     });
 
+    const isOnline = validated.paymentMethod === 'ONLINE';
+    const initialPaymentStatus = isOnline ? 'PAYMENT_PENDING' : 'PENDING';
+    const initialOrderStatus = isOnline ? 'PAYMENT_PENDING' : 'PENDING';
+
     const newOrder = await prisma.order.create({
       data: {
         orderNumber,
@@ -267,8 +273,8 @@ export const createOrder = async (req: Request, res: Response) => {
         slotType: validated.slotType,
         preferredTime: validated.preferredTime || 'Standard Delivery',
         paymentMethod: validated.paymentMethod,
-        paymentStatus: 'PENDING',
-        orderStatus: 'PENDING',
+        paymentStatus: initialPaymentStatus,
+        orderStatus: initialOrderStatus,
         subtotal,
         deliveryFee,
         totalAmount,
@@ -282,7 +288,12 @@ export const createOrder = async (req: Request, res: Response) => {
       },
     });
 
-    emitNewOrder(newOrder);
+    if (newOrder.paymentMethod === 'COD') {
+      emitNewOrder(newOrder);
+      sendCodOrderConfirmedEmail(newOrder).catch((err) =>
+        console.warn('⚠️ [Resend] Non-blocking COD order confirmation email error:', err)
+      );
+    }
 
     if (newOrder.paymentMethod === 'COD') {
       sendCodOrderConfirmedEmail(newOrder).catch((err) =>
@@ -455,5 +466,30 @@ export const markCashCollected = async (req: AuthRequest, res: Response) => {
   } catch (error: any) {
     console.error('Mark cash collected controller error:', error);
     return res.status(400).json({ error: error.message || 'Failed to mark cash collected' });
+  }
+};
+
+// ─── External Cron Endpoint for Render Free Tier ──────────────────────────────
+export const triggerCleanupEndpoint = async (req: Request, res: Response) => {
+  try {
+    const cronSecret = process.env.CRON_SECRET;
+    const clientHeaderSecret = req.headers['x-cron-secret'];
+
+    if (cronSecret && clientHeaderSecret !== cronSecret) {
+      return res.status(401).json({ error: 'Unauthorized cron request. Invalid x-cron-secret header.' });
+    }
+
+    const count = await cleanupAbandonedOrders();
+    console.log(`⏰ [CronEndpoint] Triggered cleanup via external endpoint. Expired ${count} abandoned orders.`);
+
+    return res.json({
+      success: true,
+      message: 'Abandoned order cleanup triggered successfully',
+      expiredCount: count,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (error: any) {
+    console.error('Trigger cleanup endpoint error:', error);
+    return res.status(500).json({ error: error.message || 'Failed to execute cleanup' });
   }
 };

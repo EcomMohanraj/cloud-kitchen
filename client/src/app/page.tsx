@@ -10,7 +10,6 @@ import { CartDrawer } from '@/components/CartDrawer';
 import { CheckoutModal } from '@/components/CheckoutModal';
 import { PaymentModal } from '@/components/PaymentModal';
 import { ServiceAreaModal } from '@/components/ServiceAreaModal';
-import { SignInPromptModal } from '@/components/SignInPromptModal';
 import { useCartStore } from '@/store/cartStore';
 import { ScheduleService, MenuService, ReviewService } from '@/services/api';
 import { getSocket } from '@/services/socket';
@@ -40,30 +39,8 @@ export default function StorefrontPage() {
     setIsCartOpen,
     isServiceAreaModalOpen,
     setIsServiceAreaModalOpen,
-    isSignInPromptOpen,
-    setIsSignInPromptOpen,
     isCustomerSignedIn,
   } = useCartStore();
-
-  // Sign-In Prompt Popup: 5-second timer on page load for unauthenticated guest visitors (once per session)
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const signedIn = isCustomerSignedIn();
-    if (signedIn) return; // Skip timer completely if customer is authenticated
-
-    const hasSeenPrompt = sessionStorage.getItem('yazhisai_signin_prompt_seen');
-    if (hasSeenPrompt === 'true') return; // Skip if already shown in current session
-
-    const timer = setTimeout(() => {
-      if (!isCustomerSignedIn() && sessionStorage.getItem('yazhisai_signin_prompt_seen') !== 'true') {
-        sessionStorage.setItem('yazhisai_signin_prompt_seen', 'true');
-        setIsSignInPromptOpen(true);
-      }
-    }, 5000);
-
-    return () => clearTimeout(timer);
-  }, [isCustomerSignedIn, setIsSignInPromptOpen]);
 
   const [scheduleList, setScheduleList] = useState<ScheduleDate[]>([]);
   const [scheduleLoading, setScheduleLoading] = useState(true);
@@ -458,11 +435,6 @@ export default function StorefrontPage() {
       <ServiceAreaModal
         isOpen={isServiceAreaModalOpen}
         onClose={() => setIsServiceAreaModalOpen(false)}
-      />
-
-      <SignInPromptModal
-        isOpen={isSignInPromptOpen && !isServiceAreaModalOpen}
-        onClose={() => setIsSignInPromptOpen(false)}
       />
 
       <CheckoutModal

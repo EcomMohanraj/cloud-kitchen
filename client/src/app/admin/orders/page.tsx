@@ -198,6 +198,9 @@ export default function AdminOrdersPage() {
   });
 
   const filteredOrders = dateAndSlotFilteredOrders.filter((o) => {
+    if (['PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(o.orderStatus)) {
+      return false;
+    }
     if (statusTab === 'ACTIVE') {
       return ['PENDING', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.orderStatus);
     }

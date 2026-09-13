@@ -320,6 +320,11 @@ export const OrderService = {
       result = result.filter((o) => o.customerPhone === filters.phone);
     }
 
+    // Exclude unconfirmed PAYMENT_PENDING / PAYMENT_FAILED orders from general list views
+    if (!filters?.id) {
+      result = result.filter((o) => o.orderStatus !== 'PAYMENT_PENDING' && o.orderStatus !== 'PAYMENT_FAILED');
+    }
+
     // Sort newest first
     result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
@@ -360,9 +365,11 @@ export const OrderService = {
       };
     }
 
-    // Save to local store
-    const stored = getStoredOrders();
-    saveStoredOrders([createdOrder, ...stored]);
+    // Only save to local store if order is confirmed (not PAYMENT_PENDING or PAYMENT_FAILED)
+    if (createdOrder && createdOrder.orderStatus !== 'PAYMENT_PENDING' && createdOrder.orderStatus !== 'PAYMENT_FAILED') {
+      const stored = getStoredOrders();
+      saveStoredOrders([createdOrder, ...stored]);
+    }
 
     return { order: createdOrder };
   },
@@ -473,6 +480,8 @@ export const PaymentService = {
     fetchApi('/payment/create-order', { method: 'POST', body: JSON.stringify({ amount, orderId }) }),
   verifyPayment: (payload: { orderId: string; razorpayOrderId: string; razorpayPaymentId: string; razorpaySignature: string }) =>
     fetchApi('/payment/verify', { method: 'POST', body: JSON.stringify(payload) }),
+  cancelPayment: (orderId: string) =>
+    fetchApi('/payment/cancel', { method: 'POST', body: JSON.stringify({ orderId }) }),
 };
 
 export const AddressService = {
