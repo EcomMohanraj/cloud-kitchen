@@ -105,6 +105,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
           ondismiss: function () {
             setStep('SELECT');
             setLoading(false);
+            if (targetOrder?.id) {
+              PaymentService.cancelPayment(targetOrder.id).catch(() => {});
+            }
           },
         },
         prefill: {
@@ -121,6 +124,9 @@ export const PaymentModal: React.FC<PaymentModalProps> = ({ order, orderDetails,
         alert(`Payment Failed: ${resp.error?.description || 'Declined'}`);
         setStep('SELECT');
         setLoading(false);
+        if (targetOrder?.id) {
+          PaymentService.cancelPayment(targetOrder.id).catch(() => {});
+        }
       });
       rzp.open();
     } catch (err: any) {

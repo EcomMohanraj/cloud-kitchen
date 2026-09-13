@@ -475,6 +475,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             ondismiss: function () {
               setLoading(false);
               setErrorMsg('Payment cancelled. You can retry payment or switch to Cash on Delivery.');
+              if (createdOrder?.id) {
+                PaymentService.cancelPayment(createdOrder.id).catch(() => {});
+              }
             },
           },
           prefill: {
@@ -490,6 +493,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         rzp.on('payment.failed', function (resp: any) {
           setLoading(false);
           setErrorMsg(`Payment Failed: ${resp.error?.description || 'Transaction declined'}`);
+          if (createdOrder?.id) {
+            PaymentService.cancelPayment(createdOrder.id).catch(() => {});
+          }
         });
         rzp.open();
       } catch (rzpErr: any) {

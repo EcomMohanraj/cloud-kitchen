@@ -99,3 +99,18 @@ export const sendPasswordResetEmail = async (
     return { success: false, error: err.message || 'Failed to dispatch email' };
   }
 };
+
+export const sendOrderConfirmedEmail = async (order: any): Promise<{ success: boolean }> => {
+  console.log(`📧 [emailService] sendOrderConfirmedEmail called for order ${order?.orderNumber || order?.id}`);
+  return { success: true };
+};
+
+export const sendCodOrderConfirmedEmail = async (order: any): Promise<{ success: boolean }> => {
+  console.log(`📧 [emailService] sendCodOrderConfirmedEmail called for order ${order?.orderNumber || order?.id}`);
+  return { success: true };
+};
+
+export const sendOrderDeliveredEmail = async (order: any): Promise<{ success: boolean }> => {
+  console.log(`📧 [emailService] sendOrderDeliveredEmail called for order ${order?.orderNumber || order?.id}`);
+  return { success: true };
+};

@@ -18,6 +18,7 @@ import adminRoutes from './routes/adminRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import webhookRoutes from './routes/webhookRoutes';
 import { initSocket } from './socket';
+import { startOrderCleanupJob } from './services/orderCleanupService';
 
 dotenv.config();
 
@@ -112,4 +113,5 @@ app.get('/health', (req, res) => {
 
 httpServer.listen(PORT, () => {
   console.log(`🚀 Yazhisai Cloud Kitchen Express Server + Socket.io running on port ${PORT}`);
+  startOrderCleanupJob();
 });
