@@ -548,11 +548,17 @@ export const ReviewService = {
 };
 
 export const SettingsService = {
-  getDeliveryFee: () => fetchApi('/admin/settings/delivery-fee'),
-  updateDeliveryFee: (defaultDeliveryFee: number) =>
-    fetchApi('/admin/settings/delivery-fee', {
-      method: 'PATCH',
-      body: JSON.stringify({ defaultDeliveryFee }),
+  getStoreSettings: () => fetchApi('/settings'),
+  updateStoreSettings: (settings: {
+    defaultDeliveryFee?: number;
+    enableDeliveryFee?: boolean;
+    defaultPackingFee?: number;
+    enablePackingFee?: boolean;
+    minOrderValue?: number;
+  }) =>
+    fetchApi('/settings', {
+      method: 'PUT',
+      body: JSON.stringify(settings),
     }),
 };
 

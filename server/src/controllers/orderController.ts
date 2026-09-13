@@ -241,14 +241,28 @@ export const createOrder = async (req: Request, res: Response) => {
       });
     }
 
-    const feeSetting = await prisma.settings.findUnique({
-      where: { key: 'defaultDeliveryFee' },
+    // Fetch Store Settings from database
+    const settingsList = await prisma.settings.findMany({
+      where: { key: { in: ['defaultDeliveryFee', 'enableDeliveryFee', 'defaultPackingFee', 'enablePackingFee', 'minOrderValue'] } },
     });
-    const baseDeliveryFee = feeSetting ? parseFloat(feeSetting.value) : 40;
-    const defaultDeliveryFee = isNaN(baseDeliveryFee) ? 40 : baseDeliveryFee;
+    const settingsMap = new Map(settingsList.map((s) => [s.key, s.value]));
 
-    const deliveryFee = subtotal > 500 ? 0 : defaultDeliveryFee;
-    const totalAmount = subtotal + deliveryFee;
+    const minOrderVal = settingsMap.has('minOrderValue') ? parseFloat(settingsMap.get('minOrderValue')!) : 100;
+    if (subtotal < minOrderVal) {
+      return res.status(400).json({
+        error: `Minimum order value is ₹${minOrderVal}. Current subtotal is ₹${subtotal}.`,
+      });
+    }
+
+    const enableDel = settingsMap.has('enableDeliveryFee') ? settingsMap.get('enableDeliveryFee') === 'true' : true;
+    const baseDelFee = settingsMap.has('defaultDeliveryFee') ? parseFloat(settingsMap.get('defaultDeliveryFee')!) : 40;
+    const deliveryFee = !enableDel || subtotal > 500 ? 0 : (isNaN(baseDelFee) ? 40 : baseDelFee);
+
+    const enablePack = settingsMap.has('enablePackingFee') ? settingsMap.get('enablePackingFee') === 'true' : true;
+    const basePackFee = settingsMap.has('defaultPackingFee') ? parseFloat(settingsMap.get('defaultPackingFee')!) : 15;
+    const packingFee = !enablePack ? 0 : (isNaN(basePackFee) ? 15 : basePackFee);
+
+    const totalAmount = subtotal + deliveryFee + packingFee;
     const orderNumber = `ORD-YZH-${Math.floor(1000 + Math.random() * 9000)}`;
 
     const user = await prisma.user.upsert({

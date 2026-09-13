@@ -15,10 +15,20 @@ test.describe('Full Customer Order Lifecycle', () => {
     await page.waitForTimeout(500);
     await expect(page.locator('body')).toContainText(/Yazhisai|Menu|Cloud Kitchen|Dishes/i);
 
-    // 2. Add dish to cart
+    // 2. Add dish to cart (ensuring subtotal >= ₹100 for min order value requirement)
     const addButton = page.locator('button:has-text("ADD +"), button:has-text("ADD")').first();
     if (await addButton.isVisible()) {
       await addButton.click();
+      await page.waitForTimeout(300);
+      const plusButton = page.locator('button:has-text("+")').first();
+      if (await plusButton.isVisible()) {
+        await plusButton.click();
+      } else {
+        const secondAddBtn = page.locator('button:has-text("ADD +"), button:has-text("ADD")').nth(1);
+        if (await secondAddBtn.isVisible()) {
+          await secondAddBtn.click();
+        }
+      }
     }
 
     // 3. Navigate to Checkout Page

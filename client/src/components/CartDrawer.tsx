@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Trash2, Plus, Minus, Calendar, ShoppingBag, ArrowRight, ShieldCheck, CreditCard, Banknote, Sparkles, CheckCircle2 } from 'lucide-react';
+import { X, Trash2, Plus, Minus, Calendar, ShoppingBag, ArrowRight, ShieldCheck, CreditCard, Banknote, Sparkles, CheckCircle2, AlertTriangle } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { SettingsService } from '@/services/api';
 
@@ -27,13 +27,21 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
 
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'COD'>('ONLINE');
   const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
+  const [enableDeliveryFee, setEnableDeliveryFee] = useState<boolean>(true);
+  const [configuredPackingFee, setConfiguredPackingFee] = useState<number>(15);
+  const [enablePackingFee, setEnablePackingFee] = useState<boolean>(true);
+  const [minOrderValue, setMinOrderValue] = useState<number>(100);
 
   useEffect(() => {
     if (isCartOpen) {
-      SettingsService.getDeliveryFee()
+      SettingsService.getStoreSettings()
         .then((res) => {
-          if (res && res.defaultDeliveryFee !== undefined) {
-            setConfiguredDeliveryFee(res.defaultDeliveryFee);
+          if (res) {
+            if (res.defaultDeliveryFee !== undefined) setConfiguredDeliveryFee(res.defaultDeliveryFee);
+            if (res.enableDeliveryFee !== undefined) setEnableDeliveryFee(res.enableDeliveryFee);
+            if (res.defaultPackingFee !== undefined) setConfiguredPackingFee(res.defaultPackingFee);
+            if (res.enablePackingFee !== undefined) setEnablePackingFee(res.enablePackingFee);
+            if (res.minOrderValue !== undefined) setMinOrderValue(res.minOrderValue);
           }
         })
         .catch(() => {});
@@ -43,9 +51,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
   if (!isCartOpen) return null;
 
   const subtotal = getCartSubtotal();
-  const deliveryFee = subtotal > 500 || subtotal === 0 ? 0 : configuredDeliveryFee;
-  const packagingFee = subtotal > 0 ? 15 : 0;
+  const deliveryFee = !enableDeliveryFee || subtotal > 500 || subtotal === 0 ? 0 : configuredDeliveryFee;
+  const packagingFee = !enablePackingFee || subtotal === 0 ? 0 : configuredPackingFee;
   const grandTotal = subtotal + deliveryFee + packagingFee;
+  const isSubtotalBelowMin = subtotal > 0 && subtotal < minOrderValue;
 
   const formatDateString = (dateStr: string) => {
     if (!dateStr) return '';
@@ -229,13 +238,25 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
 
                 <div className="flex justify-between text-slate-600 font-medium">
                   <span>Standard Packaging Charge</span>
-                  <span className="font-bold text-slate-900">₹{packagingFee}</span>
+                  <span>
+                    {!enablePackingFee ? (
+                      <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        OFF (₹0)
+                      </span>
+                    ) : (
+                      <span className="font-bold text-slate-900">₹{packagingFee}</span>
+                    )}
+                  </span>
                 </div>
 
                 <div className="flex justify-between text-slate-600 font-medium">
                   <span>Delivery Charge</span>
                   <span>
-                    {deliveryFee === 0 ? (
+                    {!enableDeliveryFee ? (
+                      <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        OFF (₹0)
+                      </span>
+                    ) : deliveryFee === 0 ? (
                       <span className="text-emerald-700 font-black bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                         FREE (Order &gt; ₹500)
                       </span>
@@ -251,6 +272,14 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                 </div>
               </div>
 
+              {/* Minimum Order Warning Banner */}
+              {isSubtotalBelowMin && (
+                <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs flex items-center gap-2 font-bold">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600" />
+                  <span>Minimum order value is ₹{minOrderValue}. Add ₹{minOrderValue - subtotal} more items to proceed.</span>
+                </div>
+              )}
+
               {/* Actions */}
               <div className="flex space-x-3 pt-1">
                 <button
@@ -260,11 +289,12 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onProceedToCheckout }) =
                   Clear
                 </button>
                 <button
+                  disabled={isSubtotalBelowMin}
                   onClick={() => {
                     setIsCartOpen(false);
                     onProceedToCheckout();
                   }}
-                  className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-mint-500 hover:from-emerald-700 hover:to-mint-600 text-white font-black text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all active:scale-98"
+                  className="flex-1 py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 via-emerald-600 to-mint-500 hover:from-emerald-700 hover:to-mint-600 text-white font-black text-sm shadow-lg shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>Proceed to Checkout</span>
                   <ArrowRight className="w-4 h-4" />

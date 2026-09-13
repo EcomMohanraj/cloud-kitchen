@@ -69,6 +69,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [editFullAddress, setEditFullAddress] = useState<string>('');
   const [savingAddress, setSavingAddress] = useState<boolean>(false);
 
+  const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
+  const [enableDeliveryFee, setEnableDeliveryFee] = useState<boolean>(true);
+  const [configuredPackingFee, setConfiguredPackingFee] = useState<number>(15);
+  const [enablePackingFee, setEnablePackingFee] = useState<boolean>(true);
+  const [minOrderValue, setMinOrderValue] = useState<number>(100);
+
   const handleAddressChange = (val: string) => {
     setDeliveryAddress(val);
     setIsAddressConfirmed(false);
@@ -120,7 +126,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         });
       }
 
-      // Refresh address list from database
       const fresh = await AddressService.getAddresses(customerPhone);
       if (fresh && fresh.addresses) {
         setSavedAddresses(fresh.addresses);
@@ -152,7 +157,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         let addressText = '';
 
-        // 1. Try Google Maps Reverse Geocoding API if key is present
         const googleApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
         if (googleApiKey) {
           try {
@@ -166,7 +170,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           }
         }
 
-        // 2. OpenStreetMap Nominatim Reverse Geocoding Fallback (Free, reliable, no API key required)
         if (!addressText) {
           try {
             const osmRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`, {
@@ -183,7 +186,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           }
         }
 
-        // 3. Populate address field
         if (addressText) {
           if (targetField === 'EDIT') {
             setEditFullAddress(addressText);
@@ -205,8 +207,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
     );
   };
 
-  const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
-
   // Auto-fill stored profile and delivery address when modal opens
   useEffect(() => {
     if (isOpen && typeof window !== 'undefined') {
@@ -218,10 +218,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       if (savedPhone) setCustomerPhone(savedPhone);
       if (savedAddress) handleAddressChange(savedAddress);
 
-      SettingsService.getDeliveryFee()
+      SettingsService.getStoreSettings()
         .then((res) => {
-          if (res && res.defaultDeliveryFee !== undefined) {
-            setConfiguredDeliveryFee(res.defaultDeliveryFee);
+          if (res) {
+            if (res.defaultDeliveryFee !== undefined) setConfiguredDeliveryFee(res.defaultDeliveryFee);
+            if (res.enableDeliveryFee !== undefined) setEnableDeliveryFee(res.enableDeliveryFee);
+            if (res.defaultPackingFee !== undefined) setConfiguredPackingFee(res.defaultPackingFee);
+            if (res.enablePackingFee !== undefined) setEnablePackingFee(res.enablePackingFee);
+            if (res.minOrderValue !== undefined) setMinOrderValue(res.minOrderValue);
           }
         })
         .catch(() => {});
@@ -344,12 +348,18 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   }
 
   const subtotal = getCartSubtotal();
-  const deliveryFee = subtotal > 500 ? 0 : configuredDeliveryFee;
-  const grandTotal = subtotal + deliveryFee;
+  const deliveryFee = !enableDeliveryFee || subtotal > 500 || subtotal === 0 ? 0 : configuredDeliveryFee;
+  const packagingFee = !enablePackingFee || subtotal === 0 ? 0 : configuredPackingFee;
+  const grandTotal = subtotal + deliveryFee + packagingFee;
 
   const handleSubmitOrder = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
+
+    if (subtotal < minOrderValue) {
+      setErrorMsg(`Minimum order value is ₹${minOrderValue}. Your current subtotal is ₹${subtotal}. Please add more items.`);
+      return;
+    }
 
     if (!customerName || customerName.trim().length < 2) {
       setErrorMsg('Please enter your full name');
@@ -361,20 +371,17 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    // 1. Strict validation for complete delivery address
     const addressCheck = validateDeliveryAddress(deliveryAddress);
     if (!addressCheck.isValid) {
       setErrorMsg(addressCheck.error || 'Please enter your complete delivery address. Current location alone is not sufficient.');
       return;
     }
 
-    // 2. Strict validation for mandatory address confirmation checkbox
     if (!isAddressConfirmed) {
       setErrorMsg('Please confirm that your delivery address is complete and correct.');
       return;
     }
 
-    // Persist details for future automatic pre-filling
     setCustomerProfile(customerName, customerPhone, deliveryAddress);
 
     setLoading(true);
@@ -500,7 +507,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         setErrorMsg(rzpErr.message || 'Payment gateway initialization failed');
       }
     } else {
-      // COD Order Success
       clearCart();
       setLoading(false);
       onClose();
@@ -632,7 +638,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                             </div>
                           </div>
 
-                          {/* Edit Address Button */}
                           <button
                             type="button"
                             onClick={(e) => {
@@ -650,7 +655,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                           </button>
                         </div>
 
-                        {/* Inline Address Edit Form */}
                         {isBeingEdited && (
                           <div className="p-3.5 bg-white border-t border-emerald-200 space-y-3">
                             <div className="flex items-center justify-between">
@@ -804,7 +808,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
               </div>
             )}
 
-            {/* Mandatory Address Confirmation Checkbox */}
             <div className="p-3 bg-emerald-50/60 border border-emerald-200 rounded-xl flex items-start space-x-3">
               <input
                 type="checkbox"
@@ -823,7 +826,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
           </div>
 
-          {/* Payment Method Selector */}
           <div className="space-y-3">
             <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
               2. Payment Options
@@ -860,7 +862,6 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             </div>
           </div>
 
-          {/* Summary & Submit */}
           <div className="pt-3 border-t border-slate-200 flex items-center justify-between">
             <div>
               <span className="block text-xs text-slate-500 font-semibold">Total Payable</span>

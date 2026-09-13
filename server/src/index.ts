@@ -17,6 +17,7 @@ import adminChefRoutes from './routes/adminChefRoutes';
 import adminRoutes from './routes/adminRoutes';
 import reviewRoutes from './routes/reviewRoutes';
 import webhookRoutes from './routes/webhookRoutes';
+import settingsRoutes from './routes/settingsRoutes';
 import { initSocket } from './socket';
 import { startOrderCleanupJob } from './services/orderCleanupService';
 
@@ -99,6 +100,7 @@ app.use('/api/admin/riders', adminRiderRoutes);
 app.use('/api/admin/chefs', adminChefRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/settings', settingsRoutes);
 
 
 // Health Check Endpoint

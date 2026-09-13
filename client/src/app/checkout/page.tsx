@@ -12,20 +12,27 @@ export default function CheckoutPage() {
   const { cartItems, getCartSubtotal } = useCartStore();
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(true);
   const [configuredDeliveryFee, setConfiguredDeliveryFee] = useState<number>(40);
+  const [enableDeliveryFee, setEnableDeliveryFee] = useState<boolean>(true);
+  const [configuredPackingFee, setConfiguredPackingFee] = useState<number>(15);
+  const [enablePackingFee, setEnablePackingFee] = useState<boolean>(true);
 
   useEffect(() => {
-    SettingsService.getDeliveryFee()
+    SettingsService.getStoreSettings()
       .then((res) => {
-        if (res && res.defaultDeliveryFee !== undefined) {
-          setConfiguredDeliveryFee(res.defaultDeliveryFee);
+        if (res) {
+          if (res.defaultDeliveryFee !== undefined) setConfiguredDeliveryFee(res.defaultDeliveryFee);
+          if (res.enableDeliveryFee !== undefined) setEnableDeliveryFee(res.enableDeliveryFee);
+          if (res.defaultPackingFee !== undefined) setConfiguredPackingFee(res.defaultPackingFee);
+          if (res.enablePackingFee !== undefined) setEnablePackingFee(res.enablePackingFee);
         }
       })
       .catch(() => {});
   }, []);
 
   const subtotal = getCartSubtotal();
-  const deliveryFee = subtotal > 500 ? 0 : configuredDeliveryFee;
-  const grandTotal = subtotal + deliveryFee;
+  const deliveryFee = !enableDeliveryFee || subtotal > 500 || subtotal === 0 ? 0 : configuredDeliveryFee;
+  const packagingFee = !enablePackingFee || subtotal === 0 ? 0 : configuredPackingFee;
+  const grandTotal = subtotal + deliveryFee + packagingFee;
 
   return (
     <div className="min-h-screen bg-[#fcfdfa] text-slate-900 font-sans">

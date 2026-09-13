@@ -14,10 +14,20 @@ test.describe('Order Placement & Payment Flow', () => {
     await page.waitForURL('/', { timeout: 10000 }).catch(() => {});
     await page.waitForTimeout(500);
     
-    // Add item if available
+    // Add item if available (ensuring subtotal >= ₹100 for min order value requirement)
     const addButton = page.locator('button:has-text("ADD +"), button:has-text("ADD")').first();
     if (await addButton.isVisible()) {
       await addButton.click();
+      await page.waitForTimeout(300);
+      const plusButton = page.locator('button:has-text("+")').first();
+      if (await plusButton.isVisible()) {
+        await plusButton.click();
+      } else {
+        const secondAddBtn = page.locator('button:has-text("ADD +"), button:has-text("ADD")').nth(1);
+        if (await secondAddBtn.isVisible()) {
+          await secondAddBtn.click();
+        }
+      }
     }
 
     // Go to Checkout
