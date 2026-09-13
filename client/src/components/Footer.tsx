@@ -80,7 +80,7 @@ export const Footer: React.FC = () => {
             <div className="space-y-2 text-xs text-slate-400">
               <div className="flex items-start gap-2">
                 <MapPin className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                <span>Chef Yazhisai Home Kitchen, Anna Nagar West, Chennai, Tamil Nadu - 600040</span>
+                <span>65, Barathi Estate, Gandhi Nagar, Teachers Colony, Karamadai, Coimbatore - 641104</span>
               </div>
               <div className="flex items-center gap-2">
                 <Phone className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -88,7 +88,7 @@ export const Footer: React.FC = () => {
               </div>
               <div className="flex items-center gap-2">
                 <Mail className="w-4 h-4 text-emerald-400 shrink-0" />
-                <span>orders@yazhisaikitchen.com</span>
+                <span>Yazhisaicloudkitchen@zohomail.in</span>
               </div>
             </div>
           </div>
