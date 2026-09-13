@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, Utensils, Sparkles, RefreshCw } from 'lucide-react';
+import { Plus, Edit2, Trash2, Utensils, Sparkles, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
 import { MenuFormModal } from '@/components/admin/MenuFormModal';
 import { MEAL_SLOTS } from '@/lib/constants';
 import { MenuService } from '@/services/api';
@@ -208,6 +208,7 @@ export default function AdminMenuPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<any | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const fetchMenu = async () => {
     try {
@@ -248,15 +249,20 @@ export default function AdminMenuPage() {
     }
   };
 
-  const handleDeleteItem = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this menu item?')) return;
+  const handleDeleteItem = async (id: string, name?: string) => {
+    if (!window.confirm(`Are you sure you want to delete "${name || 'this menu item'}"?`)) return;
 
+    setMessage(null);
     try {
       await MenuService.deleteMenuItem(id);
-      fetchMenu();
-    } catch (error) {
-      console.error(error);
       setMenuItems((prev) => prev.filter((i) => i.id !== id));
+      setMessage({ type: 'success', text: `Menu item "${name || id}" was deleted successfully.` });
+    } catch (error: any) {
+      console.error('Failed to delete menu item:', error);
+      setMessage({
+        type: 'error',
+        text: error?.message || 'Cannot delete this menu item.',
+      });
     }
   };
 
@@ -294,6 +300,32 @@ export default function AdminMenuPage() {
           <span>Add New Food Item</span>
         </button>
       </div>
+
+      {/* Notification Alert */}
+      {message && (
+        <div
+          className={`p-4 rounded-2xl border text-xs flex items-center justify-between font-bold ${
+            message.type === 'success'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+              : 'bg-rose-50 border-rose-200 text-rose-800'
+          }`}
+        >
+          <div className="flex items-center space-x-2">
+            {message.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+            ) : (
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+            )}
+            <span>{message.text}</span>
+          </div>
+          <button
+            onClick={() => setMessage(null)}
+            className="text-slate-400 hover:text-slate-600 font-bold"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Category Pills Filter */}
       <div className="flex flex-wrap gap-2">
@@ -391,8 +423,9 @@ export default function AdminMenuPage() {
                   <Edit2 className="w-4 h-4" />
                 </button>
                 <button
-                  onClick={() => handleDeleteItem(item.id)}
+                  onClick={() => handleDeleteItem(item.id, item.name)}
                   className="p-2 rounded-xl bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 transition-colors"
+                  title="Delete menu item"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -407,9 +440,13 @@ export default function AdminMenuPage() {
         isOpen={isModalOpen}
         itemToEdit={itemToEdit}
         onClose={() => setIsModalOpen(false)}
-        onSaveSuccess={fetchMenu}
+        onSaveSuccess={() => {
+          setMessage({ type: 'success', text: 'Menu catalog updated successfully.' });
+          fetchMenu();
+        }}
       />
 
     </div>
   );
 }
+

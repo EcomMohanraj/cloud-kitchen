@@ -302,6 +302,16 @@ export const deleteMenuItem = async (req: Request, res: Response) => {
 
     return res.json({ success: true });
   } catch (error: any) {
+    if (error.code === 'P2003' || error.message?.includes('Foreign key constraint failed')) {
+      return res.status(400).json({
+        error: 'Cannot delete this menu item because it has existing customer order history. Please mark it as "Unavailable" using the toggle switch instead.',
+      });
+    }
+    if (error.code === 'P2025' || error.message?.includes('Record to delete does not exist')) {
+      return res.status(404).json({
+        error: 'Menu item not found in database.',
+      });
+    }
     return res.status(400).json({ error: error.message || 'Failed to delete menu item' });
   }
 };
