@@ -49,6 +49,9 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
     expect(bodyText).toContain('NEW LIVE ORDER RECEIVED!');
     expect(bodyText).toContain('Global Alert Test Customer');
 
+    // Capture screenshot on /admin/schedule page
+    await page.screenshot({ path: 'C:/Users/mohan/.gemini/antigravity-ide/brain/63c1e448-78cc-41d4-a5b3-b452014e7373/modal_schedule_page_fixed.png', fullPage: false });
+
     // 5. Click Acknowledge Order button on modal
     const ackBtn = page.locator('button:has-text("ACKNOWLEDGE"), button:has-text("Acknowledge Order")').first();
     if (await ackBtn.isVisible()) {
@@ -80,6 +83,9 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
     const menuBodyText = await page.locator('body').innerText();
     expect(menuBodyText).toContain('NEW LIVE ORDER RECEIVED!');
     expect(menuBodyText).toContain('Menu Page Alert Customer');
+
+    // Capture screenshot on /admin/menu page
+    await page.screenshot({ path: 'C:/Users/mohan/.gemini/antigravity-ide/brain/63c1e448-78cc-41d4-a5b3-b452014e7373/modal_menu_page_fixed.png', fullPage: false });
 
     // Acknowledge second modal
     const ackBtn2 = page.locator('button:has-text("ACKNOWLEDGE"), button:has-text("Acknowledge Order")').first();

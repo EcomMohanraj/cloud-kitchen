@@ -758,7 +758,7 @@ function AccountPageContent() {
                     <input
                       type="text"
                       required
-                      placeholder="e.g. Ramesh Kumar"
+                      placeholder="e.g. Anandan Kumar"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
@@ -775,7 +775,7 @@ function AccountPageContent() {
                     <input
                       type="email"
                       required
-                      placeholder="raj@gmail.com"
+                      placeholder="gourmet@yazhisai.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-[#f0f5ff] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] focus:bg-white transition-colors"
@@ -792,7 +792,7 @@ function AccountPageContent() {
                     <input
                       type="tel"
                       required
-                      placeholder="Mobile number"
+                      placeholder="9876543210"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       className="w-full pl-10 pr-4 py-3 bg-[#fffdfa] border border-slate-200 rounded-2xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-[#059669] transition-colors"

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react';
+import { createPortal } from 'react-dom';
 import { Volume2, VolumeX, Bell, CheckCircle2, ShieldAlert, ShoppingBag, MapPin, User, Phone, Clock, UtensilsCrossed, X } from 'lucide-react';
 
 export interface OrderAlertNotifierRef {
@@ -17,6 +18,11 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
   const [isAudioUnlocked, setIsAudioUnlocked] = useState<boolean>(false);
   const [activeAlertOrder, setActiveAlertOrder] = useState<any | null>(null);
   const [secondsRemaining, setSecondsRemaining] = useState<number>(30);
+  const [isMounted, setIsMounted] = useState<boolean>(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const synthTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -326,17 +332,17 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
         )}
       </div>
 
-      {/* Full-Screen Acknowledgment Modal */}
-      {activeAlertOrder && (
+      {/* Full-Screen Acknowledgment Modal (Rendered via Portal to document.body to avoid stacking context clipping) */}
+      {activeAlertOrder && isMounted && createPortal(
         <div
           onClick={(e) => {
             if (e.target === e.currentTarget) handleAcknowledge();
           }}
-          className="fixed inset-0 z-50 overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
+          className="fixed inset-0 z-[9999] overflow-y-auto bg-slate-950/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200 cursor-pointer"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="relative w-full max-w-lg bg-white border-2 border-amber-400 rounded-3xl shadow-2xl overflow-hidden text-slate-900 space-y-6 p-6 sm:p-8 animate-in zoom-in-95 duration-200 cursor-default"
+            className="relative w-full max-w-lg bg-white border-2 border-amber-400 rounded-3xl shadow-2xl overflow-hidden text-slate-900 space-y-6 p-6 sm:p-8 animate-in zoom-in-95 duration-200 cursor-default my-auto"
           >
             
             {/* Top Glowing Alert Bar */}
@@ -444,7 +450,8 @@ export const OrderAlertNotifier = forwardRef<OrderAlertNotifierRef, OrderAlertNo
             </div>
 
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );
