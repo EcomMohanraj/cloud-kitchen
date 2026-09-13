@@ -21,6 +21,13 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     const socket = getSocket();
     joinAdminRoom();
 
+    const handleConnect = () => {
+      console.log('⚡ [Admin Global Layout Notifier] Socket connected/reconnected, ensuring admin room join...');
+      joinAdminRoom();
+    };
+
+    socket.on('connect', handleConnect);
+
     // 2. Global New Order Socket Event Listener (Persists Uninterrupted Across All Admin Sub-Routes)
     const handleNewOrder = (data: { order: any }) => {
       const newOrder = data.order;
@@ -30,9 +37,11 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       alertNotifierRef.current?.triggerAlert(newOrder);
     };
 
+    socket.off('new-order', handleNewOrder);
     socket.on('new-order', handleNewOrder);
 
     return () => {
+      socket.off('connect', handleConnect);
       socket.off('new-order', handleNewOrder);
     };
   }, [isLogin]); // Only re-runs if transitioning to/from login page, NOT on sub-route changes!

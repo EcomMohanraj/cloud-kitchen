@@ -1,6 +1,8 @@
 import { io, Socket } from 'socket.io-client';
 
 let socket: Socket | null = null;
+let isAdminRoomJoined = false;
+let isChefRoomJoined = false;
 
 export const getSocket = (): Socket => {
   if (!socket) {
@@ -22,6 +24,14 @@ export const getSocket = (): Socket => {
 
     socket.on('connect', () => {
       console.log(`⚡ [Socket.io Client] Connected with ID: ${socket?.id}`);
+      if (isAdminRoomJoined) {
+        socket?.emit('join-admin-room');
+        console.log('👨‍🍳 [Socket.io Client] Auto re-emitted join-admin-room on connect/reconnect');
+      }
+      if (isChefRoomJoined) {
+        socket?.emit('join-chef-room');
+        console.log('🍳 [Socket.io Client] Auto re-emitted join-chef-room on connect/reconnect');
+      }
     });
 
     socket.on('disconnect', (reason) => {
@@ -41,6 +51,7 @@ export const getSocket = (): Socket => {
 };
 
 export const joinAdminRoom = () => {
+  isAdminRoomJoined = true;
   const s = getSocket();
   if (s) {
     s.emit('join-admin-room');
@@ -65,10 +76,12 @@ export const leaveOrderRoom = (orderId: string) => {
 };
 
 export const joinChefRoom = () => {
+  isChefRoomJoined = true;
   const s = getSocket();
   if (s) {
     s.emit('join-chef-room');
     console.log('🍳 [Socket.io Client] Emitted join-chef-room event');
   }
 };
+
 
