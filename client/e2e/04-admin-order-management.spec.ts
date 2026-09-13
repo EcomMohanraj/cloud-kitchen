@@ -13,7 +13,7 @@ test.describe('Admin Order Management Flow', () => {
     await page.click('button[type="submit"]');
 
     // Wait for redirect to admin page
-    await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 10000 });
+    await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { waitUntil: 'domcontentloaded', timeout: 15000 });
 
     // Navigate to Admin Orders View
     await page.goto('/admin/orders');

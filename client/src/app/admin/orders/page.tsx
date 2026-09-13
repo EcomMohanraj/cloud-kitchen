@@ -17,6 +17,8 @@ import {
   Package,
   UserCheck,
   Banknote,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { ORDER_STATUSES, MEAL_SLOTS } from '@/lib/constants';
 import { OrderService } from '@/services/api';
@@ -49,6 +51,23 @@ export default function AdminOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newOrderToast, setNewOrderToast] = useState<string | null>(null);
+  const [copiedAddressId, setCopiedAddressId] = useState<string | null>(null);
+
+  const handleCopyAddress = (orderId: string, address: string) => {
+    if (!address) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(address);
+    } else {
+      const textArea = document.createElement('textarea');
+      textArea.value = address;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+    }
+    setCopiedAddressId(orderId);
+    setTimeout(() => setCopiedAddressId(null), 2000);
+  };
 
   // Filters
   const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'CANCELLED'>('ALL');
@@ -56,52 +75,42 @@ export default function AdminOrdersPage() {
   // Date filter defaults to Today (or stored sessionStorage value)
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>(() => {
     if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('yazhisai_admin_order_date_filter');
-      if (saved !== null) {
-        return saved;
-      }
+      const saved = sessionStorage.getItem('yazhisai_admin_date_filter');
+      if (saved) return saved;
     }
     return todayStr;
   });
 
-  const [selectedSlotFilter, setSelectedSlotFilter] = useState('ALL');
-
-  const updateDateFilter = (newDate: string) => {
-    setSelectedDateFilter(newDate);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('yazhisai_admin_order_date_filter', newDate);
-    }
-  };
+  const [selectedSlotFilter, setSelectedSlotFilter] = useState<string>('ALL');
 
   const fetchOrders = async () => {
+    setLoading(true);
     try {
       const data = await OrderService.getOrders({
-        date: selectedDateFilter || undefined,
+        date: selectedDateFilter !== 'ALL' ? selectedDateFilter : undefined,
         slot: selectedSlotFilter !== 'ALL' ? selectedSlotFilter : undefined,
       });
 
-      if (data.fetchFailed) {
+      if (data && data.fetchFailed) {
         console.warn('⚠️ [Admin UI] API fetch failed, preserving current orders in state.');
         return;
       }
 
-      if (data.orders) {
-        setOrders((prev) => {
-          if (prev.length === 0) return data.orders;
+      // Filter out unpaid Razorpay online orders
+      const rawOrders = data?.orders || data || [];
+      const visibleOrders = rawOrders.filter((ord: any) => {
+        if (ord.paymentMethod === 'ONLINE' && ord.paymentStatus === 'PENDING') {
+          return false;
+        }
+        if (ord.paymentStatus === 'FAILED') {
+          return false;
+        }
+        return true;
+      });
 
-          // Atomic merge preserving real-time socket orders and avoiding flicker
-          const map = new Map(prev.map((o) => [o.id, o]));
-          data.orders.forEach((o: any) => {
-            map.set(o.id, o);
-          });
-
-          const merged = Array.from(map.values());
-          merged.sort((a: any, b: any) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
-          return merged;
-        });
-      }
+      setOrders(visibleOrders);
     } catch (error) {
-      console.error('Error fetching admin orders:', error);
+      console.error('Failed to fetch orders:', error);
     } finally {
       setLoading(false);
     }
@@ -152,14 +161,18 @@ export default function AdminOrdersPage() {
     };
   }, [selectedDateFilter, selectedSlotFilter]);
 
-  const handleUpdateStatus = async (orderId: string, orderStatus: string) => {
+  const handleUpdateStatus = async (orderId: string, orderStatus: string, paymentStatus?: string) => {
     // Optimistic UI Update
     setOrders((prev) =>
-      prev.map((o) => (o.id === orderId ? { ...o, orderStatus } : o))
+      prev.map((o) =>
+        o.id === orderId
+          ? { ...o, orderStatus, ...(paymentStatus ? { paymentStatus } : {}) }
+          : o
+      )
     );
 
     try {
-      await OrderService.updateOrderStatus(orderId, orderStatus);
+      await OrderService.updateOrderStatus(orderId, orderStatus, paymentStatus);
       fetchOrders();
     } catch (error) {
       console.error('Failed to update order status:', error);
@@ -180,63 +193,34 @@ export default function AdminOrdersPage() {
     }
   };
 
-  // Filtered Orders Calculation (Combining Slot, Date & Status with AND logic)
-  const dateAndSlotFilteredOrders = orders.filter((o) => {
-    if (selectedSlotFilter !== 'ALL' && o.slotType !== selectedSlotFilter) {
-      return false;
-    }
-    if (selectedDateFilter && o.bookingDate !== selectedDateFilter) {
-      return false;
-    }
-    return true;
-  });
-
-  const filteredOrders = dateAndSlotFilteredOrders.filter((o) => {
-    if (['PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(o.orderStatus)) {
+  // Filter orders by tab selection
+  const filteredOrders = orders.filter((order) => {
+    if (['PAYMENT_PENDING', 'PAYMENT_FAILED'].includes(order.orderStatus)) {
       return false;
     }
     if (statusTab === 'ACTIVE') {
-      return ['PENDING', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.orderStatus);
+      return order.orderStatus !== 'DELIVERED' && order.orderStatus !== 'CANCELLED';
     }
     if (statusTab === 'DELIVERED') {
-      return o.orderStatus === 'DELIVERED';
+      return order.orderStatus === 'DELIVERED';
     }
     if (statusTab === 'CANCELLED') {
-      return o.orderStatus === 'CANCELLED';
+      return order.orderStatus === 'CANCELLED';
     }
     return true;
   });
 
   return (
-    <div className="space-y-6 text-slate-900 font-sans">
-      {newOrderToast && (
-        <div className="bg-amber-400 text-slate-950 px-6 py-4 rounded-2xl font-black text-sm shadow-xl flex items-center justify-between animate-bounce border-2 border-amber-500">
-          <div className="flex items-center space-x-3">
-            <span className="text-xl">🛎️</span>
-            <span>{newOrderToast}</span>
-          </div>
-          <button
-            onClick={() => setNewOrderToast(null)}
-            className="text-xs font-bold bg-slate-950 text-amber-400 px-3 py-1.5 rounded-xl hover:bg-slate-800 transition-colors"
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-      
-      {/* Header Banner */}
-      <div className="bg-gradient-to-r from-forest-800 to-emerald-900 text-white rounded-3xl p-6 sm:p-8 shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-6 relative overflow-hidden">
-        <div className="relative z-10">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-emerald-200 text-xs font-bold mb-3 border border-white/10">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Kitchen Command Center</span>
-          </div>
-          <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-3">
-            <ClipboardList className="w-8 h-8 text-mint-400" />
-            Live Pre-Order Management Matrix
-          </h2>
-          <p className="text-xs sm:text-sm text-emerald-100/90 mt-2 max-w-2xl font-medium">
-            Manage customer pre-orders in real-time. Transition states through Accept → Cook → Dispatch → Delivered.
+    <div className="space-y-6">
+      {/* Header Bar */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-slate-900 via-slate-800 to-emerald-950 p-6 rounded-3xl text-white shadow-xl">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight flex items-center gap-3">
+            <ClipboardList className="w-8 h-8 text-emerald-400" />
+            Live Orders Command Matrix
+          </h1>
+          <p className="text-xs sm:text-sm text-slate-300 font-medium mt-1">
+            Real-time kitchen order processing, slot dispatching, and delivery workflow.
           </p>
         </div>
 
@@ -246,207 +230,203 @@ export default function AdminOrdersPage() {
             className="px-4 py-2 rounded-2xl bg-white/10 hover:bg-white/20 text-white text-xs font-extrabold border border-white/15 flex items-center gap-2 transition-all"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            <span>Refresh Live Feed</span>
+            Refresh Board
           </button>
         </div>
       </div>
 
-      {/* Filter Bar: Status Tabs & Date Quick Shortcuts */}
-      <div className="bg-white border border-slate-200 rounded-3xl p-4 sm:p-5 shadow-card-soft space-y-4">
-        {/* Row 1: Status Quick Tabs */}
-        <div className="flex flex-wrap items-center gap-2">
+      {/* New Order Toast Notification */}
+      {newOrderToast && (
+        <div className="p-4 rounded-2xl bg-emerald-500 text-slate-950 font-black text-sm shadow-xl flex items-center justify-between animate-in slide-in-from-top duration-300">
+          <span>{newOrderToast}</span>
           <button
-            onClick={() => setStatusTab('ALL')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              statusTab === 'ALL'
-                ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
+            onClick={() => setNewOrderToast(null)}
+            className="px-3 py-1 bg-slate-950 text-white rounded-xl text-xs font-bold"
           >
-            All Orders ({dateAndSlotFilteredOrders.length})
-          </button>
-
-          <button
-            onClick={() => setStatusTab('ACTIVE')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              statusTab === 'ACTIVE'
-                ? 'bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Active Prep ({dateAndSlotFilteredOrders.filter((o) => ['PENDING', 'ACCEPTED', 'PREPARING', 'READY_FOR_PICKUP', 'OUT_FOR_DELIVERY'].includes(o.orderStatus)).length})
-          </button>
-
-          <button
-            onClick={() => setStatusTab('DELIVERED')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              statusTab === 'DELIVERED'
-                ? 'bg-emerald-700 text-white shadow-md'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Delivered ({dateAndSlotFilteredOrders.filter((o) => o.orderStatus === 'DELIVERED').length})
-          </button>
-
-          <button
-            onClick={() => setStatusTab('CANCELLED')}
-            className={`px-4 py-2 rounded-xl text-xs font-black transition-all ${
-              statusTab === 'CANCELLED'
-                ? 'bg-rose-600 text-white shadow-md'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            Cancelled ({dateAndSlotFilteredOrders.filter((o) => o.orderStatus === 'CANCELLED').length})
+            Dismiss
           </button>
         </div>
+      )}
 
-        {/* Row 2: Date Quick-Select Shortcuts + Date Picker & Slot Filter Dropdowns */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 pt-3 border-t border-slate-100">
+      {/* Filter Control Panel */}
+      <div className="bg-white p-4 sm:p-6 rounded-3xl border border-slate-200 shadow-sm space-y-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           
-          {/* Quick Date Buttons */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-extrabold text-slate-500 mr-1 flex items-center gap-1">
-              <Calendar className="w-3.5 h-3.5 text-emerald-600" /> Date:
-            </span>
-
-            <button
-              onClick={() => updateDateFilter(todayStr)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                selectedDateFilter === todayStr
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Today
-            </button>
-
-            <button
-              onClick={() => updateDateFilter(yesterdayStr)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                selectedDateFilter === yesterdayStr
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Yesterday
-            </button>
-
-            <button
-              onClick={() => updateDateFilter(tomorrowStr)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                selectedDateFilter === tomorrowStr
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              Tomorrow
-            </button>
-
-            <button
-              onClick={() => updateDateFilter('')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
-                selectedDateFilter === ''
-                  ? 'bg-emerald-800 text-white shadow-sm'
-                  : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-              }`}
-            >
-              All Dates
-            </button>
+          {/* Status Tabs */}
+          <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl overflow-x-auto">
+            {(['ALL', 'ACTIVE', 'DELIVERED', 'CANCELLED'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setStatusTab(tab)}
+                className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
+                  statusTab === tab
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
+                }`}
+              >
+                {tab === 'ALL' && 'All Orders'}
+                {tab === 'ACTIVE' && '🔥 Active Kitchen Orders'}
+                {tab === 'DELIVERED' && '✓ Delivered'}
+                {tab === 'CANCELLED' && '✕ Cancelled'}
+              </button>
+            ))}
           </div>
 
-          {/* Date Input & Slot Filter Dropdowns */}
-          <div className="flex items-center gap-2 shrink-0">
-            <input
-              type="date"
-              value={selectedDateFilter}
-              onChange={(e) => updateDateFilter(e.target.value)}
-              className="px-3.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-600 font-bold"
-            />
+          {/* Date & Slot Selectors */}
+          <div className="flex flex-wrap items-center gap-3">
+            
+            {/* Quick Date Pills */}
+            <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
+              <button
+                onClick={() => {
+                  setSelectedDateFilter(yesterdayStr);
+                  if (typeof window !== 'undefined') sessionStorage.setItem('yazhisai_admin_date_filter', yesterdayStr);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all ${
+                  selectedDateFilter === yesterdayStr ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Yesterday
+              </button>
 
+              <button
+                onClick={() => {
+                  setSelectedDateFilter(todayStr);
+                  if (typeof window !== 'undefined') sessionStorage.setItem('yazhisai_admin_date_filter', todayStr);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all ${
+                  selectedDateFilter === todayStr ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Today
+              </button>
+
+              <button
+                onClick={() => {
+                  setSelectedDateFilter(tomorrowStr);
+                  if (typeof window !== 'undefined') sessionStorage.setItem('yazhisai_admin_date_filter', tomorrowStr);
+                }}
+                className={`px-2.5 py-1.5 rounded-lg text-[11px] font-extrabold transition-all ${
+                  selectedDateFilter === tomorrowStr ? 'bg-white text-emerald-800 shadow-xs' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Tomorrow
+              </button>
+            </div>
+
+            {/* Custom Date Input Picker */}
+            <div className="flex items-center space-x-2 bg-slate-50 px-3 py-1.5 rounded-2xl border border-slate-200">
+              <Calendar className="w-4 h-4 text-emerald-600" />
+              <input
+                type="date"
+                value={selectedDateFilter === 'ALL' ? '' : selectedDateFilter}
+                onChange={(e) => {
+                  const val = e.target.value || 'ALL';
+                  setSelectedDateFilter(val);
+                  if (typeof window !== 'undefined') sessionStorage.setItem('yazhisai_admin_date_filter', val);
+                }}
+                className="bg-transparent text-xs font-extrabold text-slate-800 focus:outline-none"
+              />
+              {selectedDateFilter !== 'ALL' && (
+                <button
+                  onClick={() => {
+                    setSelectedDateFilter('ALL');
+                    if (typeof window !== 'undefined') sessionStorage.removeItem('yazhisai_admin_date_filter');
+                  }}
+                  className="text-[10px] font-black text-rose-600 hover:bg-rose-50 px-1.5 py-0.5 rounded"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+
+            {/* Slot Dropdown Filter */}
             <select
               value={selectedSlotFilter}
               onChange={(e) => setSelectedSlotFilter(e.target.value)}
-              className="px-3.5 py-1.5 bg-slate-50 border border-slate-300 rounded-xl text-xs text-slate-900 focus:outline-none focus:border-emerald-600 font-bold"
+              className="bg-slate-50 px-3 py-2 rounded-2xl border border-slate-200 text-xs font-extrabold text-slate-800 focus:outline-none cursor-pointer"
             >
-              <option value="ALL">All Meal Slots</option>
-              {MEAL_SLOTS.map((s) => (
-                <option key={s.id} value={s.id}>{s.name}</option>
+              <option value="ALL">All Delivery Slots</option>
+              {MEAL_SLOTS.map((slot) => (
+                <option key={slot.id} value={slot.id}>
+                  {slot.name}
+                </option>
               ))}
             </select>
           </div>
-
         </div>
       </div>
 
-      {/* Orders Cards Feed Grid */}
-      <div className="space-y-4">
-        {filteredOrders.length === 0 ? (
-          <div className="py-16 text-center bg-white border border-slate-200/80 rounded-3xl p-8 text-slate-500 text-xs shadow-card-soft space-y-3">
-            <ClipboardList className="w-12 h-12 mx-auto text-slate-300" />
-            <h4 className="text-base font-extrabold text-slate-800">No Orders in this View</h4>
-            <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
-              Customer orders placed on the storefront will appear here automatically in real time.
-            </p>
-          </div>
-        ) : (
-          filteredOrders.map((order) => {
-            const currentStatus = order.orderStatus || 'PENDING';
+      {/* Orders Grid Display */}
+      {loading && orders.length === 0 ? (
+        <div className="py-20 text-center space-y-3 bg-white rounded-3xl border border-slate-200">
+          <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin mx-auto" />
+          <p className="text-sm font-bold text-slate-600">Fetching live orders from kitchen engine...</p>
+        </div>
+      ) : filteredOrders.length === 0 ? (
+        <div className="py-20 text-center space-y-3 bg-white rounded-3xl border border-slate-200">
+          <Package className="w-12 h-12 text-slate-300 mx-auto" />
+          <h3 className="font-extrabold text-slate-700 text-base">No Orders Match Selected Criteria</h3>
+          <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+            Try switching the filter date or status tab above to view other kitchen orders.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-4">
+          {filteredOrders.map((order) => {
+            const currentStatus = order.orderStatus || 'RECEIVED';
             const isCOD = order.paymentMethod === 'COD';
             const isPaid = order.paymentStatus === 'PAID';
 
             return (
               <div
                 key={order.id}
-                className="bg-white border border-emerald-100/90 rounded-3xl p-6 sm:p-7 shadow-card-soft hover:shadow-card-hover transition-all space-y-5"
+                className="bg-white rounded-3xl border border-slate-200 shadow-xs hover:shadow-md transition-all p-5 sm:p-6 space-y-6"
               >
-                {/* Top Row: Order Number & Badges */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+                {/* Order Top Meta Header Bar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4">
                   <div className="flex items-center space-x-3">
-                    <span className="text-base font-black text-white bg-emerald-600 px-3.5 py-1.5 rounded-2xl shadow-sm">
-                      {order.orderNumber}
+                    <span className="px-3 py-1.5 rounded-2xl bg-slate-900 text-emerald-400 font-mono font-black text-sm tracking-wider">
+                      #{order.orderNumber || order.id.slice(0, 8)}
                     </span>
-                    <div>
-                      <h3 className="font-extrabold text-slate-900 text-base">{order.customerName}</h3>
-                      <a
-                        href={`tel:${order.customerPhone ? String(order.customerPhone).replace(/\s+/g, '') : ''}`}
-                        className="text-xs text-slate-500 hover:text-emerald-700 font-semibold flex items-center gap-1.5 mt-0.5 transition-colors cursor-pointer"
-                        title="Click to call customer phone"
-                      >
-                        <Phone className="w-3.5 h-3.5 text-emerald-600" /> {order.customerPhone}
-                      </a>
-                    </div>
+
+                    <span className="px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider bg-emerald-50 text-emerald-900 border border-emerald-200">
+                      {order.slotType || 'BREAKFAST'}
+                    </span>
+
+                    <span className="text-xs font-bold text-slate-500 flex items-center gap-1">
+                      <Clock className="w-3.5 h-3.5 text-slate-400" />
+                      {order.bookingDate ? new Date(order.bookingDate).toLocaleDateString('en-IN', { weekday: 'short', month: 'short', day: 'numeric' }) : 'Today'}
+                    </span>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
-                    <div className="text-left sm:text-right text-xs">
-                      <span className="text-emerald-700 font-bold block">{order.bookingDate}</span>
-                      <span className="text-slate-500 font-semibold">{order.slotType} Slot Window</span>
-                    </div>
-
-                    <div className="text-left sm:text-right px-3 py-1 bg-emerald-50 rounded-xl border border-emerald-200">
-                      <span className="text-[10px] text-slate-500 block font-bold uppercase">Total Bill</span>
-                      <span className="text-lg font-black text-emerald-800">₹{order.totalAmount}</span>
-                    </div>
+                  {/* Customer Info Brief */}
+                  <div className="flex items-center space-x-3 text-xs font-bold text-slate-700">
+                    <span className="font-extrabold text-slate-900">{order.customerName}</span>
+                    <span className="text-slate-400">•</span>
+                    <a href={`tel:${order.customerPhone}`} className="text-emerald-700 hover:underline font-mono flex items-center gap-1">
+                      <Phone className="w-3.5 h-3.5" />
+                      {order.customerPhone}
+                    </a>
                   </div>
                 </div>
 
-                {/* Body Details: Items & Delivery Address */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 text-xs">
+                {/* Main Card Content Layout */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   
-                  {/* Left Column: Ordered Items List */}
-                  <div className="lg:col-span-2 space-y-3">
-                    <h4 className="font-black text-slate-700 uppercase tracking-wider text-[11px]">
-                      Customer Ordered Dishes:
-                    </h4>
-
+                  {/* Left Column: Items List & Delivery Address */}
+                  <div className="lg:col-span-2 space-y-4">
                     <div className="space-y-2">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-wider block">
+                        Ordered Gourmet Items ({order.items?.length || 0})
+                      </span>
                       {order.items && order.items.length > 0 ? (
                         order.items.map((item: any, idx: number) => (
                           <div
-                            key={item.id || idx}
-                            className="flex items-center justify-between p-3 rounded-2xl bg-slate-50/80 border border-slate-200 text-slate-800 font-semibold"
+                            key={idx}
+                            className="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100 text-xs font-bold text-slate-800"
                           >
-                            <div className="flex items-center space-x-2">
+                            <div className="flex items-center space-x-2.5">
                               <span className="w-6 h-6 rounded-lg bg-emerald-600 text-white font-black text-xs flex items-center justify-center">
                                 {item.quantity}x
                               </span>
@@ -456,19 +436,37 @@ export default function AdminOrdersPage() {
                           </div>
                         ))
                       ) : (
-                        <div className="p-3 bg-slate-50 rounded-xl text-slate-500 font-semibold">
+                        <div className="p-3 bg-slate-50 rounded-xl text-slate-500 font-semibold text-xs">
                           Standard Gourmet Meal Package
                         </div>
                       )}
                     </div>
 
                     {/* Delivery Address Pill */}
-                    <div className="flex items-start gap-2 pt-2 text-slate-700 font-semibold bg-emerald-50/40 p-3 rounded-2xl border border-emerald-100">
+                    <div className="flex items-start justify-between gap-2 pt-2 text-slate-700 font-semibold bg-emerald-50/40 p-3 rounded-2xl border border-emerald-100">
                       <MapPin className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                      <div>
+                      <div className="flex-1">
                         <span className="text-[10px] text-emerald-800 font-bold uppercase block">Delivery Address:</span>
                         <span className="text-xs text-slate-900">{order.deliveryAddress}</span>
                       </div>
+                      <button
+                        onClick={() => handleCopyAddress(order.id, order.deliveryAddress)}
+                        type="button"
+                        title="Copy delivery address to clipboard"
+                        className="p-1.5 rounded-lg bg-white hover:bg-emerald-100 border border-emerald-200 text-slate-600 hover:text-emerald-800 transition-all shrink-0 flex items-center gap-1 cursor-pointer"
+                      >
+                        {copiedAddressId === order.id ? (
+                          <>
+                            <Check className="w-3.5 h-3.5 text-emerald-600 animate-in zoom-in-50" />
+                            <span className="text-[10px] font-black text-emerald-700">Copied!</span>
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5 text-slate-500" />
+                            <span className="text-[10px] font-bold text-slate-600 hidden sm:inline">Copy</span>
+                          </>
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -525,25 +523,16 @@ export default function AdminOrdersPage() {
                           {currentStatus === 'READY_FOR_PICKUP' && <span className="text-[10px] uppercase font-black">Food Packed</span>}
                         </button>
 
-                        {/* ADMIN SELF-DELIVER FALLBACK BUTTON */}
-                        {currentStatus === 'READY_FOR_PICKUP' && !order.deliveryPartnerId && (
-                          <button
-                            onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
-                            className="w-full py-2 px-3 rounded-xl font-black text-xs bg-amber-400 hover:bg-amber-500 text-slate-950 shadow-md flex items-center justify-between transition-all border border-amber-500"
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <UserCheck className="w-4 h-4" /> No Rider — Self-Deliver (Admin Direct)
-                            </span>
-                            <span className="text-[10px] uppercase tracking-wider font-black bg-slate-950 text-amber-300 px-2 py-0.5 rounded-md">Direct</span>
-                          </button>
-                        )}
-
-                        {/* OUT FOR DELIVERY INFORMATIONAL BADGE */}
-                        <div
+                        {/* OUT FOR DELIVERY BUTTON / BADGE */}
+                        <button
+                          onClick={() => handleUpdateStatus(order.id, 'OUT_FOR_DELIVERY')}
+                          disabled={currentStatus === 'OUT_FOR_DELIVERY' || currentStatus === 'DELIVERED' || currentStatus === 'CANCELLED'}
                           className={`w-full py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
                             currentStatus === 'OUT_FOR_DELIVERY'
                               ? 'bg-teal-600 text-white shadow-md'
-                              : 'bg-slate-50 text-slate-400 border border-slate-200'
+                              : currentStatus === 'DELIVERED' || currentStatus === 'CANCELLED'
+                              ? 'bg-slate-50 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-teal-50 hover:border-teal-300 cursor-pointer'
                           }`}
                         >
                           <span className="flex items-center gap-1.5">
@@ -552,17 +541,31 @@ export default function AdminOrdersPage() {
                               <span className="text-[11px] font-bold text-teal-200 ml-1">
                                 ({order.deliveryPartner.name} - {order.deliveryPartner.phone})
                               </span>
-                            ) : null}
+                            ) : (
+                              <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded border border-amber-200 ml-1">
+                                (Self-Deliver)
+                              </span>
+                            )}
                           </span>
                           {currentStatus === 'OUT_FOR_DELIVERY' && <span className="text-[10px] uppercase font-black">In Transit</span>}
-                        </div>
+                        </button>
 
-                        {/* MARK DELIVERED BADGE */}
-                        <div
+                        {/* MARK DELIVERED BUTTON / BADGE */}
+                        <button
+                          onClick={() =>
+                            handleUpdateStatus(
+                              order.id,
+                              'DELIVERED',
+                              isCOD && !isPaid ? 'PAID' : undefined
+                            )
+                          }
+                          disabled={currentStatus === 'DELIVERED' || currentStatus === 'CANCELLED'}
                           className={`w-full py-2.5 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
                             currentStatus === 'DELIVERED'
                               ? 'bg-emerald-600 text-white shadow-md'
-                              : 'bg-slate-50 text-slate-400 border border-slate-200'
+                              : currentStatus === 'CANCELLED'
+                              ? 'bg-slate-50 text-slate-400 border border-slate-200 cursor-not-allowed'
+                              : 'bg-white text-slate-700 border border-slate-300 hover:bg-emerald-50 hover:border-emerald-300 cursor-pointer'
                           }`}
                         >
                           <span className="flex items-center gap-1.5">
@@ -571,12 +574,14 @@ export default function AdminOrdersPage() {
                               <span className="text-[11px] font-bold text-emerald-100 ml-1">
                                 (by Rider: {order.deliveryPartner.name})
                               </span>
-                            ) : currentStatus === 'DELIVERED' ? (
-                              <span className="text-[11px] font-bold text-amber-200 ml-1">(Admin Direct Delivery)</span>
-                            ) : null}
+                            ) : (
+                              <span className="text-[10px] font-extrabold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200 ml-1">
+                                (Admin Direct Delivery)
+                              </span>
+                            )}
                           </span>
-                          {currentStatus === 'DELIVERED' && <span className="text-[10px] uppercase font-black font-black">Completed</span>}
-                        </div>
+                          {currentStatus === 'DELIVERED' && <span className="text-[10px] uppercase font-black">Completed</span>}
+                        </button>
                       </div>
                     </div>
 
@@ -632,10 +637,9 @@ export default function AdminOrdersPage() {
 
               </div>
             );
-          })
-        )}
-      </div>
-
+          })}
+        </div>
+      )}
     </div>
   );
 }
