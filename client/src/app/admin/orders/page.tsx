@@ -70,7 +70,7 @@ export default function AdminOrdersPage() {
   };
 
   // Filters
-  const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'CANCELLED'>('ALL');
+  const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED'>('ALL');
   
   // Date filter defaults to Today (or stored sessionStorage value)
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>(() => {
@@ -204,9 +204,6 @@ export default function AdminOrdersPage() {
     if (statusTab === 'DELIVERED') {
       return order.orderStatus === 'DELIVERED';
     }
-    if (statusTab === 'CANCELLED') {
-      return order.orderStatus === 'CANCELLED';
-    }
     return true;
   });
 
@@ -254,7 +251,7 @@ export default function AdminOrdersPage() {
           
           {/* Status Tabs */}
           <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl overflow-x-auto">
-            {(['ALL', 'ACTIVE', 'DELIVERED', 'CANCELLED'] as const).map((tab) => (
+            {(['ALL', 'ACTIVE', 'DELIVERED'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setStatusTab(tab)}
@@ -267,7 +264,6 @@ export default function AdminOrdersPage() {
                 {tab === 'ALL' && 'All Orders'}
                 {tab === 'ACTIVE' && '🔥 Active Kitchen Orders'}
                 {tab === 'DELIVERED' && '✓ Delivered'}
-                {tab === 'CANCELLED' && '✕ Cancelled'}
               </button>
             ))}
           </div>
