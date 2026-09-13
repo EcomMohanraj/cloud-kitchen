@@ -71,6 +71,10 @@ function StorefrontPageContent() {
         setScheduleList(data.schedule);
 
         const todayKey = formatDateKey(new Date());
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowKey = formatDateKey(tomorrow);
+
         let targetDate = selectedDate;
 
         const currentActiveObj = data.schedule.find((s: ScheduleDate) => s.date === selectedDate && s.isDateActive);
@@ -97,6 +101,11 @@ function StorefrontPageContent() {
             targetDate = nextActive.date;
             setSelectedDate(targetDate);
             validOpenSlot = getFirstValidUpcomingSlot(targetDate, nextActive.slots);
+          } else {
+            // Default to tomorrow when all today's slots are closed
+            targetDate = tomorrowKey;
+            setSelectedDate(targetDate);
+            validOpenSlot = 'BREAKFAST';
           }
         }
 

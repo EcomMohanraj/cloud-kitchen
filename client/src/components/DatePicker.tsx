@@ -16,29 +16,46 @@ interface DatePickerProps {
   loading?: boolean;
 }
 
-// Fallback generator ensuring 7 selectable operating dates are ALWAYS displayed
-function getEffectiveScheduleData(data: ScheduleDate[]): ScheduleDate[] {
-  if (data && data.length > 0) return data;
+// Format Date as local YYYY-MM-DD string to prevent UTC timezone shifts
+function formatDateKey(d: Date): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
+// Fallback generator ensuring 7 selectable operating dates are ALWAYS displayed starting from today
+function getEffectiveScheduleData(data: ScheduleDate[]): ScheduleDate[] {
   const today = new Date();
-  const fallbackList: ScheduleDate[] = [];
+  const scheduleMap = new Map<string, ScheduleDate>();
+
+  if (data && data.length > 0) {
+    data.forEach((s) => scheduleMap.set(s.date, s));
+  }
+
+  const result: ScheduleDate[] = [];
   for (let i = 0; i < 7; i++) {
     const d = new Date(today);
     d.setDate(today.getDate() + i);
-    const dateStr = d.toISOString().split('T')[0];
+    const dateStr = formatDateKey(d);
 
-    fallbackList.push({
-      date: dateStr,
-      isDateActive: true,
-      slots: {
-        BREAKFAST: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '06:30 AM' },
-        SNACKS: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '10:00 AM' },
-        LUNCH: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '11:00 AM' },
-        DINNER: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '05:30 PM' },
-      },
-    });
+    const existing = scheduleMap.get(dateStr);
+    if (existing) {
+      result.push(existing);
+    } else {
+      result.push({
+        date: dateStr,
+        isDateActive: true,
+        slots: {
+          BREAKFAST: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '06:30 AM' },
+          SNACKS: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '10:00 AM' },
+          LUNCH: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '11:00 AM' },
+          DINNER: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '05:30 PM' },
+        },
+      });
+    }
   }
-  return fallbackList;
+  return result;
 }
 
 export const DatePicker: React.FC<DatePickerProps> = ({ scheduleData, loading }) => {
