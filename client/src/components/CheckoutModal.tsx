@@ -5,6 +5,7 @@ import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle,
 import { useCartStore } from '@/store/cartStore';
 import { OrderService, AddressService, PaymentService, SettingsService, AuthService } from '@/services/api';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { validateDeliveryAddress } from '@/utils/addressValidation';
 
 interface CheckoutModalProps {
@@ -321,25 +322,21 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           </p>
 
           <div className="pt-2 flex flex-col gap-2.5">
-            <button
-              onClick={() => {
-                onClose();
-                router.push('/account');
-              }}
+            <Link
+              href="/account?mode=signin&redirect=checkout"
+              onClick={onClose}
               className="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all hover:from-emerald-700 hover:to-teal-700"
             >
               <span>Sign In with Email & Password →</span>
-            </button>
+            </Link>
 
-            <button
-              onClick={() => {
-                onClose();
-                router.push('/register');
-              }}
+            <Link
+              href="/account?mode=signup&redirect=checkout"
+              onClick={onClose}
               className="w-full py-3.5 px-5 rounded-2xl bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-900 font-extrabold text-sm flex items-center justify-center space-x-2 transition-all"
             >
               <span>Create New Account</span>
-            </button>
+            </Link>
           </div>
         </div>
       </div>

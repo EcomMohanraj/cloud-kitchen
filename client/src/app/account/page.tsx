@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   UtensilsCrossed,
   User,
@@ -36,8 +36,12 @@ import { Navbar } from '@/components/Navbar';
 import { useCartStore } from '@/store/cartStore';
 import { AuthService, OrderService, AddressService } from '@/services/api';
 
-export default function AccountPage() {
+function AccountPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const modeParam = searchParams ? searchParams.get('mode') : null;
+  const redirectParam = searchParams ? searchParams.get('redirect') : null;
+
   const { customerName, customerPhone, deliveryAddress, setCustomerProfile, logoutCustomer } = useCartStore();
 
   const [mounted, setMounted] = useState(false);
@@ -45,6 +49,14 @@ export default function AccountPage() {
 
   // Auth Mode when Not Logged In: 'SIGN_IN' | 'SIGN_UP' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'
   const [authMode, setAuthMode] = useState<'SIGN_IN' | 'SIGN_UP' | 'FORGOT_PASSWORD_EMAIL' | 'FORGOT_PASSWORD_RESET'>('SIGN_IN');
+
+  useEffect(() => {
+    if (modeParam === 'signup' || modeParam === 'register') {
+      setAuthMode('SIGN_UP');
+    } else if (modeParam === 'signin' || modeParam === 'login') {
+      setAuthMode('SIGN_IN');
+    }
+  }, [modeParam]);
 
   // Form Fields
   const [email, setEmail] = useState('');
@@ -361,7 +373,13 @@ export default function AccountPage() {
         const savedName = data.user?.name || email.split('@')[0];
         const savedPhone = data.user?.phone || '9876543210';
         setCustomerProfile(savedName, savedPhone, data.user?.address || '');
-        router.push('/');
+        if (redirectParam === 'checkout') {
+          router.push('/?checkout=true');
+        } else if (redirectParam) {
+          router.push(redirectParam);
+        } else {
+          router.push('/');
+        }
       }
     } catch (err: any) {
       console.error('Sign in error:', err);
@@ -399,7 +417,13 @@ export default function AccountPage() {
     try {
       const data = await AuthService.registerCustomer({ name, phone, email, password });
       setCustomerProfile(data.user?.name || name, data.user?.phone || phone, data.user?.address || '');
-      router.push('/');
+      if (redirectParam === 'checkout') {
+        router.push('/?checkout=true');
+      } else if (redirectParam) {
+        router.push(redirectParam);
+      } else {
+        router.push('/');
+      }
     } catch (err: any) {
       console.error('Customer signup error:', err);
       setErrorMsg(err.message || 'Something went wrong. Please try again.');
@@ -1241,5 +1265,13 @@ export default function AccountPage() {
       </footer>
 
     </div>
+  );
+}
+
+export default function AccountPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#fbf9f4] flex items-center justify-center text-slate-500 font-bold text-sm">Loading...</div>}>
+      <AccountPageContent />
+    </Suspense>
   );
 }

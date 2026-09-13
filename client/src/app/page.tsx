@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Navbar } from '@/components/Navbar';
 import { DatePicker, ScheduleDate } from '@/components/DatePicker';
@@ -11,6 +11,7 @@ import { CheckoutModal } from '@/components/CheckoutModal';
 import { PaymentModal } from '@/components/PaymentModal';
 import { ServiceAreaModal } from '@/components/ServiceAreaModal';
 import { useCartStore } from '@/store/cartStore';
+import { useSearchParams } from 'next/navigation';
 import { ScheduleService, MenuService, ReviewService } from '@/services/api';
 import { getSocket } from '@/services/socket';
 import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle, Star, Quote, BadgeCheck } from 'lucide-react';
@@ -28,7 +29,7 @@ function formatDateKey(d: Date): string {
 
 import { Footer } from '@/components/Footer';
 
-export default function StorefrontPage() {
+function StorefrontPageContent() {
   const {
     selectedDate,
     selectedSlot,
@@ -149,6 +150,13 @@ export default function StorefrontPage() {
       socket.off('schedule-updated', handleScheduleUpdated);
     };
   }, []);
+
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    if (searchParams && searchParams.get('checkout') === 'true') {
+      setIsCheckoutOpen(true);
+    }
+  }, [searchParams]);
 
   // Periodic time tick & focus listener to trigger lock evaluation as time passes
   useEffect(() => {
@@ -455,5 +463,13 @@ export default function StorefrontPage() {
       )}
 
     </div>
+  );
+}
+
+export default function StorefrontPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-[#fbf9f4] flex items-center justify-center text-slate-500 font-bold text-sm">Loading...</div>}>
+      <StorefrontPageContent />
+    </Suspense>
   );
 }
