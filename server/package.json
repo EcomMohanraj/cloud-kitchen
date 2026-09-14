@@ -9,6 +9,7 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:migrate": "prisma migrate deploy",
+    "rotate-admin": "ts-node src/scripts/rotateAdminPassword.ts",
     "seed": "ts-node prisma/seed.ts"
   },
   "dependencies": {
