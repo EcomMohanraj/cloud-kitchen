@@ -36,7 +36,7 @@ async function main() {
 
   await prisma.admin.upsert({
     where: { email: 'admin@yazhisai.com' },
-    update: { password: passwordHash },
+    update: {},
     create: {
       email: 'admin@yazhisai.com',
       password: passwordHash,
