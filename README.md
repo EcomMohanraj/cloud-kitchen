@@ -57,4 +57,4 @@ npm run dev
 
 * **Frontend (Next.js):** `http://localhost:3000`
 * **Backend API (Express):** `http://localhost:5000/api`
-* **Admin Login:** `admin@yazhisai.com` / `admin123`
+* **Admin Login:** `admin@yazhisai.com` (See `.env` for `ADMIN_PASSWORD`)

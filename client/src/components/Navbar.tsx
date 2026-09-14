@@ -45,8 +45,8 @@ export const Navbar: React.FC = () => {
 
   // Admin State
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [adminEmail, setAdminEmail] = useState('admin@yazhisai.com');
-  const [adminPassword, setAdminPassword] = useState('admin123');
+  const [adminEmail, setAdminEmail] = useState('');
+  const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
   const [adminLoading, setAdminLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -499,11 +499,7 @@ export const Navbar: React.FC = () => {
             {/* Admin Login Form */}
             {authTab === 'ADMIN' && (
               <form onSubmit={handleAdminLogin} className="space-y-3.5 text-left text-xs font-semibold">
-                <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-emerald-900 text-xs">
-                  <div className="font-extrabold text-emerald-950">Demo Admin Quick Login:</div>
-                  <div>Email: <span className="font-mono font-bold text-emerald-700">admin@yazhisai.com</span></div>
-                  <div>Password: <span className="font-mono font-bold text-emerald-700">admin123</span></div>
-                </div>
+
 
                 {adminError && (
                   <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 font-bold">

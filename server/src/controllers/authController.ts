@@ -548,10 +548,15 @@ export const verifySession = async (req: Request, res: Response) => {
 
 export const logoutAdmin = async (req: Request, res: Response) => {
   const isProd = process.env.NODE_ENV === 'production';
+  const host = req.headers.host || '';
+  const isCustomDomain = host.includes('yazhisaicloudkitchen.in');
+  const isSecure = isProd && isCustomDomain;
+
   const cookieOpts = {
     httpOnly: true,
-    secure: isProd,
-    sameSite: (isProd ? 'none' : 'lax') as 'none' | 'lax',
+    secure: isSecure,
+    sameSite: 'lax' as const,
+    ...(isCustomDomain && { domain: '.yazhisaicloudkitchen.in' }),
   };
   res.clearCookie('admin_token', cookieOpts);
   res.clearCookie('auth_token', cookieOpts);

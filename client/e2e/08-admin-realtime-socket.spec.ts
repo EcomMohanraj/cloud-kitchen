@@ -15,9 +15,14 @@ test.describe('Admin Realtime Socket Updates to Customer Tracking', () => {
     const adminPage = await adminContext.newPage();
 
     // Login as Admin
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('ADMIN_PASSWORD environment variable is not set.');
+    }
     await adminPage.goto('/admin/login');
+    await adminPage.waitForTimeout(1000);
     await adminPage.fill('input[type="email"]', 'admin@yazhisai.com');
-    await adminPage.fill('input[type="password"]', 'admin123');
+    await adminPage.fill('input[type="password"]', adminPassword);
     await adminPage.click('button[type="submit"]');
 
     // Navigate to Admin Orders

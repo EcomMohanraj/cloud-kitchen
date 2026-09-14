@@ -8,9 +8,14 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
     const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Banana Leaf Meals', price: 220 };
 
     // 1. Login as Admin
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('ADMIN_PASSWORD environment variable is not set.');
+    }
     await page.goto('/admin/login');
+    await page.waitForTimeout(1000);
     await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', adminPassword);
     await page.click('button[type="submit"]');
 
     // Wait for redirect to admin schedule/dashboard
@@ -100,9 +105,14 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
     const menuBody = await menuRes.json();
     const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Banana Leaf Meals', price: 220 };
 
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('ADMIN_PASSWORD environment variable is not set.');
+    }
     await page.goto('/admin/login');
+    await page.waitForTimeout(1000);
     await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', adminPassword);
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 10000 });
 

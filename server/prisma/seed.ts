@@ -18,7 +18,11 @@ async function main() {
   console.log('Seeding Yazhisai Cloud Kitchen database...');
 
   // 1. Create Admin User (Using upsert so existing users remain untouched)
-  const passwordHash = await bcrypt.hash('admin123', 10);
+  const adminPass = process.env.ADMIN_PASSWORD;
+  if (!adminPass) {
+    throw new Error('FATAL SEED ERROR: ADMIN_PASSWORD environment variable is missing.');
+  }
+  const passwordHash = await bcrypt.hash(adminPass, 10);
 
   await prisma.user.upsert({
     where: { phone: '9876543210' },
@@ -39,7 +43,7 @@ async function main() {
     },
   });
 
-  console.log('Admin account verified: admin@yazhisai.com / admin123');
+  console.log('Admin account verified: admin@yazhisai.com');
 
   // 1b. Create Test DeliveryPartner (Using upsert so existing rider accounts remain untouched)
   const riderPasswordHash = await bcrypt.hash('rider123', 10);

@@ -38,9 +38,14 @@ test.describe('Razorpay Online Payment Cancellation & Cleanup Flow', () => {
     const orderNumber = order.orderNumber;
 
     // 2. Navigate to Admin Orders Page and verify order is NOT visible in live board
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('ADMIN_PASSWORD environment variable is not set.');
+    }
     await page.goto('/admin/login');
+    await page.waitForTimeout(1000);
     await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', adminPassword);
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/admin\/(schedule|orders)/, { timeout: 10000 });
     await page.goto('/admin/orders');

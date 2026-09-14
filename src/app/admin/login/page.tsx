@@ -6,8 +6,8 @@ import { ChefHat, Lock, Mail, ArrowRight, AlertCircle } from 'lucide-react';
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState('admin@yazhisai.com');
-  const [password, setPassword] = useState('admin123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -52,12 +52,7 @@ export default function AdminLoginPage() {
           </p>
         </div>
 
-        {/* Credentials Info Badge */}
-        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-xs text-emerald-900">
-          <div className="font-extrabold text-emerald-950 mb-0.5">Demo Admin Credentials:</div>
-          <div>Email: <span className="font-mono font-bold text-emerald-700">admin@yazhisai.com</span></div>
-          <div>Password: <span className="font-mono font-bold text-emerald-700">admin123</span></div>
-        </div>
+
 
         {error && (
           <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold">

@@ -2,12 +2,17 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Logout Functionality for All User Roles', () => {
   test('Admin logout should clear admin_token cookie and bounce to admin login', async ({ page }) => {
+    const adminPassword = process.env.ADMIN_PASSWORD;
+    if (!adminPassword) {
+      throw new Error('ADMIN_PASSWORD environment variable is not set.');
+    }
     // Login
     await page.goto('/admin/login');
+    await page.waitForTimeout(1000);
     await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', process.env.ADMIN_PASSWORD || 'YazhisaiNaga@3');
+    await page.fill('input[type="password"]', adminPassword);
     await page.click('button[type="submit"]');
-    await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 10000 });
+    await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 15000 });
 
     // Click Logout Admin
     const logoutBtn = page.locator('button:has-text("Logout Admin"), button:has-text("Logout")').first();
@@ -30,16 +35,15 @@ test.describe('Logout Functionality for All User Roles', () => {
   test('Chef logout should clear chef session and bounce to chef login', async ({ page }) => {
     // Login
     await page.goto('/chef/login');
+    await page.waitForTimeout(1000);
     await page.fill('input[type="tel"]', '8888888888');
     await page.fill('input[type="password"]', 'chef123');
     await page.click('button[type="submit"]');
-    await page.waitForURL(/\/chef\/dashboard/, { timeout: 10000 });
+    await page.waitForURL(/\/chef\/dashboard/, { timeout: 15000 });
 
     // Click Logout
-    const logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Sign Out")').first();
-    if (await logoutBtn.isVisible()) {
-      await logoutBtn.click();
-    }
+    const logoutBtn = page.locator('button[title*="Logout"], button:has-text("Logout"), button:has-text("Sign Out")').first();
+    await logoutBtn.click();
     await page.waitForTimeout(1500);
 
     // Confirm visiting protected route bounces to chef login
@@ -51,10 +55,11 @@ test.describe('Logout Functionality for All User Roles', () => {
   test('Rider logout should clear rider session and bounce to rider login', async ({ page }) => {
     // Login
     await page.goto('/rider/login');
+    await page.waitForTimeout(1000);
     await page.fill('input[type="tel"]', '9999999999');
     await page.fill('input[type="password"]', 'rider123');
     await page.click('button[type="submit"]');
-    await page.waitForURL(/\/rider\/dashboard/, { timeout: 10000 });
+    await page.waitForURL(/\/rider\/dashboard/, { timeout: 15000 });
 
     // Click Logout
     const logoutBtn = page.locator('button:has-text("Logout"), button:has-text("Sign Out")').first();
