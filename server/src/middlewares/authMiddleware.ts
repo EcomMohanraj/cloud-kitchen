@@ -19,7 +19,7 @@ export interface AuthRequest extends Request {
   file?: Express.Multer.File;
 }
 
-function maybeRefreshOnActivity(res: Response, decoded: any) {
+function maybeRefreshOnActivity(req: Request, res: Response, decoded: any) {
   if (!decoded || !decoded.exp) return;
   const nowInSec = Math.floor(Date.now() / 1000);
   const remainingSec = decoded.exp - nowInSec;
@@ -33,12 +33,15 @@ function maybeRefreshOnActivity(res: Response, decoded: any) {
     const newToken = jwt.sign(payload, getJwtSecret(), { expiresIn: '1d' });
     
     const isProd = process.env.NODE_ENV === 'production';
+    const host = req.headers.host || '';
+    const isCustomDomain = host.includes('yazhisaicloudkitchen.in');
+    const isSecure = isProd && isCustomDomain;
     const cookieOpts = {
       httpOnly: true,
-      secure: isProd,
+      secure: isSecure,
       sameSite: 'lax' as const,
       maxAge: 24 * 60 * 60 * 1000,
-      ...(isProd && { domain: '.yazhisaicloudkitchen.in' }),
+      ...(isCustomDomain && { domain: '.yazhisaicloudkitchen.in' }),
     };
 
     if (decoded.role === 'ADMIN') {
@@ -67,7 +70,7 @@ export const requireAdmin = (req: AuthRequest, res: Response, next: NextFunction
       return res.status(403).json({ error: 'Forbidden. Admin access required.' });
     }
 
-    maybeRefreshOnActivity(res, decoded);
+    maybeRefreshOnActivity(req, res, decoded);
     req.admin = decoded;
     req.user = decoded;
     next();
@@ -103,7 +106,7 @@ export const requireRider = async (req: AuthRequest, res: Response, next: NextFu
       }
     }
 
-    maybeRefreshOnActivity(res, decoded);
+    maybeRefreshOnActivity(req, res, decoded);
     req.rider = decoded;
     req.user = decoded;
     next();
@@ -139,7 +142,7 @@ export const requireChef = async (req: AuthRequest, res: Response, next: NextFun
       }
     }
 
-    maybeRefreshOnActivity(res, decoded);
+    maybeRefreshOnActivity(req, res, decoded);
     req.chef = decoded;
     req.user = decoded;
     next();
@@ -162,7 +165,7 @@ export const requireCustomer = (req: AuthRequest, res: Response, next: NextFunct
       return res.status(403).json({ error: 'Forbidden. Access restricted to customers.' });
     }
 
-    maybeRefreshOnActivity(res, decoded);
+    maybeRefreshOnActivity(req, res, decoded);
     req.customer = decoded;
     req.user = decoded;
     next();
@@ -181,7 +184,7 @@ export const requireAuthOrCustomer = (req: AuthRequest, res: Response, next: Nex
     }
 
     const decoded = jwt.verify(token, getJwtSecret()) as any;
-    maybeRefreshOnActivity(res, decoded);
+    maybeRefreshOnActivity(req, res, decoded);
     req.user = decoded;
 
     if (decoded.role === 'ADMIN') {

@@ -5,7 +5,7 @@ test.describe('Logout Functionality for All User Roles', () => {
     // Login
     await page.goto('/admin/login');
     await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', process.env.ADMIN_PASSWORD || 'YazhisaiNaga@3');
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 10000 });
 

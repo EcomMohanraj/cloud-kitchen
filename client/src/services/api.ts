@@ -4,6 +4,73 @@ if (typeof window !== 'undefined') {
   console.log(`🌐 [Yazhisai API Engine] Active API Base URL: ${API_BASE_URL}`);
 }
 
+let isRedirectingFor401 = false;
+
+function handle401SessionExpiry(endpoint: string): boolean {
+  if (typeof window === 'undefined') return false;
+
+  // Do NOT trigger session expiry redirects for login/auth submission attempts themselves
+  if (
+    endpoint === '/auth' ||
+    endpoint.endsWith('/auth') ||
+    endpoint.includes('/login') ||
+    endpoint.includes('/send-otp') ||
+    endpoint.includes('/verify-otp') ||
+    endpoint.includes('/register')
+  ) {
+    return false;
+  }
+
+  const currentPath = window.location.pathname;
+
+  // 1. Admin Session Expired
+  if (currentPath.startsWith('/admin') || endpoint.includes('/admin')) {
+    if (currentPath === '/admin/login') return false;
+    if (!isRedirectingFor401) {
+      isRedirectingFor401 = true;
+      console.warn('🔒 [API Security] Admin session expired (401). Redirecting to Admin Login...');
+      const targetUrl = `/admin/login?sessionExpired=true&redirect=${encodeURIComponent(currentPath)}`;
+      window.location.href = targetUrl;
+    }
+    return true;
+  }
+
+  // 2. Chef Session Expired
+  if (currentPath.startsWith('/chef') || endpoint.includes('/chef')) {
+    if (currentPath === '/chef/login') return false;
+    if (!isRedirectingFor401) {
+      isRedirectingFor401 = true;
+      localStorage.removeItem('chef_info');
+      console.warn('🔒 [API Security] Chef session expired (401). Redirecting to Chef Login...');
+      const targetUrl = `/chef/login?sessionExpired=true&redirect=${encodeURIComponent(currentPath)}`;
+      window.location.href = targetUrl;
+    }
+    return true;
+  }
+
+  // 3. Delivery Partner (Rider) Session Expired
+  if (currentPath.startsWith('/rider') || endpoint.includes('/rider')) {
+    if (currentPath === '/rider/login') return false;
+    if (!isRedirectingFor401) {
+      isRedirectingFor401 = true;
+      localStorage.removeItem('rider_info');
+      console.warn('🔒 [API Security] Rider session expired (401). Redirecting to Rider Login...');
+      const targetUrl = `/rider/login?sessionExpired=true&redirect=${encodeURIComponent(currentPath)}`;
+      window.location.href = targetUrl;
+    }
+    return true;
+  }
+
+  // 4. Customer Session Expired
+  // Do NOT force a hard page redirect; keep active cartStore completely intact.
+  // Dispatch custom window event so Navbar / Checkout Modal can open sign-in prompt smoothly.
+  console.warn('🔒 [API Security] Customer session expired (401). Prompting sign-in without wiping cart...');
+  window.dispatchEvent(new CustomEvent('customer-session-expired', {
+    detail: { message: 'Your session expired. Please sign in again.' },
+  }));
+  return false;
+}
+
 export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const cleanBase = API_BASE_URL.replace(/\/$/, '');
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
@@ -26,6 +93,13 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   const data = await response.json();
 
   if (!response.ok) {
+    if (response.status === 401) {
+      const isRedirecting = handle401SessionExpiry(endpoint);
+      if (isRedirecting || isRedirectingFor401) {
+        // Return pending promise to suppress secondary double-error messages/modals while redirecting
+        return new Promise(() => {});
+      }
+    }
     throw new Error(data.error || `HTTP error! status: ${response.status}`);
   }
 

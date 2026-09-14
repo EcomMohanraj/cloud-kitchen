@@ -4,7 +4,7 @@ test.describe('Session Persistence Across Page Refresh', () => {
   test('Admin session should persist across page reloads', async ({ page }) => {
     await page.goto('/admin/login');
     await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', 'admin123');
+    await page.fill('input[type="password"]', process.env.ADMIN_PASSWORD || 'YazhisaiNaga@3');
     await page.click('button[type="submit"]');
 
     // Wait for navigation away from login

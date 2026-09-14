@@ -55,13 +55,16 @@ export const riderLogin = async (req: Request, res: Response) => {
     );
 
     const isProd = process.env.NODE_ENV === 'production';
+    const host = req.headers.host || '';
+    const isCustomDomain = host.includes('yazhisaicloudkitchen.in');
+    const isSecure = isProd && isCustomDomain;
 
     res.cookie('rider_token', token, {
       httpOnly: true,
-      secure: isProd,
+      secure: isSecure,
       sameSite: 'lax',
       maxAge: 24 * 60 * 60 * 1000,
-      ...(isProd && { domain: '.yazhisaicloudkitchen.in' }),
+      ...(isCustomDomain && { domain: '.yazhisaicloudkitchen.in' }),
     });
 
     return res.json({

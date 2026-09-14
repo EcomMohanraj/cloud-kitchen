@@ -57,6 +57,17 @@ export const Navbar: React.FC = () => {
   useEffect(() => {
     setMounted(true);
     loadSavedProfile();
+
+    const handleCustomerSessionExpired = (e: any) => {
+      console.log('🔒 [Navbar] Customer session expired event received:', e.detail);
+      setIsAuthModalOpen(true);
+      setUserError(e.detail?.message || 'Your session expired. Please sign in again.');
+    };
+
+    window.addEventListener('customer-session-expired', handleCustomerSessionExpired);
+    return () => {
+      window.removeEventListener('customer-session-expired', handleCustomerSessionExpired);
+    };
   }, [loadSavedProfile]);
 
   // Strict & Robust Admin Access Detection via Session API

@@ -13,6 +13,16 @@ export default function RiderLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [sessionExpiredMsg, setSessionExpiredMsg] = useState(false);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('sessionExpired') === 'true') {
+        setSessionExpiredMsg(true);
+      }
+    }
+  }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,6 +68,13 @@ export default function RiderLoginPage() {
             Yazhisai Cloud Kitchen Fleet App
           </p>
         </div>
+
+        {sessionExpiredMsg && (
+          <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-300 text-amber-900 text-xs flex items-center gap-2 font-bold shadow-xs">
+            <AlertCircle className="w-4 h-4 shrink-0 text-amber-600" />
+            <span>Your rider session expired. Please log in again to access delivery assignments.</span>
+          </div>
+        )}
 
         {error && (
           <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold">
