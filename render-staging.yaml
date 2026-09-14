@@ -14,8 +14,10 @@ services:
       - key: NODE_ENV
         value: staging
       - key: DATABASE_URL
-        # Point this to the Neon 'staging' database branch connection string
-        # In Neon Console: Project -> Branches -> Create Branch from main -> copy pooled connection string
+        # Point this to the Neon 'staging' database branch connection string (pooled -pooler)
+        sync: false
+      - key: DIRECT_URL
+        # Point this to the Neon 'staging' database branch direct connection string (unpooled, without -pooler)
         sync: false
       - key: JWT_SECRET
         # Use a DIFFERENT secret from production — generate a new one
