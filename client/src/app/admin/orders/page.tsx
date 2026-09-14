@@ -70,8 +70,12 @@ export default function AdminOrdersPage() {
   };
 
   // Filters
-  const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED'>('ALL');
+  const [statusTab, setStatusTab] = useState<'ALL' | 'ACTIVE' | 'DELIVERED' | 'CANCELLED'>('ALL');
   
+  // Cancel Order Modal State
+  const [cancelTargetOrder, setCancelTargetOrder] = useState<any | null>(null);
+  const [cancelReason, setCancelReason] = useState<string>('Customer requested');
+
   // Date filter defaults to Today (or stored sessionStorage value)
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>(() => {
     if (typeof window !== 'undefined') {
@@ -179,6 +183,25 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const handleConfirmCancelOrder = async () => {
+    if (!cancelTargetOrder) return;
+    const orderId = cancelTargetOrder.id;
+
+    // Optimistic UI Update
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, orderStatus: 'CANCELLED' } : o))
+    );
+
+    try {
+      await OrderService.updateOrderStatus(orderId, 'CANCELLED', undefined, cancelReason);
+      fetchOrders();
+    } catch (error) {
+      console.error('Failed to cancel order:', error);
+    } finally {
+      setCancelTargetOrder(null);
+    }
+  };
+
   const handleUpdatePaymentStatus = async (orderId: string, paymentStatus: string) => {
     // Optimistic UI Update
     setOrders((prev) =>
@@ -203,6 +226,9 @@ export default function AdminOrdersPage() {
     }
     if (statusTab === 'DELIVERED') {
       return order.orderStatus === 'DELIVERED';
+    }
+    if (statusTab === 'CANCELLED') {
+      return order.orderStatus === 'CANCELLED';
     }
     return true;
   });
@@ -251,19 +277,20 @@ export default function AdminOrdersPage() {
           
           {/* Status Tabs */}
           <div className="flex items-center space-x-1.5 bg-slate-100 p-1.5 rounded-2xl overflow-x-auto">
-            {(['ALL', 'ACTIVE', 'DELIVERED'] as const).map((tab) => (
+            {(['ALL', 'ACTIVE', 'DELIVERED', 'CANCELLED'] as const).map((tab) => (
               <button
                 key={tab}
                 onClick={() => setStatusTab(tab)}
                 className={`px-4 py-2 rounded-xl text-xs font-extrabold transition-all whitespace-nowrap ${
                   statusTab === tab
-                    ? 'bg-emerald-600 text-white shadow-md'
+                    ? tab === 'CANCELLED' ? 'bg-rose-600 text-white shadow-md' : 'bg-emerald-600 text-white shadow-md'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-white/60'
                 }`}
               >
                 {tab === 'ALL' && 'All Orders'}
                 {tab === 'ACTIVE' && '🔥 Active Kitchen Orders'}
                 {tab === 'DELIVERED' && '✓ Delivered'}
+                {tab === 'CANCELLED' && '🚫 Cancelled'}
               </button>
             ))}
           </div>
@@ -578,6 +605,37 @@ export default function AdminOrdersPage() {
                           </span>
                           {currentStatus === 'DELIVERED' && <span className="text-[10px] uppercase font-black">Completed</span>}
                         </button>
+
+                        {/* CANCEL ORDER BUTTON */}
+                        {currentStatus === 'CANCELLED' ? (
+                          <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-extrabold flex items-center justify-between">
+                            <span className="flex items-center gap-1.5">
+                              <XCircle className="w-4 h-4 text-rose-600" /> Order Cancelled
+                            </span>
+                            <span className="text-[10px] uppercase font-black bg-rose-200 text-rose-900 px-2 py-0.5 rounded-full">
+                              Cancelled
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setCancelTargetOrder(order);
+                              setCancelReason('Customer requested');
+                            }}
+                            disabled={currentStatus === 'OUT_FOR_DELIVERY' || currentStatus === 'DELIVERED'}
+                            className={`w-full py-2 px-3 rounded-xl font-extrabold text-xs flex items-center justify-between transition-all ${
+                              currentStatus === 'OUT_FOR_DELIVERY' || currentStatus === 'DELIVERED'
+                                ? 'bg-slate-50 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60'
+                                : 'bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 cursor-pointer'
+                            }`}
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <XCircle className="w-4 h-4 text-rose-600" /> Cancel Order
+                            </span>
+                            <span className="text-[10px] text-rose-600 font-bold">Admin Override</span>
+                          </button>
+                        )}
                       </div>
                     </div>
 
@@ -599,6 +657,19 @@ export default function AdminOrdersPage() {
                           {isPaid ? (isCOD ? '✓ COD Cash Collected' : '✓ Online PAID') : (isCOD ? '⏳ COD Cash Pending' : 'PENDING')}
                         </button>
                       </div>
+
+                      {/* Online Paid & Cancelled: Manual Refund Needed Flag */}
+                      {currentStatus === 'CANCELLED' && !isCOD && isPaid && (
+                        <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 text-amber-900 text-xs font-bold space-y-1">
+                          <div className="flex items-center gap-1.5 text-amber-800 font-black">
+                            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                            <span>⚠️ Manual Refund Required</span>
+                          </div>
+                          <p className="text-[11px] text-amber-900/90 font-medium leading-tight">
+                            This order was paid online via UPI/Razorpay. Please initiate manual refund from Razorpay Dashboard if customer is eligible.
+                          </p>
+                        </div>
+                      )}
 
                       {/* Manual Admin Cash Collection Button for COD Orders */}
                       {isCOD && !isPaid && ['OUT_FOR_DELIVERY', 'DELIVERED'].includes(currentStatus) && (
@@ -634,6 +705,60 @@ export default function AdminOrdersPage() {
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Cancel Order Confirmation Modal */}
+      {cancelTargetOrder && (
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 space-y-5 shadow-2xl border border-slate-200 animate-in zoom-in-95 duration-200">
+            <div className="flex items-start space-x-3">
+              <div className="p-3 rounded-2xl bg-rose-100 text-rose-700 shrink-0">
+                <AlertCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
+                <h3 className="text-lg font-black text-slate-900">
+                  Cancel Order #{cancelTargetOrder.orderNumber || cancelTargetOrder.id.slice(0, 8)}?
+                </h3>
+                <p className="text-xs text-slate-600 font-semibold leading-relaxed">
+                  Are you sure you want to cancel this order from <span className="font-extrabold text-slate-900">{cancelTargetOrder.customerName}</span>? This will notify the customer tracking page in real-time.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2 bg-slate-50 p-4 rounded-2xl border border-slate-200/80">
+              <label className="block text-xs font-extrabold text-slate-700">
+                Select Cancellation Reason:
+              </label>
+              <select
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="w-full px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-rose-500"
+              >
+                <option value="Customer requested">Customer requested cancellation</option>
+                <option value="Kitchen stock issue">Kitchen ingredient / stock unavailable</option>
+                <option value="Test/duplicate order">Test or duplicate order</option>
+                <option value="Other">Other reason</option>
+              </select>
+            </div>
+
+            <div className="flex items-center justify-end space-x-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setCancelTargetOrder(null)}
+                className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-extrabold transition-all"
+              >
+                Keep Order Active
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmCancelOrder}
+                className="px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-black shadow-md shadow-rose-600/20 transition-all"
+              >
+                Yes, Cancel Order
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

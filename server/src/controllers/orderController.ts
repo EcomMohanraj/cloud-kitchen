@@ -324,16 +324,21 @@ export const createOrder = async (req: Request, res: Response) => {
 
 export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
   try {
-    const { orderId, orderStatus, paymentStatus } = req.body;
+    const { orderId, orderStatus, paymentStatus, cancelReason } = req.body;
 
     if (!orderId) {
       return res.status(400).json({ error: 'Order ID required' });
     }
 
     const existingOrder = await prisma.order.findUnique({ where: { id: orderId } });
-    const isTransitioningToDelivered =
-      orderStatus === 'DELIVERED' && existingOrder?.orderStatus !== 'DELIVERED';
+    if (!existingOrder) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
 
+    const isTransitioningToDelivered =
+      orderStatus === 'DELIVERED' && existingOrder.orderStatus !== 'DELIVERED';
+    const isTransitioningToCancelled =
+      orderStatus === 'CANCELLED' && existingOrder.orderStatus !== 'CANCELLED';
 
     const updateData: any = {};
     if (orderStatus) updateData.orderStatus = orderStatus;
@@ -356,6 +361,32 @@ export const updateOrderStatus = async (req: AuthRequest, res: Response) => {
         user: true,
       },
     });
+
+    // If order was cancelled, decrement currentOrders capacity count on SlotsSchedule
+    if (isTransitioningToCancelled) {
+      console.log(`🚫 [Admin Cancel Order] Order #${existingOrder.orderNumber || existingOrder.id} cancelled by admin. Reason: "${cancelReason || 'Customer requested'}"`);
+
+      if (existingOrder.bookingDate && existingOrder.slotType) {
+        try {
+          const schedule = await prisma.slotsSchedule.findUnique({
+            where: {
+              date_slotType: {
+                date: existingOrder.bookingDate,
+                slotType: existingOrder.slotType,
+              },
+            },
+          });
+          if (schedule && schedule.currentOrders > 0) {
+            await prisma.slotsSchedule.update({
+              where: { id: schedule.id },
+              data: { currentOrders: Math.max(0, schedule.currentOrders - 1) },
+            });
+          }
+        } catch (scheduleErr) {
+          console.warn('⚠️ Non-blocking error decrementing slot schedule currentOrders on cancel:', scheduleErr);
+        }
+      }
+    }
 
     emitOrderStatusUpdated(updatedOrder);
 

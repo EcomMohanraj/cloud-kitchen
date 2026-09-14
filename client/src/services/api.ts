@@ -374,9 +374,9 @@ export const OrderService = {
     return { order: createdOrder };
   },
 
-  updateOrderStatus: async (orderId: string, orderStatus?: string, paymentStatus?: string) => {
+  updateOrderStatus: async (orderId: string, orderStatus?: string, paymentStatus?: string, cancelReason?: string) => {
     try {
-      await fetchApi('/orders', { method: 'PATCH', body: JSON.stringify({ orderId, orderStatus, paymentStatus }) });
+      await fetchApi('/orders', { method: 'PATCH', body: JSON.stringify({ orderId, orderStatus, paymentStatus, cancelReason }) });
     } catch (error) {
       console.warn('Backend Express updateOrderStatus failed, updating local store:', error);
     }

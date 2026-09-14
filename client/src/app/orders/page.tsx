@@ -129,54 +129,65 @@ export default function CustomerOrdersPage() {
                   </div>
 
                   {/* Clean Status Timeline (Accepted -> Preparing -> Out for Delivery -> Delivered) */}
-                  <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 sm:p-5">
-                    <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-1.5">
-                      <Clock className="w-4 h-4 text-emerald-600" />
-                      Live Kitchen Status Timeline
-                    </h3>
-
-                    <div className="grid grid-cols-4 gap-2 text-center text-[11px] font-bold">
-                      {/* Step 1: Accepted */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
-                          currentStep >= 1 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-200 text-slate-400'
-                        }`}>
-                          <CheckCircle2 className="w-4 h-4" />
-                        </div>
-                        <span className={currentStep >= 1 ? 'text-slate-900 font-black' : 'text-slate-400'}>Accepted</span>
+                  {order.orderStatus === 'CANCELLED' ? (
+                    <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs font-bold space-y-1">
+                      <div className="flex items-center gap-2 font-black text-rose-900 text-sm">
+                        <span>🚫 Order Cancelled</span>
                       </div>
+                      <p className="text-slate-600 font-semibold leading-relaxed">
+                        This meal pre-order was cancelled by the kitchen admin. If you paid online, please contact kitchen support for refund details.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="bg-slate-50 border border-slate-200/60 rounded-2xl p-4 sm:p-5">
+                      <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-emerald-600" />
+                        Live Kitchen Status Timeline
+                      </h3>
 
-                      {/* Step 2: Preparing */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
-                          currentStep >= 2 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 animate-pulse' : 'bg-slate-200 text-slate-400'
-                        }`}>
-                          <ChefHat className="w-4 h-4" />
+                      <div className="grid grid-cols-4 gap-2 text-center text-[11px] font-bold">
+                        {/* Step 1: Accepted */}
+                        <div className="flex flex-col items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
+                            currentStep >= 1 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-200 text-slate-400'
+                          }`}>
+                            <CheckCircle2 className="w-4 h-4" />
+                          </div>
+                          <span className={currentStep >= 1 ? 'text-slate-900 font-black' : 'text-slate-400'}>Accepted</span>
                         </div>
-                        <span className={currentStep >= 2 ? 'text-emerald-800 font-black' : 'text-slate-400'}>Preparing</span>
-                      </div>
 
-                      {/* Step 3: Out for Delivery */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
-                          currentStep >= 3 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-200 text-slate-400'
-                        }`}>
-                          <Truck className="w-4 h-4" />
+                        {/* Step 2: Preparing */}
+                        <div className="flex flex-col items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
+                            currentStep >= 2 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20 animate-pulse' : 'bg-slate-200 text-slate-400'
+                          }`}>
+                            <ChefHat className="w-4 h-4" />
+                          </div>
+                          <span className={currentStep >= 2 ? 'text-emerald-800 font-black' : 'text-slate-400'}>Preparing</span>
                         </div>
-                        <span className={currentStep >= 3 ? 'text-slate-900 font-black' : 'text-slate-400'}>On The Way</span>
-                      </div>
 
-                      {/* Step 4: Delivered */}
-                      <div className="flex flex-col items-center">
-                        <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
-                          currentStep >= 4 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-200 text-slate-400'
-                        }`}>
-                          <ShoppingBag className="w-4 h-4" />
+                        {/* Step 3: Out for Delivery */}
+                        <div className="flex flex-col items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
+                            currentStep >= 3 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-200 text-slate-400'
+                          }`}>
+                            <Truck className="w-4 h-4" />
+                          </div>
+                          <span className={currentStep >= 3 ? 'text-slate-900 font-black' : 'text-slate-400'}>On The Way</span>
                         </div>
-                        <span className={currentStep >= 4 ? 'text-slate-900 font-black' : 'text-slate-400'}>Delivered</span>
+
+                        {/* Step 4: Delivered */}
+                        <div className="flex flex-col items-center">
+                          <div className={`w-8 h-8 rounded-full flex items-center justify-center mb-1.5 ${
+                            currentStep >= 4 ? 'bg-emerald-600 text-white shadow-md shadow-emerald-600/20' : 'bg-slate-200 text-slate-400'
+                          }`}>
+                            <ShoppingBag className="w-4 h-4" />
+                          </div>
+                          <span className={currentStep >= 4 ? 'text-slate-900 font-black' : 'text-slate-400'}>Delivered</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Order Items & Address */}
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">

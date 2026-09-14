@@ -22,10 +22,13 @@ export const getRevenueAnalytics = async (req: AuthRequest, res: Response) => {
     const startDateTime = new Date(`${startDate}T00:00:00.000Z`);
     const endDateTime = new Date(`${endDate}T23:59:59.999Z`);
 
-    // Query orders that are marked as PAID within the date range
+    // Query orders that are marked as PAID within the date range (excluding CANCELLED orders)
     const paidOrders = await prisma.order.findMany({
       where: {
         paymentStatus: 'PAID',
+        orderStatus: {
+          notIn: ['CANCELLED', 'PAYMENT_PENDING', 'PAYMENT_FAILED'],
+        },
         createdAt: {
           gte: startDateTime,
           lte: endDateTime,
