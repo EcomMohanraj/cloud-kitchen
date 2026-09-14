@@ -58,6 +58,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [errorMsg, setErrorMsg] = useState('');
   const [capturedCoords, setCapturedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
+  const [locationError, setLocationError] = useState<{ message: string; code?: number; targetField: 'EDIT' | 'MAIN' } | null>(null);
 
   // Authentication Session Verification State
   const [isVerifyingSession, setIsVerifyingSession] = useState(true);
@@ -143,11 +144,15 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
   const handleUseCurrentLocation = async (targetField: 'EDIT' | 'MAIN' = 'MAIN') => {
     if (typeof window === 'undefined' || !('geolocation' in navigator)) {
-      alert('Geolocation is not supported by your browser.');
+      setLocationError({
+        message: 'Geolocation is not supported by your browser. Please type your delivery address manually below.',
+        targetField,
+      });
       return;
     }
 
     setLocating(true);
+    setLocationError(null);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -193,17 +198,36 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
             handleAddressChange(addressText);
           }
         } else {
-          alert(`GPS Location pinned (${lat.toFixed(4)}, ${lng.toFixed(4)}). Could not auto-detect street address name. Please type your house/door number and street name manually.`);
+          const coordText = `GPS Location (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+          if (targetField === 'EDIT') {
+            setEditFullAddress(coordText);
+          } else {
+            handleAddressChange(coordText);
+          }
         }
 
         setLocating(false);
       },
       (error) => {
         console.warn('Geolocation permission denied or unavailable:', error.message);
-        alert('Location access denied or unavailable. Please type your delivery address manually.');
         setLocating(false);
+
+        let friendlyMsg = 'Please turn on device location (GPS) on your phone or browser settings to auto-pinpoint your address.';
+        if (error.code === error.PERMISSION_DENIED) {
+          friendlyMsg = 'Location access required. Please enable location/GPS permissions in your browser or phone settings, then click "Try Again".';
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          friendlyMsg = 'Device GPS signal unavailable. Please ensure location/GPS is turned ON in your phone settings and try again.';
+        } else if (error.code === error.TIMEOUT) {
+          friendlyMsg = 'Location request timed out. Please check your GPS signal and click "Try Again".';
+        }
+
+        setLocationError({
+          message: friendlyMsg,
+          code: error.code,
+          targetField,
+        });
       },
-      { enableHighAccuracy: true, timeout: 10000 }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
     );
   };
 
@@ -541,6 +565,42 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
           <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {/* Location / GPS Guidance & Retry Alert Banner */}
+        {locationError && (
+          <div className="mx-6 mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-300/80 text-amber-950 text-xs space-y-3 shadow-xs">
+            <div className="flex items-start gap-2.5">
+              <Navigation className="w-5 h-5 text-amber-600 shrink-0 mt-0.5 animate-pulse" />
+              <div className="flex-1 space-y-1">
+                <span className="font-extrabold text-slate-950 text-xs block">
+                  📍 Location Access Required
+                </span>
+                <p className="text-slate-800 text-[11px] font-semibold leading-relaxed">
+                  {locationError.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end space-x-2 pt-2 border-t border-amber-200/80">
+              <button
+                type="button"
+                onClick={() => setLocationError(null)}
+                className="px-3 py-1.5 rounded-xl bg-amber-100/90 hover:bg-amber-200 text-amber-950 text-[11px] font-extrabold transition-all"
+              >
+                Type Address Manually
+              </button>
+              <button
+                type="button"
+                onClick={() => handleUseCurrentLocation(locationError.targetField)}
+                disabled={locating}
+                className="px-3.5 py-1.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-[11px] font-black flex items-center gap-1.5 shadow-sm transition-all"
+              >
+                {locating ? <Loader2 className="w-3.5 h-3.5 animate-spin text-white" /> : <Navigation className="w-3.5 h-3.5 text-white" />}
+                <span>{locating ? 'Retrying...' : '🔄 Try Again'}</span>
+              </button>
+            </div>
           </div>
         )}
 
