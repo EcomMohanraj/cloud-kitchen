@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Plus, Minus, Clock, Star, Flame, Sparkles, UserCheck, Lock, MessageSquare, X, ShieldCheck } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { ReviewService } from '@/services/api';
+import { SlotConflictModal } from '@/components/SlotConflictModal';
 
 export interface MenuItemProps {
   id: string;
@@ -31,12 +32,28 @@ interface MenuCardProps {
 }
 
 export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSlotExpired = false }) => {
-  const { cartItems, addToCart, updateQuantity } = useCartStore();
+  const { cartItems, addToCart, clearAndAddToCart, updateQuantity } = useCartStore();
 
   const [reviewsList, setReviewsList] = useState<any[]>([]);
   const [avgRating, setAvgRating] = useState<number>(item.rating || 4.9);
   const [reviewCount, setReviewCount] = useState<number>(item.ratingCount || 0);
   const [isReviewsOpen, setIsReviewsOpen] = useState(false);
+  const [slotConflictData, setSlotConflictData] = useState<{
+    isOpen: boolean;
+    currentSlot?: string;
+    newSlot?: string;
+  } | null>(null);
+
+  const handleAddToCart = () => {
+    const res = addToCart(item);
+    if (res && res.hasConflict) {
+      setSlotConflictData({
+        isOpen: true,
+        currentSlot: res.currentSlot,
+        newSlot: res.newSlot,
+      });
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -191,7 +208,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
                     exit={{ scale: 0.9, opacity: 0 }}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.96 }}
-                    onClick={() => addToCart(item)}
+                    onClick={handleAddToCart}
                     className="w-full h-full rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-colors"
                   >
                     <Plus className="w-4 h-4 stroke-[3]" />
@@ -220,7 +237,18 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
 
                     <motion.button
                       whileTap={{ scale: 0.85 }}
-                      onClick={() => updateQuantity(String(item.id), quantity + 1)}
+                      onClick={() => {
+                        const conflict = useCartStore.getState().checkSlotConflict(item);
+                        if (conflict.hasConflict) {
+                          setSlotConflictData({
+                            isOpen: true,
+                            currentSlot: conflict.currentSlot,
+                            newSlot: conflict.newSlot,
+                          });
+                        } else {
+                          updateQuantity(String(item.id), quantity + 1);
+                        }
+                      }}
                       className="w-9 h-9 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 flex items-center justify-center font-black transition-colors shadow-sm"
                     >
                       <Plus className="w-4 h-4 stroke-[3]" />
@@ -321,6 +349,18 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
 
           </div>
         </div>
+      )}
+
+      {/* Slot Conflict Modal */}
+      {slotConflictData && (
+        <SlotConflictModal
+          isOpen={slotConflictData.isOpen}
+          onClose={() => setSlotConflictData(null)}
+          onClearAndSwitch={() => clearAndAddToCart(item)}
+          currentSlot={slotConflictData.currentSlot}
+          newSlot={slotConflictData.newSlot}
+          pendingItemName={item.name}
+        />
       )}
 
     </div>

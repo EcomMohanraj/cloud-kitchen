@@ -4,17 +4,19 @@ test.describe('Rider Workflow Flow', () => {
   test('should authenticate rider, view available pickups, and manage delivery', async ({ page }) => {
     // 1. Navigate to Rider Login
     await page.goto('/rider/login');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500); // Allow React to hydrate controlled inputs
     await expect(page.locator('h1')).toContainText('Delivery Partner Portal');
 
-    // 2. Fill Rider Credentials
-    await page.fill('input[type="tel"]', '9999999999');
-    await page.fill('input[type="password"]', 'rider123');
+    // 2. Fill Rider Credentials (use pressSequentially to trigger React onChange events)
+    await page.locator('input[type="tel"]').pressSequentially('9999999999', { delay: 50 });
+    await page.locator('input[type="password"]').pressSequentially('rider123', { delay: 50 });
 
     // 3. Submit Form
     await page.click('button[type="submit"]');
 
     // 4. Verify redirect to Rider Dashboard
-    await page.waitForURL(/\/rider\/dashboard/, { timeout: 10000 });
+    await page.waitForURL(/\/rider\/dashboard/, { timeout: 15000 });
     await expect(page.locator('body')).toContainText(/Rider Command Console|Delivery Partner|Fleet|Pickups|Deliveries/i);
 
     // 5. Check for available or active deliveries

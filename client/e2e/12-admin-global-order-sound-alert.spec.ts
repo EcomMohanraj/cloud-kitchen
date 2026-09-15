@@ -3,9 +3,9 @@ import { test, expect } from '@playwright/test';
 test.describe('Global Admin Order Notification & Sound Alert', () => {
   test('should trigger order alert modal and sound notification globally on non-orders admin pages', async ({ page }) => {
     // 0. Fetch a valid menu item from API
-    const menuRes = await page.request.get('http://localhost:5000/api/menu?slot=LUNCH');
+    const menuRes = await page.request.get('http://localhost:5000/api/menu?slot=BREAKFAST');
     const menuBody = await menuRes.json();
-    const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Banana Leaf Meals', price: 220 };
+    const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Fresh Season Fruit Platter', price: 110 };
 
     // 1. Login as Admin
     const adminPassword = process.env.ADMIN_PASSWORD;
@@ -13,13 +13,14 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
       throw new Error('ADMIN_PASSWORD environment variable is not set.');
     }
     await page.goto('/admin/login');
-    await page.waitForTimeout(1000);
-    await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', adminPassword);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+    await page.locator('input[type="email"]').pressSequentially('admin@yazhisai.com', { delay: 30 });
+    await page.locator('input[type="password"]').pressSequentially(adminPassword, { delay: 30 });
     await page.click('button[type="submit"]');
 
     // Wait for redirect to admin schedule/dashboard
-    await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 10000 });
+    await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 15000 });
 
     // 2. Navigate specifically to Calendar & Slot Engine page (/admin/schedule) — NOT Live Orders Board!
     await page.goto('/admin/schedule');
@@ -38,10 +39,10 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
         deliveryAddress: '12 Emerald Salai, Chennai',
         isAddressConfirmed: true,
         bookingDate,
-        slotType: 'LUNCH',
+        slotType: 'BREAKFAST',
         paymentMethod: 'COD',
         items: [
-          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Yazhisai Special Banana Leaf Meals', quantity: 1, unitPrice: menuItem.price || 220 }
+          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Fresh Season Fruit Platter', quantity: 1, unitPrice: menuItem.price || 110 }
         ]
       }
     });
@@ -75,10 +76,10 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
         deliveryAddress: '12 Emerald Salai, Chennai',
         isAddressConfirmed: true,
         bookingDate,
-        slotType: 'LUNCH',
+        slotType: 'BREAKFAST',
         paymentMethod: 'COD',
         items: [
-          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Yazhisai Special Banana Leaf Meals', quantity: 1, unitPrice: menuItem.price || 220 }
+          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Fresh Season Fruit Platter', quantity: 1, unitPrice: menuItem.price || 110 }
         ]
       }
     });
@@ -101,7 +102,7 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
   });
 
   test('should handle rapid navigation between admin pages without listener gaps or duplicate alerts', async ({ page }) => {
-    const menuRes = await page.request.get('http://localhost:5000/api/menu?slot=LUNCH');
+    const menuRes = await page.request.get('http://localhost:5000/api/menu?slot=BREAKFAST');
     const menuBody = await menuRes.json();
     const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Banana Leaf Meals', price: 220 };
 
@@ -134,10 +135,10 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
         deliveryAddress: '12 Emerald Salai, Chennai',
         isAddressConfirmed: true,
         bookingDate,
-        slotType: 'LUNCH',
+        slotType: 'BREAKFAST',
         paymentMethod: 'COD',
         items: [
-          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Yazhisai Special Banana Leaf Meals', quantity: 1, unitPrice: menuItem.price || 220 }
+          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Fresh Season Fruit Platter', quantity: 1, unitPrice: menuItem.price || 110 }
         ]
       }
     });

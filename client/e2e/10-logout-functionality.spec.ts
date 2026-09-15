@@ -8,9 +8,10 @@ test.describe('Logout Functionality for All User Roles', () => {
     }
     // Login
     await page.goto('/admin/login');
-    await page.waitForTimeout(1000);
-    await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', adminPassword);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+    await page.locator('input[type="email"]').pressSequentially('admin@yazhisai.com', { delay: 30 });
+    await page.locator('input[type="password"]').pressSequentially(adminPassword, { delay: 30 });
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/admin\/(schedule|orders|chefs|riders)/, { timeout: 15000 });
 
@@ -21,43 +22,51 @@ test.describe('Logout Functionality for All User Roles', () => {
     } else {
       await page.goto('/admin/orders');
       const sideLogout = page.locator('button:has-text("Logout Admin"), button:has-text("Logout")').first();
+      await sideLogout.waitFor({ state: 'visible', timeout: 5000 });
       await sideLogout.click();
     }
 
-    await page.waitForTimeout(1500);
+    // Wait for logout to fully complete (cookie cleared + navigation to /admin/login)
+    await page.waitForURL(/\/admin\/login/, { timeout: 10000 });
 
-    // Confirm visiting protected route bounces to admin login
+    // Confirm visiting protected route bounces back to admin login
     await page.goto('/admin/orders');
-    await page.waitForTimeout(1000);
+    await page.waitForURL(/\/admin\/login/, { timeout: 10000 });
     await expect(page.url()).toContain('/admin/login');
   });
 
   test('Chef logout should clear chef session and bounce to chef login', async ({ page }) => {
     // Login
     await page.goto('/chef/login');
-    await page.waitForTimeout(1000);
-    await page.fill('input[type="tel"]', '8888888888');
-    await page.fill('input[type="password"]', 'chef123');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+    await page.locator('input[type="tel"]').pressSequentially('8888888888', { delay: 50 });
+    await page.locator('input[type="password"]').pressSequentially('chef123', { delay: 50 });
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/chef\/dashboard/, { timeout: 15000 });
 
     // Click Logout
     const logoutBtn = page.locator('button[title*="Logout"], button:has-text("Logout"), button:has-text("Sign Out")').first();
-    await logoutBtn.click();
-    await page.waitForTimeout(1500);
+    if (await logoutBtn.isVisible()) {
+      await logoutBtn.click();
+    }
 
-    // Confirm visiting protected route bounces to chef login
+    // Wait for logout to fully complete (cookie cleared + navigation to /chef/login)
+    await page.waitForURL(/\/chef\/login/, { timeout: 10000 });
+
+    // Confirm visiting protected route bounces back to chef login
     await page.goto('/chef/dashboard');
-    await page.waitForTimeout(1000);
+    await page.waitForURL(/\/chef\/login/, { timeout: 10000 });
     await expect(page.url()).toContain('/chef/login');
   });
 
   test('Rider logout should clear rider session and bounce to rider login', async ({ page }) => {
     // Login
     await page.goto('/rider/login');
-    await page.waitForTimeout(1000);
-    await page.fill('input[type="tel"]', '9999999999');
-    await page.fill('input[type="password"]', 'rider123');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+    await page.locator('input[type="tel"]').pressSequentially('9999999999', { delay: 50 });
+    await page.locator('input[type="password"]').pressSequentially('rider123', { delay: 50 });
     await page.click('button[type="submit"]');
     await page.waitForURL(/\/rider\/dashboard/, { timeout: 15000 });
 

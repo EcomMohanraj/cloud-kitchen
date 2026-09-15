@@ -7,9 +7,9 @@ test.describe('Razorpay Online Payment Cancellation & Cleanup Flow', () => {
     tomorrow.setDate(tomorrow.getDate() + 1);
     const bookingDate = tomorrow.toISOString().split('T')[0];
 
-    const menuRes = await page.request.get(`http://localhost:5000/api/menu?slot=LUNCH`);
+    const menuRes = await page.request.get(`http://localhost:5000/api/menu?slot=BREAKFAST`);
     const menuBody = await menuRes.json();
-    const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Banana Leaf Meals', price: 220 };
+    const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Fresh Season Fruit Platter', price: 110 };
 
     // 1. Create a PAYMENT_PENDING order directly via backend API (simulating Razorpay checkout initialization)
     const response = await page.request.post('http://localhost:5000/api/orders', {
@@ -19,10 +19,10 @@ test.describe('Razorpay Online Payment Cancellation & Cleanup Flow', () => {
         deliveryAddress: '12 Emerald Salai, Chennai',
         isAddressConfirmed: true,
         bookingDate,
-        slotType: 'LUNCH',
+        slotType: 'BREAKFAST',
         paymentMethod: 'ONLINE',
         items: [
-          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Yazhisai Special Banana Leaf Meals', quantity: 1, unitPrice: menuItem.price || 220 }
+          { menuItemId: menuItem.id, menuItemName: menuItem.name || 'Fresh Season Fruit Platter', quantity: 1, unitPrice: menuItem.price || 110 }
         ]
       }
     });
@@ -43,11 +43,12 @@ test.describe('Razorpay Online Payment Cancellation & Cleanup Flow', () => {
       throw new Error('ADMIN_PASSWORD environment variable is not set.');
     }
     await page.goto('/admin/login');
-    await page.waitForTimeout(1000);
-    await page.fill('input[type="email"]', 'admin@yazhisai.com');
-    await page.fill('input[type="password"]', adminPassword);
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+    await page.locator('input[type="email"]').pressSequentially('admin@yazhisai.com', { delay: 30 });
+    await page.locator('input[type="password"]').pressSequentially(adminPassword, { delay: 30 });
     await page.click('button[type="submit"]');
-    await page.waitForURL(/\/admin\/(schedule|orders)/, { timeout: 10000 });
+    await page.waitForURL(/\/admin\/(schedule|orders)/, { timeout: 15000 });
     await page.goto('/admin/orders');
     await page.waitForLoadState('domcontentloaded');
 
@@ -58,10 +59,12 @@ test.describe('Razorpay Online Payment Cancellation & Cleanup Flow', () => {
 
     // 3. Navigate to Chef Dashboard and verify order is NOT visible in chef live kitchen view
     await page.goto('/chef/login');
-    await page.fill('input[type="tel"]', '8888888888');
-    await page.fill('input[type="password"]', 'chef123');
+    await page.waitForLoadState('domcontentloaded');
+    await page.waitForTimeout(500);
+    await page.locator('input[type="tel"]').pressSequentially('8888888888', { delay: 50 });
+    await page.locator('input[type="password"]').pressSequentially('chef123', { delay: 50 });
     await page.click('button[type="submit"]');
-    await page.waitForURL(/\/chef\/dashboard/);
+    await page.waitForURL(/\/chef\/dashboard/, { timeout: 15000 });
 
     await page.waitForTimeout(2000);
     const chefPageText = await page.locator('body').innerText();

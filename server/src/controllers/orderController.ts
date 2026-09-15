@@ -213,6 +213,31 @@ export const createOrder = async (req: Request, res: Response) => {
       where: { id: { in: menuItemIds } },
     });
 
+    // Defensive Safety Net: Reject any order where items span multiple distinct slot categories in DB
+    const distinctSlotCategories = new Set(
+      dbMenuItems.map((item) => (item.slotCategory || '').toUpperCase())
+    );
+
+    if (distinctSlotCategories.size > 1) {
+      const categoriesStr = Array.from(distinctSlotCategories).join(', ');
+      console.warn(`⚠️ [Order Security] Blocked multi-slot order submission containing categories: [${categoriesStr}]`);
+      return res.status(400).json({
+        error: `Single-slot restriction: All items in an order must belong to the same meal slot. Found items from multiple slots (${categoriesStr}). Please checkout each meal slot separately.`,
+      });
+    }
+
+    if (distinctSlotCategories.size === 1) {
+      const itemSlotCategory = Array.from(distinctSlotCategories)[0];
+      if (itemSlotCategory && itemSlotCategory !== validated.slotType.toUpperCase()) {
+        console.warn(
+          `⚠️ [Order Security] Slot mismatch: Items belong to ${itemSlotCategory} but order requested for ${validated.slotType}`
+        );
+        return res.status(400).json({
+          error: `Slot category mismatch: The items in your cart belong to ${itemSlotCategory}, but the order slot is set to ${validated.slotType}. Please select the ${itemSlotCategory} slot.`,
+        });
+      }
+    }
+
     const itemMap = new Map(dbMenuItems.map((item) => [item.id, item]));
 
     let subtotal = 0;

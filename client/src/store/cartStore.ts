@@ -11,6 +11,12 @@ export interface CartItem {
   quantity: number;
 }
 
+interface SlotConflictResult {
+  hasConflict: boolean;
+  currentSlot?: string;
+  newSlot?: string;
+}
+
 interface CartStore {
   selectedDate: string; // YYYY-MM-DD
   selectedSlot: string; // 'BREAKFAST' | 'SNACKS' | 'LUNCH' | 'DINNER'
@@ -31,7 +37,9 @@ interface CartStore {
   setCustomerProfile: (name: string, phone: string, address?: string) => void;
   loadSavedProfile: () => void;
   logoutCustomer: () => void;
-  addToCart: (item: any) => void;
+  checkSlotConflict: (item: any) => SlotConflictResult;
+  addToCart: (item: any) => SlotConflictResult;
+  clearAndAddToCart: (item: any) => void;
   removeFromCart: (menuItemId: string) => void;
   updateQuantity: (menuItemId: string, quantity: number) => void;
   clearCart: () => void;
@@ -137,6 +145,23 @@ export const useCartStore = create<CartStore>((set, get) => ({
     });
   },
 
+  checkSlotConflict: (item: any) => {
+    const { cartItems } = get();
+    if (cartItems.length === 0) return { hasConflict: false };
+    const newItemSlot = (item.slotCategory || '').toUpperCase();
+    if (!newItemSlot) return { hasConflict: false };
+
+    const firstItemSlot = (cartItems[0].slotCategory || '').toUpperCase();
+    if (firstItemSlot && firstItemSlot !== newItemSlot) {
+      return {
+        hasConflict: true,
+        currentSlot: firstItemSlot,
+        newSlot: newItemSlot,
+      };
+    }
+    return { hasConflict: false };
+  },
+
   addToCart: (item: any) => {
     // Trigger Service Area popup the FIRST time a customer clicks Add to Cart per session
     if (typeof window !== 'undefined') {
@@ -151,8 +176,13 @@ export const useCartStore = create<CartStore>((set, get) => ({
       }
     }
 
+    const conflictResult = get().checkSlotConflict(item);
+    if (conflictResult.hasConflict) {
+      return conflictResult;
+    }
+
     const { cartItems } = get();
-    const itemId = String(item.id);
+    const itemId = String(item.id || item.menuItemId);
     const existing = cartItems.find((ci) => ci.menuItemId === itemId);
     if (existing) {
       set({
@@ -170,12 +200,32 @@ export const useCartStore = create<CartStore>((set, get) => ({
             nameTamil: item.nameTamil,
             price: item.price,
             imageUrl: item.imageUrl,
-            slotCategory: item.slotCategory,
+            slotCategory: (item.slotCategory || '').toUpperCase(),
             quantity: 1,
           },
         ],
       });
     }
+    return { hasConflict: false };
+  },
+
+  clearAndAddToCart: (item: any) => {
+    const itemId = String(item.id || item.menuItemId);
+    const itemSlot = (item.slotCategory || 'BREAKFAST').toUpperCase();
+    set({
+      selectedSlot: itemSlot,
+      cartItems: [
+        {
+          menuItemId: itemId,
+          name: item.name,
+          nameTamil: item.nameTamil,
+          price: item.price,
+          imageUrl: item.imageUrl,
+          slotCategory: itemSlot,
+          quantity: 1,
+        },
+      ],
+    });
   },
 
   removeFromCart: (menuItemId: string) => {
