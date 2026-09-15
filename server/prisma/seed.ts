@@ -15,7 +15,14 @@ function getLocalDateString(d: Date): string {
 }
 
 async function main() {
+  const dbUrl = process.env.DATABASE_URL || '';
+  if ((dbUrl.includes('neon.tech') || process.env.NODE_ENV === 'production') && process.env.ALLOW_PROD_SEED !== 'true') {
+    console.error('🚫 SEED GUARD BLOCKED: Running seed against Production database is disabled. Set ALLOW_PROD_SEED=true to override.');
+    process.exit(1);
+  }
+
   console.log('Seeding Yazhisai Cloud Kitchen database...');
+
 
   // 1. Create Admin User (Using upsert so existing users remain untouched)
   const adminPass = process.env.ADMIN_PASSWORD;
