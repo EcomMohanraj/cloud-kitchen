@@ -524,13 +524,17 @@ export const triggerCleanupEndpoint = async (req: Request, res: Response) => {
       return res.status(401).json({ error: 'Unauthorized cron request. Invalid x-cron-secret header.' });
     }
 
-    const count = await cleanupAbandonedOrders();
-    console.log(`⏰ [CronEndpoint] Triggered cleanup via external endpoint. Expired ${count} abandoned orders.`);
+    const result = await cleanupAbandonedOrders();
+    console.log(
+      `⏰ [CronEndpoint] Triggered cleanup via external endpoint. Recovered: ${result.recoveredCount}, Failed: ${result.failedCount}, Skipped: ${result.skippedCount}.`
+    );
 
     return res.json({
       success: true,
       message: 'Abandoned order cleanup triggered successfully',
-      expiredCount: count,
+      recoveredCount: result.recoveredCount,
+      expiredCount: result.failedCount,
+      skippedCount: result.skippedCount,
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
@@ -538,3 +542,4 @@ export const triggerCleanupEndpoint = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message || 'Failed to execute cleanup' });
   }
 };
+
