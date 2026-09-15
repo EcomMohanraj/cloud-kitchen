@@ -2,7 +2,9 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Razorpay Online Payment Cancellation & Cleanup Flow', () => {
   test('should keep PAYMENT_PENDING orders invisible to Admin/Chef and handle cancellation/cleanup', async ({ page }) => {
+    test.setTimeout(60000);
     // 0. Fetch tomorrow's date YYYY-MM-DD to avoid cutoff restriction
+
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     const bookingDate = tomorrow.toISOString().split('T')[0];

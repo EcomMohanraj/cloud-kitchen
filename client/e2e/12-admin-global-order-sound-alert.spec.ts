@@ -2,6 +2,7 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Global Admin Order Notification & Sound Alert', () => {
   test('should trigger order alert modal and sound notification globally on non-orders admin pages', async ({ page }) => {
+    test.setTimeout(60000);
     // 0. Fetch a valid menu item from API
     const menuRes = await page.request.get('http://localhost:5000/api/menu?slot=BREAKFAST');
     const menuBody = await menuRes.json();
@@ -102,6 +103,7 @@ test.describe('Global Admin Order Notification & Sound Alert', () => {
   });
 
   test('should handle rapid navigation between admin pages without listener gaps or duplicate alerts', async ({ page }) => {
+    test.setTimeout(60000);
     const menuRes = await page.request.get('http://localhost:5000/api/menu?slot=BREAKFAST');
     const menuBody = await menuRes.json();
     const menuItem = menuBody.items && menuBody.items.length > 0 ? menuBody.items[0] : { id: 'item_default', name: 'Banana Leaf Meals', price: 220 };

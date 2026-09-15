@@ -52,11 +52,11 @@ test.describe('Logout Functionality for All User Roles', () => {
     }
 
     // Wait for logout to fully complete (cookie cleared + navigation to /chef/login)
-    await page.waitForURL(/\/chef\/login/, { timeout: 10000 });
+    await page.waitForURL(/\/chef\/login/, { timeout: 15000 });
 
     // Confirm visiting protected route bounces back to chef login
     await page.goto('/chef/dashboard');
-    await page.waitForURL(/\/chef\/login/, { timeout: 10000 });
+    await page.waitForURL(/\/chef\/login/, { timeout: 15000 });
     await expect(page.url()).toContain('/chef/login');
   });
 

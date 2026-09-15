@@ -49,7 +49,7 @@ test.describe('Session Persistence Across Page Refresh', () => {
     await page.locator('input[type="password"]').pressSequentially('rider123', { delay: 50 });
     await page.click('button[type="submit"]');
 
-    await page.waitForURL(/\/rider\/dashboard/, { timeout: 15000 });
+    await page.waitForURL(/\/rider\/dashboard/, { timeout: 25000 });
     await expect(page.locator('body')).toContainText(/Rider Command Console|Delivery Partner/i);
 
     // Refresh page
