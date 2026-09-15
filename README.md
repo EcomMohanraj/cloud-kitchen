@@ -1,6 +1,8 @@
-# Yazhisai Cloud Kitchen (யாழிசை கிளவுட் கிச்சன்) — Monorepo Client-Server Architecture
+# Yazhisai Cloud Kitchen (யாழிசை மனையக உணவகம்)
 
-A schedule-driven, decoupled home cloud kitchen e-commerce web application built with **Next.js 14 Frontend** and **Node.js Express Backend**.
+> Authentic South Indian & Global home-cooked delicacies prepared on-demand by Chef Yazhisai.
+> Real-time deployment version detection active.
+ven, decoupled home cloud kitchen e-commerce web application built with **Next.js 14 Frontend** and **Node.js Express Backend**.
 
 ---
 
