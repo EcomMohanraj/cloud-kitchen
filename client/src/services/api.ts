@@ -355,26 +355,18 @@ export const OrderService = {
       console.warn('❌ [api.ts OrderService.getOrders] Backend Express getOrders failed, fallback to local store:', error);
     }
 
-    const stored = getStoredOrders();
-
-    // Merge API & local stored orders uniquely by ID (API orders override stale stored orders)
-    const mergedMap = new Map();
-    stored.forEach((ord) => {
-      if (ord && ord.id) mergedMap.set(ord.id, ord);
-    });
-    apiOrders.forEach((ord) => {
-      if (ord && ord.id) {
-        const prev = mergedMap.get(ord.id) || {};
-        mergedMap.set(ord.id, { ...prev, ...ord });
+    let result: any[] = [];
+    if (!fetchFailed) {
+      // API call succeeded — use live DB orders as single source of truth
+      result = apiOrders;
+      if (!filters?.date && !filters?.slot && !filters?.id && !filters?.phone) {
+        saveStoredOrders(apiOrders);
       }
-    });
-
-    // Update localStorage with fresh merged state if API succeeded
-    if (apiOrders.length > 0) {
-      saveStoredOrders(Array.from(mergedMap.values()));
+    } else {
+      // Offline fallback: use stored orders from localStorage only when API fails
+      const stored = getStoredOrders();
+      result = stored;
     }
-
-    let result = Array.from(mergedMap.values());
 
     if (filters?.id) {
       const q = filters.id.trim().toLowerCase();
