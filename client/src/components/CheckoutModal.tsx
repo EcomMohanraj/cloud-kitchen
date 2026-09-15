@@ -436,23 +436,14 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       const data = await OrderService.createOrder(payload);
       if (data && data.order) {
         createdOrder = data.order;
+      } else {
+        throw new Error('Failed to create order. Please try again.');
       }
     } catch (err: any) {
-      console.warn('Backend Express API call failed, generating active fallback order:', err);
-      createdOrder = {
-        id: `ord_${Math.random().toString(36).substring(2, 10)}`,
-        orderNumber: `ORD-YZH-${Math.floor(1000 + Math.random() * 9000)}`,
-        customerName,
-        customerPhone,
-        deliveryAddress,
-        bookingDate: selectedDate,
-        slotType: selectedSlot,
-        totalAmount: grandTotal,
-        paymentMethod,
-        paymentStatus: 'PENDING',
-        orderStatus: 'ACCEPTED',
-        createdAt: new Date().toISOString(),
-      };
+      console.error('Backend Express API call failed during order creation:', err);
+      setErrorMsg(err?.message || 'Failed to place order. Please check your connection and try again.');
+      setLoading(false);
+      return;
     }
 
     if (paymentMethod === 'ONLINE') {
