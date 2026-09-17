@@ -33,7 +33,7 @@ export const Navbar: React.FC = () => {
   const { cartItems, setIsCartOpen, customerName, setCustomerProfile, logoutCustomer, loadSavedProfile } = useCartStore();
 
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
-  const [authTab, setAuthTab] = useState<'SIGN_IN' | 'SIGN_UP' | 'ADMIN'>('SIGN_IN');
+  const [authTab, setAuthTab] = useState<'SIGN_IN' | 'SIGN_UP'>('SIGN_IN');
 
   // Customer Form State
   const [fullName, setFullName] = useState('');
@@ -43,12 +43,6 @@ export const Navbar: React.FC = () => {
   const [userSaved, setUserSaved] = useState(false);
   const [userError, setUserError] = useState('');
 
-  // Admin State
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-  const [adminEmail, setAdminEmail] = useState('');
-  const [adminPassword, setAdminPassword] = useState('');
-  const [adminError, setAdminError] = useState('');
-  const [adminLoading, setAdminLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
 
   const cartCount = cartItems.reduce((acc, item) => acc + item.quantity, 0);
@@ -59,9 +53,11 @@ export const Navbar: React.FC = () => {
     loadSavedProfile();
 
     const handleCustomerSessionExpired = (e: any) => {
+      if (!localStorage.getItem('token')) return;
       console.log('🔒 [Navbar] Customer session expired event received:', e.detail);
       setIsAuthModalOpen(true);
       setUserError(e.detail?.message || 'Your session expired. Please sign in again.');
+      setAuthTab('SIGN_IN');
     };
 
     window.addEventListener('customer-session-expired', handleCustomerSessionExpired);
@@ -70,21 +66,6 @@ export const Navbar: React.FC = () => {
     };
   }, [loadSavedProfile]);
 
-  // Strict & Robust Admin Access Detection via Session API
-  useEffect(() => {
-    AuthService.verifySession()
-      .then((res) => {
-        if (res && res.authenticated && res.admin) {
-          setIsAdminLoggedIn(true);
-        } else {
-          setIsAdminLoggedIn(false);
-        }
-      })
-      .catch(() => {
-        setIsAdminLoggedIn(false);
-      });
-  }, [pathname]);
-
   // Customer Routes
   const customerRoutes = [
     { href: '/', label: 'Storefront', icon: UtensilsCrossed },
@@ -92,28 +73,7 @@ export const Navbar: React.FC = () => {
     { href: '/account', label: 'Account', icon: User },
   ];
 
-  // Admin Routes (Shown when Admin authenticated or visiting admin pages)
-  const adminRoutes = [
-    { href: '/', label: 'Storefront', icon: UtensilsCrossed },
-    { href: '/admin/schedule', label: 'Slot Control', icon: Calendar },
-    { href: '/admin/orders', label: 'Live Orders', icon: Layers },
-    { href: '/admin/kot', label: 'KOT Screen', icon: ClipboardList },
-    { href: '/admin/menu', label: 'Menu Catalog', icon: ChefHat },
-    { href: '/admin/riders', label: 'Delivery Partners', icon: Truck },
-  ];
-
-  const routes = isAdminLoggedIn ? adminRoutes : customerRoutes;
-
-  const handleAdminLogout = async () => {
-    try {
-      await AuthService.logoutAdmin();
-    } catch (e) {
-      console.error(e);
-    }
-    logoutCustomer();
-    setIsAdminLoggedIn(false);
-    router.push('/admin/login');
-  };
+  const routes = customerRoutes;
 
   const handleUserAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -156,46 +116,45 @@ export const Navbar: React.FC = () => {
       // SIGN_IN tab
       try {
         const data = await AuthService.loginCustomer({ email: userEmail, password: userPassword });
-        if (data.role === 'ADMIN') {
-          setIsAdminLoggedIn(true);
+        const savedName = data.user?.name || fullName || userEmail.split('@')[0];
+        const savedPhone = data.user?.phone || userPhone || '9876543210';
+        setCustomerProfile(savedName, savedPhone, data.user?.address || '');
+        setUserSaved(true);
+        setTimeout(() => {
           setIsAuthModalOpen(false);
-          router.push('/admin/orders');
-        } else {
-          const savedName = data.user?.name || fullName || userEmail.split('@')[0];
-          const savedPhone = data.user?.phone || userPhone || '9876543210';
-          setCustomerProfile(savedName, savedPhone, data.user?.address || '');
-          setUserSaved(true);
-          setTimeout(() => {
-            setIsAuthModalOpen(false);
-            setUserSaved(false);
-            router.push('/');
-          }, 800);
-        }
+          setUserSaved(false);
+          router.push('/');
+        }, 800);
       } catch (err: any) {
         setUserError(err.message || 'Sign in failed');
       }
     }
   };
 
-  const handleAdminLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setAdminError('');
-    setAdminLoading(true);
-
-    try {
-      const res = await AuthService.login({ email: adminEmail, password: adminPassword });
-      if (!res || (!res.success && !res.token)) {
-        throw new Error('Invalid admin email or password');
-      }
-
-      setIsAdminLoggedIn(true);
-      setAdminLoading(false);
-      setIsAuthModalOpen(false);
-      router.push('/admin/orders');
-    } catch (err: any) {
-      setAdminLoading(false);
-      setAdminError(err.message || 'Invalid admin credentials');
-    }
+  // Render Desktop Navigation Logic
+  const renderDesktopNav = () => {
+    return (
+      <div className="hidden lg:flex items-center space-x-1">
+        {routes.map((route) => {
+          const Icon = route.icon;
+          const isActive = pathname === route.href;
+          return (
+            <Link
+              key={route.href}
+              href={route.href}
+              className={`flex items-center space-x-2 px-4 py-2 rounded-xl transition-all ${
+                isActive
+                  ? 'bg-emerald-600 text-white font-black shadow-md shadow-emerald-600/20'
+                  : 'text-slate-600 font-bold hover:bg-slate-100'
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              <span>{route.label}</span>
+            </Link>
+          );
+        })}
+      </div>
+    );
   };
 
   return (
@@ -221,60 +180,36 @@ export const Navbar: React.FC = () => {
             </Link>
 
             {/* Navigation Routes Bar */}
-            <nav className="hidden lg:flex items-center space-x-1 bg-slate-100/80 p-1.5 rounded-2xl border border-slate-200/80 text-xs font-bold text-slate-700">
-              {routes.map((route) => {
-                const Icon = route.icon;
-                const isActive = pathname === route.href;
+            {renderDesktopNav()}
 
-                return (
-                  <Link
-                    key={route.href}
-                    href={route.href}
-                    className={`flex items-center space-x-1.5 px-3.5 py-1.5 rounded-xl transition-all ${
-                      isActive
-                        ? 'bg-emerald-600 text-white font-black shadow-sm'
-                        : 'hover:bg-slate-200/70 hover:text-slate-900'
-                    }`}
-                  >
-                    <Icon className="w-3.5 h-3.5" />
-                    <span>{route.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-
-            {/* Right Side Buttons: Admin Indicator, Auth Trigger & Tray Cart Button */}
+            {/* Right Side Buttons: Auth Trigger & Tray Cart Button */}
             <div className="flex items-center space-x-3">
               
-              {/* Admin Portal Badge & Direct Link */}
-              {mounted && isAdminLoggedIn ? (
-                <div className="flex items-center space-x-2">
-                  <Link
-                    href="/admin/orders"
-                    className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-black text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 shadow-sm transition-all"
-                  >
-                    <ShieldCheck className="w-4 h-4 text-emerald-700" />
-                    <span>👨‍🍳 Switch to Admin Dashboard</span>
-                  </Link>
+              {/* User Account or Login Buttons */}
+              {mounted && (
+                customerName ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="hidden sm:flex flex-col text-right">
+                      <span className="text-[10px] font-extrabold text-slate-400 tracking-wider uppercase">Welcome</span>
+                      <span className="text-sm font-black text-slate-800">{customerName}</span>
+                    </div>
+                    <button
+                      onClick={() => logoutCustomer()}
+                      className="p-2 sm:px-4 sm:py-2 rounded-xl bg-rose-50 text-rose-600 font-extrabold hover:bg-rose-100 transition-colors flex items-center space-x-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      <span className="hidden sm:inline">Logout</span>
+                    </button>
+                  </div>
+                ) : (
                   <button
-                    onClick={handleAdminLogout}
-                    title="Logout Admin Session"
-                    className="p-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-all"
+                    onClick={() => setIsAuthModalOpen(true)}
+                    className="px-5 py-2.5 rounded-xl bg-[#067a46] hover:bg-[#046137] text-white font-black shadow-md transition-all flex items-center space-x-2"
                   >
-                    <LogOut className="w-4 h-4" />
+                    <User className="w-4 h-4" />
+                    <span className="hidden sm:inline">Sign In</span>
                   </button>
-                </div>
-              ) : (
-                /* Customer Account / Sign In Link */
-                <Link
-                  href="/account"
-                  className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-extrabold text-slate-700 bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 border border-slate-200 hover:border-emerald-300 shadow-sm transition-all"
-                >
-                  <User className="w-4 h-4 text-emerald-600" />
-                  <span className="hidden sm:inline">
-                    {mounted && customerName ? `Vanakkam, ${customerName.split(' ')[0]}` : 'Sign In / Account'}
-                  </span>
-                </Link>
+                )
               )}
 
               {/* Cart Tray Button */}
@@ -339,51 +274,40 @@ export const Navbar: React.FC = () => {
                 SECURE ACCESS
               </span>
               <h2 className="text-2xl font-black text-slate-900">
-                {authTab === 'ADMIN'
-                  ? 'Chef Admin Portal'
-                  : authTab === 'SIGN_IN'
+                {authTab === 'SIGN_IN'
                   ? 'Welcome Back'
                   : 'Create Account'}
               </h2>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                {authTab === 'ADMIN'
-                  ? 'Sign in to access kitchen command matrix'
-                  : authTab === 'SIGN_IN'
+                {authTab === 'SIGN_IN'
                   ? 'Sign in to manage addresses and orders'
                   : 'Create an account for instant ordering'}
               </p>
             </div>
 
-            {/* Mode Switcher Tabs */}
-            <div className="grid grid-cols-3 gap-1 bg-slate-100 p-1 rounded-xl text-[11px] font-extrabold">
-              <button
-                type="button"
-                onClick={() => setAuthTab('SIGN_IN')}
-                className={`py-1.5 rounded-lg transition-all ${
-                  authTab === 'SIGN_IN' ? 'bg-white text-emerald-800 shadow-sm font-black' : 'text-slate-600'
-                }`}
-              >
-                Sign In
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthTab('SIGN_UP')}
-                className={`py-1.5 rounded-lg transition-all ${
-                  authTab === 'SIGN_UP' ? 'bg-white text-emerald-800 shadow-sm font-black' : 'text-slate-600'
-                }`}
-              >
-                Sign Up
-              </button>
-              <button
-                type="button"
-                onClick={() => setAuthTab('ADMIN')}
-                className={`py-1.5 rounded-lg transition-all ${
-                  authTab === 'ADMIN' ? 'bg-emerald-600 text-white shadow-sm font-black' : 'text-slate-600'
-                }`}
-              >
-                👨‍🍳 Admin
-              </button>
-            </div>
+            {/* Mode Switcher Tabs - Hidden if session expired */}
+            {!userError?.includes('session expired') && (
+              <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-xl text-[11px] font-extrabold">
+                <button
+                  type="button"
+                  onClick={() => setAuthTab('SIGN_IN')}
+                  className={`py-1.5 rounded-lg transition-all ${
+                    authTab === 'SIGN_IN' ? 'bg-white text-emerald-800 shadow-sm font-black' : 'text-slate-600'
+                  }`}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthTab('SIGN_UP')}
+                  className={`py-1.5 rounded-lg transition-all ${
+                    authTab === 'SIGN_UP' ? 'bg-white text-emerald-800 shadow-sm font-black' : 'text-slate-600'
+                  }`}
+                >
+                  Sign Up
+                </button>
+              </div>
+            )}
 
             {/* Alert Messages */}
             {userError && (
@@ -492,60 +416,6 @@ export const Navbar: React.FC = () => {
                   className="w-full py-3.5 rounded-xl bg-[#067a46] hover:bg-[#046137] text-white font-black text-sm shadow-md shadow-emerald-700/20 transition-all mt-2"
                 >
                   {authTab === 'SIGN_IN' ? 'Sign In' : 'Create Account & Sign In'}
-                </button>
-              </form>
-            )}
-
-            {/* Admin Login Form */}
-            {authTab === 'ADMIN' && (
-              <form onSubmit={handleAdminLogin} className="space-y-3.5 text-left text-xs font-semibold">
-
-
-                {adminError && (
-                  <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-700 font-bold">
-                    {adminError}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
-                    ADMIN EMAIL
-                  </label>
-                  <div className="relative">
-                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="email"
-                      required
-                      value={adminEmail}
-                      onChange={(e) => setAdminEmail(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-[10px] font-extrabold text-slate-500 uppercase tracking-wider mb-1">
-                    PASSWORD
-                  </label>
-                  <div className="relative">
-                    <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                    <input
-                      type="password"
-                      required
-                      value={adminPassword}
-                      onChange={(e) => setAdminPassword(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold text-slate-900 focus:outline-none focus:border-emerald-600"
-                    />
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={adminLoading}
-                  className="w-full py-3.5 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-black text-sm shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all mt-2"
-                >
-                  <span>{adminLoading ? 'Authenticating...' : 'Sign In as Chef Admin'}</span>
-                  <ArrowRight className="w-4 h-4" />
                 </button>
               </form>
             )}
