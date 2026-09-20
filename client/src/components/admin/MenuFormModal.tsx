@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Plus, Edit2, AlertCircle, CheckCircle2, Upload, Loader2, Image as ImageIcon } from 'lucide-react';
+import { X, Plus, Edit2, AlertCircle, CheckCircle2, Upload, Loader2, Image as ImageIcon, Maximize2 } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 import { MenuService } from '@/services/api';
 import { MenuItemCRUDSchema } from '@/lib/validators';
@@ -38,6 +38,7 @@ export const MenuFormModal: React.FC<MenuFormModalProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadError, setUploadError] = useState('');
+  const [isFullImageOpen, setIsFullImageOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -315,13 +316,24 @@ export const MenuFormModal: React.FC<MenuFormModalProps> = ({
               
               {/* Image Preview Window */}
               {(previewUrl || imageUrl) ? (
-                <div className="relative w-full h-40 bg-slate-200 rounded-xl overflow-hidden group border border-slate-300 shadow-inner">
+                <div
+                  onClick={() => setIsFullImageOpen(true)}
+                  className="relative w-full h-40 bg-slate-200 rounded-xl overflow-hidden group/img border border-slate-300 shadow-inner cursor-pointer"
+                  title="Click to view full image"
+                >
                   <img
                     src={previewUrl || imageUrl}
                     alt="Food Dish Preview"
-                    className="w-full h-full object-cover"
+                    className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300"
                   />
-                  <div className="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full backdrop-blur-sm shadow-sm">
+                  {/* Hover Full View Hint Badge */}
+                  <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                    <div className="bg-slate-900/85 backdrop-blur-md text-white px-2.5 py-1 rounded-full text-[11px] font-bold flex items-center gap-1.5 shadow-md border border-white/20 transform scale-95 group-hover/img:scale-100 transition-transform">
+                      <Maximize2 className="w-3 h-3 text-emerald-400" />
+                      <span>Click to view full image</span>
+                    </div>
+                  </div>
+                  <div className="absolute top-2 right-2 bg-slate-900/80 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full backdrop-blur-sm shadow-sm pointer-events-none">
                     {previewUrl ? '📷 New Selection' : '🖼️ Saved Cloudinary Image'}
                   </div>
                 </div>
@@ -427,6 +439,56 @@ export const MenuFormModal: React.FC<MenuFormModalProps> = ({
 
         </form>
       </div>
+
+      {/* Full Image Preview Modal */}
+      {isFullImageOpen && (previewUrl || imageUrl) && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setIsFullImageOpen(false)}
+        >
+          <div
+            className="relative max-w-4xl w-full bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              type="button"
+              onClick={() => setIsFullImageOpen(false)}
+              className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-slate-950/80 hover:bg-slate-950 text-white backdrop-blur-md transition-all shadow-lg border border-white/20 hover:scale-105"
+              aria-label="Close image preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Uncropped Full Image */}
+            <div className="w-full max-h-[72vh] flex items-center justify-center bg-black/50 overflow-hidden p-2 sm:p-4">
+              <img
+                src={previewUrl || imageUrl}
+                alt="Food Dish Preview"
+                className="max-h-[68vh] w-auto max-w-full object-contain rounded-xl shadow-md"
+              />
+            </div>
+
+            {/* Footer Info */}
+            <div className="w-full p-4 sm:p-5 bg-slate-900 border-t border-slate-800 flex items-center justify-between text-white">
+              <div>
+                <h3 className="font-bold text-base text-white">{name || 'Dish Photo Preview'}</h3>
+                <p className="text-xs text-slate-400 font-medium">
+                  {selectedFile ? `File: ${selectedFile.name} (${(selectedFile.size / (1024 * 1024)).toFixed(2)} MB)` : 'Uploaded to Cloudinary'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsFullImageOpen(false)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white text-xs font-bold rounded-xl transition-colors"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

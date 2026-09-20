@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, Utensils, Sparkles, RefreshCw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Utensils, Sparkles, RefreshCw, CheckCircle2, AlertCircle, X, Maximize2 } from 'lucide-react';
 import { MenuFormModal } from '@/components/admin/MenuFormModal';
 import { MEAL_SLOTS } from '@/lib/constants';
 import { MenuService } from '@/services/api';
@@ -207,6 +207,7 @@ export default function AdminMenuPage() {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [itemToEdit, setItemToEdit] = useState<any | null>(null);
+  const [previewItem, setPreviewItem] = useState<any | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -365,12 +366,28 @@ export default function AdminMenuPage() {
             key={item.id}
             className="bg-white border border-slate-200/80 rounded-3xl overflow-hidden shadow-sm hover:shadow-md transition-all flex flex-col justify-between"
           >
-            <div className="relative h-48 bg-slate-100 overflow-hidden">
-              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover hover:scale-105 transition-transform duration-300" />
-              <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black text-emerald-900 border border-emerald-200 shadow-sm uppercase tracking-wider">
+            <div
+              className="relative h-48 bg-slate-100 overflow-hidden cursor-pointer group/img"
+              onClick={() => setPreviewItem(item)}
+              title={`Click to view full photo of ${item.name}`}
+            >
+              <img src={item.imageUrl} alt={item.name} className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-300" />
+              
+              {/* Soft Vignette Gradient */}
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 via-transparent to-transparent pointer-events-none"></div>
+
+              {/* Hover Full View Hint Badge */}
+              <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+                <div className="bg-slate-900/85 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl border border-white/20 transform scale-95 group-hover/img:scale-100 transition-transform">
+                  <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Click to view full image</span>
+                </div>
+              </div>
+
+              <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-[10px] font-black text-emerald-900 border border-emerald-200 shadow-sm uppercase tracking-wider pointer-events-none">
                 {item.slotCategory}
               </div>
-              <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-emerald-950 border border-emerald-200 shadow-sm">
+              <div className="absolute top-3 right-3 bg-white/95 backdrop-blur-md px-3 py-1 rounded-full text-xs font-black text-emerald-950 border border-emerald-200 shadow-sm pointer-events-none">
                 ₹{item.price}
               </div>
             </div>
@@ -445,6 +462,76 @@ export default function AdminMenuPage() {
           fetchMenu();
         }}
       />
+
+      {/* Full Image Preview Lightbox Modal */}
+      {previewItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setPreviewItem(null)}
+        >
+          <div
+            className="relative max-w-4xl w-full bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setPreviewItem(null)}
+              className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-slate-950/80 hover:bg-slate-950 text-white backdrop-blur-md transition-all shadow-lg border border-white/20 hover:scale-105"
+              aria-label="Close full image preview"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Uncropped Full Image Container */}
+            <div className="w-full max-h-[72vh] flex items-center justify-center bg-black/50 overflow-hidden p-2 sm:p-4">
+              <img
+                src={previewItem.imageUrl}
+                alt={previewItem.name}
+                className="max-h-[68vh] w-auto max-w-full object-contain rounded-xl shadow-md"
+              />
+            </div>
+
+            {/* Bottom Bar with Details & Quick Actions */}
+            <div className="w-full p-4 sm:p-5 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] px-2.5 py-0.5 rounded-full font-black uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-500/40">
+                    {previewItem.slotCategory}
+                  </span>
+                  <h3 className="text-lg font-black text-white">{previewItem.name}</h3>
+                  {previewItem.nameTamil && (
+                    <span className="text-xs text-emerald-400 font-bold">({previewItem.nameTamil})</span>
+                  )}
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase ${
+                    previewItem.isAvailable ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' : 'bg-rose-950 text-rose-300 border border-rose-800'
+                  }`}>
+                    {previewItem.isAvailable ? 'Available' : 'Sold Out'}
+                  </span>
+                </div>
+                {previewItem.description && (
+                  <p className="text-xs text-slate-300 line-clamp-2 max-w-2xl">{previewItem.description}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-2xl font-black text-white">₹{previewItem.price}</span>
+                <button
+                  onClick={() => {
+                    const itemToUpdate = previewItem;
+                    setPreviewItem(null);
+                    setItemToEdit(itemToUpdate);
+                    setIsModalOpen(true);
+                  }}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition-colors flex items-center gap-1.5"
+                >
+                  <Edit2 className="w-3.5 h-3.5" />
+                  <span>Edit Dish</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
