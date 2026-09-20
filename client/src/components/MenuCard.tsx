@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Minus, Clock, Star, Flame, Sparkles, UserCheck, Lock, MessageSquare, X, ShieldCheck } from 'lucide-react';
+import { Plus, Minus, Clock, Star, Flame, Sparkles, UserCheck, Lock, MessageSquare, X, ShieldCheck, Maximize2 } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { ReviewService } from '@/services/api';
 import { SlotConflictModal } from '@/components/SlotConflictModal';
@@ -38,6 +38,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
   const [avgRating, setAvgRating] = useState<number>(item.rating || 4.9);
   const [reviewCount, setReviewCount] = useState<number>(item.ratingCount || 0);
   const [isReviewsOpen, setIsReviewsOpen] = useState(false);
+  const [isImageModalOpen, setIsImageModalOpen] = useState(false);
   const [slotConflictData, setSlotConflictData] = useState<{
     isOpen: boolean;
     currentSlot?: string;
@@ -89,7 +90,11 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
     <div className="group relative flex flex-col justify-between bg-white border border-emerald-100/70 rounded-3xl overflow-hidden hover:border-emerald-400 hover:shadow-card-hover transition-all duration-300">
       
       {/* 16:9 Photography Header */}
-      <div className="relative w-full aspect-[16/9] overflow-hidden bg-slate-100">
+      <div
+        className="relative w-full aspect-[16/9] overflow-hidden bg-slate-100 cursor-pointer group/img"
+        onClick={() => setIsImageModalOpen(true)}
+        title={`Click to view full photo of ${item.name}`}
+      >
         <img
           src={item.imageUrl || 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80'}
           alt={item.name}
@@ -97,7 +102,15 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
         />
         
         {/* Soft Vignette Gradient */}
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent"></div>
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent pointer-events-none"></div>
+
+        {/* Hover Full View Hint Badge */}
+        <div className="absolute inset-0 bg-black/25 opacity-0 group-hover/img:opacity-100 transition-opacity duration-200 flex items-center justify-center pointer-events-none">
+          <div className="bg-slate-900/85 backdrop-blur-md text-white px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 shadow-xl border border-white/20 transform scale-95 group-hover/img:scale-100 transition-transform">
+            <Maximize2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Click to view full image</span>
+          </div>
+        </div>
 
         {/* Top Floating Badges */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between pointer-events-none">
@@ -125,7 +138,7 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
 
         {/* Bottom Image Info Pill Overlay */}
         <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between text-white">
-          <div>
+          <div className="pointer-events-none">
             <div className="text-2xl font-black text-white drop-shadow-md tracking-tight">
               ₹{item.price}
             </div>
@@ -136,8 +149,11 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
 
           {/* Rating Badge */}
           <button
-            onClick={() => setIsReviewsOpen(true)}
-            className="flex items-center gap-1 bg-black/50 hover:bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/25 text-xs font-bold transition-all cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsReviewsOpen(true);
+            }}
+            className="flex items-center gap-1 bg-black/50 hover:bg-black/70 backdrop-blur-md px-2.5 py-1 rounded-lg border border-white/25 text-xs font-bold transition-all cursor-pointer z-10"
           >
             <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
             <span>{avgRating}</span>
@@ -347,6 +363,75 @@ export const MenuCard: React.FC<MenuCardProps> = ({ item, disabled = false, isSl
               </button>
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Full Image Preview Lightbox Modal */}
+      {isImageModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in duration-200"
+          onClick={() => setIsImageModalOpen(false)}
+        >
+          <div
+            className="relative max-w-4xl w-full bg-slate-900 border border-slate-700/80 rounded-3xl overflow-hidden shadow-2xl flex flex-col items-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Close Button */}
+            <button
+              onClick={() => setIsImageModalOpen(false)}
+              className="absolute top-4 right-4 z-20 p-2.5 rounded-full bg-slate-950/80 hover:bg-slate-950 text-white backdrop-blur-md transition-all shadow-lg border border-white/20 hover:scale-105"
+              aria-label="Close"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            {/* Uncropped Full Image Container */}
+            <div className="w-full max-h-[72vh] flex items-center justify-center bg-black/50 overflow-hidden p-2 sm:p-4">
+              <img
+                src={item.imageUrl || 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=1200&auto=format&fit=crop&q=85'}
+                alt={item.name}
+                className="max-h-[68vh] w-auto max-w-full object-contain rounded-xl shadow-md"
+              />
+            </div>
+
+            {/* Bottom Bar with Dish Details */}
+            <div className="w-full p-4 sm:p-5 bg-slate-900 border-t border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-white">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <div className={`w-3.5 h-3.5 rounded-sm border-2 flex items-center justify-center p-0.5 ${
+                    isVeg ? 'border-emerald-500' : 'border-rose-500'
+                  }`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${
+                      isVeg ? 'bg-emerald-500' : 'bg-rose-500'
+                    }`}></div>
+                  </div>
+                  <h3 className="text-lg font-black text-white">{item.name}</h3>
+                  {item.nameTamil && (
+                    <span className="text-xs text-emerald-400 font-bold">({item.nameTamil})</span>
+                  )}
+                  <span className="text-xs text-slate-400 font-medium">· {servingSize}</span>
+                </div>
+                {item.description && (
+                  <p className="text-xs text-slate-300 line-clamp-2 max-w-2xl">{item.description}</p>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 shrink-0">
+                <span className="text-2xl font-black text-white">₹{item.price}</span>
+                {isCardActive && (
+                  <button
+                    onClick={() => {
+                      handleAddToCart();
+                      setIsImageModalOpen(false);
+                    }}
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black rounded-xl shadow-md transition-colors"
+                  >
+                    Add to Cart
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
