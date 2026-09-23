@@ -1,7 +1,7 @@
 // utils/slotTiming.ts - Time-Based Auto-Cutoff Engine for Yazhisai Cloud Kitchen
 
 export interface SlotWindow {
-  type: 'BREAKFAST' | 'LUNCH' | 'SNACKS' | 'DINNER';
+  type: 'BREAKFAST' | 'LUNCH' | 'SNACKS' | 'DINNER' | 'VEGETABLES';
   label: string;
   tamilLabel: string;
   deliveryWindow: string; // e.g. "07:00 AM – 10:30 AM"
@@ -52,6 +52,16 @@ export const MEAL_SLOTS: SlotWindow[] = [
     startTime: '19:30',
     cutoffTime: '22:00',
   },
+  {
+    type: 'VEGETABLES',
+    label: 'Vegetables',
+    tamilLabel: 'காய்கறிகள்',
+    deliveryWindow: '06:00 AM – 09:00 PM',
+    orderCutoffTime: '20:00',
+    orderCutoffDisplay: '08:00 PM',
+    startTime: '06:00',
+    cutoffTime: '21:00',
+  },
 ];
 
 const defaultOrderCutoffMap: Record<string, string> = {
@@ -59,6 +69,7 @@ const defaultOrderCutoffMap: Record<string, string> = {
   LUNCH: '11:00 AM',
   SNACKS: '03:30 PM',
   DINNER: '06:00 PM',
+  VEGETABLES: '08:00 PM',
 };
 
 /**

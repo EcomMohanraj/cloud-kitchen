@@ -10,7 +10,7 @@ export const createOrderSchema = z.object({
   customerPhone: z.string().min(10, 'Enter a valid 10-digit phone number').max(15),
   deliveryAddress: z.string().min(5, 'Delivery address is required'),
   bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
-  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER']),
+  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES']),
   preferredTime: z.string().min(1, 'Preferred time is required'),
   paymentMethod: z.enum(['COD', 'ONLINE']),
   items: z.array(orderItemSchema).min(1, 'Cart cannot be empty'),
@@ -18,7 +18,7 @@ export const createOrderSchema = z.object({
 
 export const scheduleToggleSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER']),
+  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES']),
   isActive: z.boolean(),
   maxCapacity: z.number().int().min(1).optional(),
   cutoffTime: z.string().optional(),
@@ -29,7 +29,7 @@ export const menuItemSchema = z.object({
   nameTamil: z.string().optional(),
   description: z.string().optional(),
   price: z.number().positive('Price must be greater than 0'),
-  slotCategory: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER']),
+  slotCategory: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES']),
   isAvailable: z.boolean().default(true),
   imageUrl: z.string().url('Invalid image URL').optional(),
   ingredients: z.string().optional(),

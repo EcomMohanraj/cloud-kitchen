@@ -35,6 +35,15 @@ export const MEAL_SLOTS = [
     orderCutoff: '06:00 PM',
     defaultCutoff: '10:00 PM',
   },
+  {
+    id: 'VEGETABLES',
+    name: 'Vegetables',
+    nameTamil: 'காய்கறிகள்',
+    timeRange: '06:00 AM - 09:00 PM',
+    iconName: 'Carrot',
+    orderCutoff: '08:00 PM',
+    defaultCutoff: '09:00 PM',
+  },
 ];
 
 export const ORDER_STATUSES = [

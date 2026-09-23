@@ -7,7 +7,7 @@ const menuItemSchema = z.object({
   nameTamil: z.string().optional(),
   description: z.string().optional(),
   price: z.number().positive('Price must be greater than 0'),
-  slotCategory: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER']),
+  slotCategory: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES']),
   isAvailable: z.boolean().default(true),
   isVeg: z.boolean().default(true),
   imageUrl: z.string().optional(),
@@ -216,16 +216,72 @@ const DEFAULT_SOUTH_INDIAN_MENU = [
     ingredients: 'Rice Flour, Fresh Coconut Milk, Cardamom, Sugar',
     prepTimeMinutes: 15,
   },
+
+  // VEGETABLES
+  {
+    name: 'Fresh Farm Country Tomatoes (1 Kg)',
+    nameTamil: 'நாட்டு தக்காளி (1 கிலோ)',
+    description: 'Juicy, naturally ripened farm-fresh country tomatoes hand-picked from local organic farms.',
+    price: 45,
+    slotCategory: 'VEGETABLES',
+    isAvailable: true,
+    isVeg: true,
+    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80',
+    ingredients: 'Fresh Country Tomatoes (100% Organic)',
+    prepTimeMinutes: 10,
+  },
+  {
+    name: 'Organic Small Onions / Sambar Shallots (500g)',
+    nameTamil: 'சின்ன வெங்காயம் (500 கிராம்)',
+    description: 'Cleaned, premium grade aromatic small shallots essential for authentic South Indian sambar.',
+    price: 55,
+    slotCategory: 'VEGETABLES',
+    isAvailable: true,
+    isVeg: true,
+    imageUrl: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80',
+    ingredients: 'Small Onions / Shallots',
+    prepTimeMinutes: 10,
+  },
+  {
+    name: 'Fresh Ooty Carrots (500g)',
+    nameTamil: 'ஊட்டி கேரட் (500 கிராம்)',
+    description: 'Crisp, sweet mountain-grown tender orange carrots rich in beta-carotene.',
+    price: 40,
+    slotCategory: 'VEGETABLES',
+    isAvailable: true,
+    isVeg: true,
+    imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5c317?w=600&auto=format&fit=crop&q=80',
+    ingredients: 'Farm Fresh Carrots',
+    prepTimeMinutes: 10,
+  },
+  {
+    name: 'Country Ladies Finger / Bhindi (500g)',
+    nameTamil: 'நாட்டு வெண்டைக்காய் (500 கிராம்)',
+    description: 'Tender, crisp green okra ideal for traditional poriyal and tangy puli kuzhambu.',
+    price: 35,
+    slotCategory: 'VEGETABLES',
+    isAvailable: true,
+    isVeg: true,
+    imageUrl: 'https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=80',
+    ingredients: 'Fresh Ladies Finger (Okra)',
+    prepTimeMinutes: 10,
+  },
 ];
 
 async function ensureMenuSeed() {
-  const count = await prisma.menuItem.count();
-  if (count > 0) return;
-
   for (const item of DEFAULT_SOUTH_INDIAN_MENU) {
-    await prisma.menuItem.create({
-      data: item as any,
+    const existing = await prisma.menuItem.findFirst({
+      where: {
+        name: item.name,
+        slotCategory: item.slotCategory,
+      },
     });
+
+    if (!existing) {
+      await prisma.menuItem.create({
+        data: item as any,
+      });
+    }
   }
 }
 

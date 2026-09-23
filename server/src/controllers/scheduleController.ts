@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { emitScheduleUpdated } from '../socket';
 
-const SLOT_TYPES = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER'];
+const SLOT_TYPES = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER', 'VEGETABLES'];
 
 function getLocalDateString(d: Date): string {
   const year = d.getFullYear();
@@ -16,6 +16,7 @@ const defaultCutoffMap: Record<string, string> = {
   LUNCH: '03:30 PM',
   SNACKS: '06:30 PM',
   DINNER: '10:00 PM',
+  VEGETABLES: '09:00 PM',
 };
 
 const defaultOrderCutoffMap: Record<string, string> = {
@@ -23,6 +24,7 @@ const defaultOrderCutoffMap: Record<string, string> = {
   LUNCH: '11:00 AM',
   SNACKS: '03:30 PM',
   DINNER: '06:00 PM',
+  VEGETABLES: '08:00 PM',
 };
 
 /**

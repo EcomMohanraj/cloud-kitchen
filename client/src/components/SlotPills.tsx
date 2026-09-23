@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Sun, Coffee, Utensils, Moon, Clock, Lock, Sparkles, Flame } from 'lucide-react';
+import { Sun, Coffee, Utensils, Moon, Clock, Lock, Sparkles, Flame, Carrot } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 import { useCartStore } from '@/store/cartStore';
 import { isSlotBookingClosed, isCurrentTimeInDeliveryWindow } from '@/utils/slotTiming';
@@ -26,6 +26,8 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
         return <Utensils className="w-5 h-5" />;
       case 'Moon':
         return <Moon className="w-5 h-5" />;
+      case 'Carrot':
+        return <Carrot className="w-5 h-5" />;
       default:
         return <Utensils className="w-5 h-5" />;
     }
@@ -57,8 +59,8 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
         )}
       </div>
 
-      {/* 2-Col Mobile / 4-Col Desktop Compact Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3.5">
+      {/* 2-Col Mobile / 3-Col Tablet / 5-Col Desktop Compact Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3.5">
         {MEAL_SLOTS.map((slot) => {
           const isSelected = selectedSlot === slot.id;
           const status = slotStatuses?.[slot.id];

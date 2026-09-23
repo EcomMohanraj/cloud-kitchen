@@ -35,7 +35,7 @@ export const CheckoutOrderSchema = z.object({
   customerPhone: z.string().regex(/^[6-9]\d{9}$/, { message: 'Valid 10-digit mobile number required' }),
   deliveryAddress: z.string().min(10, { message: 'Delivery address must be at least 10 characters long' }),
   bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Booking date must be in YYYY-MM-DD format' }),
-  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER'], { message: 'Invalid meal slot selected' }),
+  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES'], { message: 'Invalid meal slot selected' }),
   preferredTime: z.string().optional(),
   paymentMethod: z.enum(['COD', 'ONLINE'], { message: 'Invalid payment method' }),
   items: z.array(OrderItemSchema).min(1, { message: 'Your tray must contain at least 1 menu item to checkout' }),
@@ -50,7 +50,7 @@ export const MenuItemCRUDSchema = z.object({
   nameTamil: z.string().optional(),
   description: z.string().min(5, { message: 'Description must be at least 5 characters long' }),
   price: z.number().positive({ message: 'Price must be greater than ₹0' }),
-  categorySlot: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER'], { message: 'Invalid slot category' }),
+  categorySlot: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES'], { message: 'Invalid slot category' }),
   isVeg: z.boolean(),
   imageUrl: z.string().url({ message: 'Must be a valid image URL' }).optional().or(z.literal('')),
   prepTimeMinutes: z.number().int().min(5, { message: 'Preparation time must be at least 5 minutes' }),
@@ -62,7 +62,7 @@ export const MenuItemCRUDSchema = z.object({
 
 export const SlotScheduleCRUDSchema = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: 'Date must be in YYYY-MM-DD format' }),
-  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER'], { message: 'Invalid slot category' }),
+  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES'], { message: 'Invalid slot category' }),
   isAvailable: z.boolean(),
   maxCapacity: z.number().int().min(1, { message: 'Max capacity must be at least 1 order' }).max(200, { message: 'Max capacity capped at 200' }),
 });

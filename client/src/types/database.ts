@@ -6,7 +6,7 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type SlotType = 'BREAKFAST' | 'SNACKS' | 'LUNCH' | 'DINNER';
+export type SlotType = 'BREAKFAST' | 'SNACKS' | 'LUNCH' | 'DINNER' | 'VEGETABLES';
 export type OrderStatus = 'PENDING' | 'ACCEPTED' | 'PREPARING' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED';
 export type PaymentMethod = 'COD' | 'ONLINE';
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED';

@@ -45,6 +45,15 @@ export const MEAL_SLOTS: SlotDefinition[] = [
     activeColor: 'from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/20',
     iconName: 'Moon',
   },
+  {
+    id: 'VEGETABLES',
+    name: 'Vegetables',
+    nameTamil: 'காய்கறிகள்',
+    timeRange: '06:00 AM - 09:00 PM',
+    badgeColor: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30',
+    activeColor: 'from-emerald-500 to-teal-600 text-white shadow-lg shadow-emerald-500/20',
+    iconName: 'Carrot',
+  },
 ];
 
 export const ORDER_STATUSES = [

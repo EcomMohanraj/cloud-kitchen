@@ -51,6 +51,7 @@ function getEffectiveScheduleData(data: ScheduleDate[]): ScheduleDate[] {
           SNACKS: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '10:00 AM' },
           LUNCH: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '11:00 AM' },
           DINNER: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '05:30 PM' },
+          VEGETABLES: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '08:00 PM' },
         },
       });
     }

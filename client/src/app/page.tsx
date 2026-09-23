@@ -343,11 +343,13 @@ function StorefrontPageContent() {
                 <Utensils className="w-6 h-6 text-emerald-600" />
                 Available Gourmet Menu
                 <span className="text-xs font-extrabold text-emerald-800 bg-emerald-100/80 px-3 py-1 rounded-full border border-emerald-300">
-                  {menuItems.length} dishes for {activeSlotObj?.name}
+                  {menuItems.length} {activeSlotObj?.id === 'VEGETABLES' ? 'items' : 'dishes'} for {activeSlotObj?.name}
                 </span>
               </h3>
               <p className="text-xs text-slate-500 font-semibold mt-1">
-                Dishes specifically prepared for the selected {activeSlotObj?.name} session on {selectedDate}.
+                {activeSlotObj?.id === 'VEGETABLES'
+                  ? `Fresh farm produce handpicked and packaged for the selected ${activeSlotObj?.name} delivery on ${selectedDate}.`
+                  : `Dishes specifically prepared for the selected ${activeSlotObj?.name} session on ${selectedDate}.`}
               </p>
             </div>
           </div>

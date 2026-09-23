@@ -22,7 +22,7 @@ const createOrderSchema = z.object({
   deliveryLatitude: z.number().optional().nullable(),
   deliveryLongitude: z.number().optional().nullable(),
   bookingDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Invalid date format (YYYY-MM-DD)'),
-  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER']),
+  slotType: z.enum(['BREAKFAST', 'SNACKS', 'LUNCH', 'DINNER', 'VEGETABLES']),
   preferredTime: z.string().optional().default('Standard Delivery'),
   paymentMethod: z.enum(['COD', 'ONLINE']),
   items: z.array(orderItemSchema).min(1, 'Cart cannot be empty'),
@@ -123,6 +123,7 @@ const defaultOrderCutoffMap: Record<string, string> = {
   LUNCH: '11:00 AM',
   SNACKS: '03:30 PM',
   DINNER: '06:00 PM',
+  VEGETABLES: '08:00 PM',
 };
 
 export function isOrderCutoffPassed(
