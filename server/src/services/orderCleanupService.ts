@@ -145,6 +145,13 @@ export async function cleanupAbandonedOrders(): Promise<CleanupResult> {
 }
 
 export function startOrderCleanupJob() {
+  if (process.env.ENABLE_INTERNAL_ORDER_CLEANUP !== 'true') {
+    console.log(
+      'ℹ️ [OrderCleanup] Internal background timer disabled (external cron-job.org handles /api/orders/cleanup-abandoned to allow Neon scale-to-zero).'
+    );
+    return;
+  }
+
   console.log('⏰ [OrderCleanup] Starting background order cleanup job (runs every 5 minutes)...');
   // Run once on startup
   cleanupAbandonedOrders();
