@@ -1,6 +1,7 @@
 
 import { Server as HTTPServer } from 'http';
 import { Server as SocketIOServer, Socket } from 'socket.io';
+import { notifyAdminNewOrder } from './services/telegramService';
 
 function parseCookies(cookieHeader?: string): Record<string, string> {
   const list: Record<string, string> = {};
@@ -156,6 +157,8 @@ export const emitNewOrder = (order: any) => {
     io.to('chef-room').emit('new-order', { order });
     io.to('chef-room').emit('new-order-for-chef', { order });
   }
+  // Admin Telegram alert fires at the same confirmed-order point, independent of Socket.io state.
+  notifyAdminNewOrder(order);
 };
 
 export const emitOrderStatusUpdated = (order: any) => {
