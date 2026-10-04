@@ -335,12 +335,6 @@ export const createOrder = async (req: Request, res: Response) => {
       );
     }
 
-    if (newOrder.paymentMethod === 'COD') {
-      sendCodOrderConfirmedEmail(newOrder).catch((err) =>
-        console.warn('⚠️ [Resend] Non-blocking COD order confirmation email error:', err)
-      );
-    }
-
     return res.json({ success: true, order: newOrder });
   } catch (error: any) {
     console.error('Create order controller error:', error);
