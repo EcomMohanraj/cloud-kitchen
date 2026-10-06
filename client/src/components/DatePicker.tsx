@@ -8,7 +8,7 @@ import { useCartStore } from '@/store/cartStore';
 export interface ScheduleDate {
   date: string;
   isDateActive: boolean;
-  slots: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string; orderCutoffTime?: string }>;
+  slots: Record<string, { isActive: boolean; isAvailable?: boolean; cutoffTime: string; orderCutoffTime?: string }>;
 }
 
 interface DatePickerProps {
@@ -47,11 +47,11 @@ function getEffectiveScheduleData(data: ScheduleDate[]): ScheduleDate[] {
         date: dateStr,
         isDateActive: false,
         slots: {
-          BREAKFAST: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '06:30 AM' },
-          SNACKS: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '10:00 AM' },
-          LUNCH: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '11:00 AM' },
-          DINNER: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '05:30 PM' },
-          VEGETABLES: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '08:00 PM' },
+          BREAKFAST: { isActive: false, isAvailable: false, cutoffTime: '06:30 AM' },
+          SNACKS: { isActive: false, isAvailable: false, cutoffTime: '10:00 AM' },
+          LUNCH: { isActive: false, isAvailable: false, cutoffTime: '11:00 AM' },
+          DINNER: { isActive: false, isAvailable: false, cutoffTime: '05:30 PM' },
+          VEGETABLES: { isActive: false, isAvailable: false, cutoffTime: '08:00 PM' },
         },
       });
     }

@@ -8,7 +8,7 @@ import { useCartStore } from '@/store/cartStore';
 import { isSlotBookingClosed, isCurrentTimeInDeliveryWindow } from '@/utils/slotTiming';
 
 interface SlotPillsProps {
-  slotStatuses?: Record<string, { isActive: boolean; isAvailable?: boolean; maxCapacity: number; cutoffTime: string; orderCutoffTime?: string }>;
+  slotStatuses?: Record<string, { isActive: boolean; isAvailable?: boolean; cutoffTime: string; orderCutoffTime?: string }>;
   isDateActive?: boolean;
   timeTick?: number;
 }
@@ -65,7 +65,6 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
           const isSelected = selectedSlot === slot.id;
           const status = slotStatuses?.[slot.id];
           const orderCutoffDisplay = status?.orderCutoffTime || slot.orderCutoff || '06:00 AM';
-          const maxCap = status?.maxCapacity || 40;
           const isExpired = isSlotBookingClosed(orderCutoffDisplay, selectedDate, slot.id);
           const isSlotActive = isDateActive && !isExpired && (status ? Boolean(status.isActive && (status.isAvailable ?? true)) : true);
           const isLiveWindow = isCurrentTimeInDeliveryWindow(slot.id, selectedDate);
@@ -156,11 +155,10 @@ export const SlotPills: React.FC<SlotPillsProps> = ({ slotStatuses, isDateActive
                       {slot.timeRange}
                     </span>
                   </div>
-                  <div className="flex items-center justify-between text-[9px] font-extrabold">
+                  <div className="flex items-center text-[9px] font-extrabold">
                     <span className={isSelected && isSlotActive ? 'text-amber-200' : isExpired ? 'text-rose-600 font-black' : 'text-emerald-700'}>
                       {isExpired ? `Passed (${orderCutoffDisplay})` : `Cutoff: ${orderCutoffDisplay}`}
                     </span>
-                    <span className="opacity-80">Cap: {maxCap}</span>
                   </div>
                 </div>
               </div>

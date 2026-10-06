@@ -6,6 +6,7 @@ import { validateDeliveryAddress } from '../utils/addressValidation';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { sendCodOrderConfirmedEmail, sendOrderDeliveredEmail } from '../services/emailService';
 import { cleanupAbandonedOrders } from '../services/orderCleanupService';
+import { countBookedOrders } from '../services/slotCapacityService';
 
 const orderItemSchema = z.object({
   menuItemId: z.string().min(1, 'Invalid menu item'),
@@ -302,32 +303,48 @@ export const createOrder = async (req: Request, res: Response) => {
     const initialPaymentStatus = isOnline ? 'PAYMENT_PENDING' : 'PENDING';
     const initialOrderStatus = isOnline ? 'PAYMENT_PENDING' : 'PENDING';
 
-    const newOrder = await prisma.order.create({
-      data: {
-        orderNumber,
-        customerName: validated.customerName,
-        customerPhone: validated.customerPhone,
-        deliveryAddress: validated.deliveryAddress,
-        deliveryLatitude: validated.deliveryLatitude || null,
-        deliveryLongitude: validated.deliveryLongitude || null,
-        bookingDate: validated.bookingDate,
-        slotType: validated.slotType,
-        preferredTime: validated.preferredTime || 'Standard Delivery',
-        paymentMethod: validated.paymentMethod,
-        paymentStatus: initialPaymentStatus,
-        orderStatus: initialOrderStatus,
-        subtotal,
-        deliveryFee,
-        totalAmount,
-        userId: user.id,
-        items: {
-          create: orderItemsData,
+    // Lock this slot's schedule row so concurrent checkouts can't both take the last seat,
+    // then enforce maxOrders against the real number of booked orders.
+    const newOrder = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM "SlotsSchedule" WHERE "date" = ${validated.bookingDate} AND "slotType" = ${validated.slotType} FOR UPDATE`;
+      const booked = await countBookedOrders(tx, validated.bookingDate, validated.slotType);
+      if (booked >= schedule.maxOrders) {
+        return null;
+      }
+
+      return tx.order.create({
+        data: {
+          orderNumber,
+          customerName: validated.customerName,
+          customerPhone: validated.customerPhone,
+          deliveryAddress: validated.deliveryAddress,
+          deliveryLatitude: validated.deliveryLatitude || null,
+          deliveryLongitude: validated.deliveryLongitude || null,
+          bookingDate: validated.bookingDate,
+          slotType: validated.slotType,
+          preferredTime: validated.preferredTime || 'Standard Delivery',
+          paymentMethod: validated.paymentMethod,
+          paymentStatus: initialPaymentStatus,
+          orderStatus: initialOrderStatus,
+          subtotal,
+          deliveryFee,
+          totalAmount,
+          userId: user.id,
+          items: {
+            create: orderItemsData,
+          },
         },
-      },
-      include: {
-        items: true,
-      },
+        include: {
+          items: true,
+        },
+      });
     });
+
+    if (!newOrder) {
+      return res.status(409).json({
+        error: `${validated.slotType} on ${validated.bookingDate} is fully booked. Please choose another slot or date.`,
+      });
+    }
 
     if (newOrder.paymentMethod === 'COD') {
       emitNewOrder(newOrder);
