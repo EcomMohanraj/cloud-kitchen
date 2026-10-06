@@ -196,7 +196,8 @@ export const createOrder = async (req: Request, res: Response) => {
       },
     });
 
-    if (schedule && (schedule.isAvailable === false || schedule.isActive === false)) {
+    // Slots are closed unless an admin has explicitly opened them (missing row = closed)
+    if (!schedule || schedule.isAvailable === false || schedule.isActive === false) {
       return res.status(400).json({
         error: `Orders are closed for ${validated.bookingDate} (${validated.slotType}). Please choose an active calendar date and meal slot.`,
       });

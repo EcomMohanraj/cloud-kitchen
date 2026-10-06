@@ -45,12 +45,13 @@ async function ensureScheduleSeed() {
       });
 
       if (!existing) {
+        // New dates entering the rolling window start CLOSED; admin must open each slot manually
         await prisma.slotsSchedule.create({
           data: {
             date: dateStr,
             slotType,
-            isActive: true,
-            isAvailable: true,
+            isActive: false,
+            isAvailable: false,
             maxOrders: 50,
             cutoffTime: expectedCutoff,
             orderCutoffTime: expectedOrderCutoff,

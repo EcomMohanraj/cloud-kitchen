@@ -45,13 +45,13 @@ function getEffectiveScheduleData(data: ScheduleDate[]): ScheduleDate[] {
     } else {
       result.push({
         date: dateStr,
-        isDateActive: true,
+        isDateActive: false,
         slots: {
-          BREAKFAST: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '06:30 AM' },
-          SNACKS: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '10:00 AM' },
-          LUNCH: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '11:00 AM' },
-          DINNER: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '05:30 PM' },
-          VEGETABLES: { isActive: true, isAvailable: true, maxCapacity: 40, cutoffTime: '08:00 PM' },
+          BREAKFAST: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '06:30 AM' },
+          SNACKS: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '10:00 AM' },
+          LUNCH: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '11:00 AM' },
+          DINNER: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '05:30 PM' },
+          VEGETABLES: { isActive: false, isAvailable: false, maxCapacity: 40, cutoffTime: '08:00 PM' },
         },
       });
     }

@@ -192,7 +192,7 @@ function StorefrontPageContent() {
 
   const currentDateSchedule = scheduleList.find((s) => s.date === selectedDate);
   const currentSlotStatuses = currentDateSchedule ? currentDateSchedule.slots : undefined;
-  const isDateActive = currentDateSchedule ? Boolean(currentDateSchedule.isDateActive) : true;
+  const isDateActive = currentDateSchedule ? Boolean(currentDateSchedule.isDateActive) : false;
 
   const currentSelectedCutoff = currentSlotStatuses?.[selectedSlot]?.orderCutoffTime || MEAL_SLOTS.find(s => s.id === selectedSlot)?.orderCutoff || '06:00 AM';
   const isSelectedSlotExpired = isSlotBookingClosed(currentSelectedCutoff, selectedDate, selectedSlot);

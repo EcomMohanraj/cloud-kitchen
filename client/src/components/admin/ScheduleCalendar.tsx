@@ -30,8 +30,8 @@ function generateDefault7Days() {
     const slotsObj: Record<string, any> = {};
     MEAL_SLOTS.forEach((slot) => {
       slotsObj[slot.id] = {
-        isActive: true,
-        isAvailable: true,
+        isActive: false,
+        isAvailable: false,
         maxOrders: 40,
         currentOrders: 0,
         cutoffTime: slot.defaultCutoff,
@@ -40,7 +40,7 @@ function generateDefault7Days() {
 
     list.push({
       date: dateStr,
-      isDateActive: true,
+      isDateActive: false,
       slots: slotsObj,
     });
   }
