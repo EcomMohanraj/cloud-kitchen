@@ -60,12 +60,13 @@ export default function AdminDashboardPage() {
       const [ordersData, scheduleData, menuData] = await Promise.all([
         OrderService.getOrders(),
         ScheduleService.getSchedule(),
-        MenuService.getMenuItems(undefined, true),
+        // Menu failure shouldn't blank the whole dashboard; keep the last known count
+        MenuService.getMenuItems(undefined, true).catch(() => null),
       ]);
 
       if (ordersData.orders) setOrders(ordersData.orders);
       if (scheduleData.schedule) setSchedule(scheduleData.schedule);
-      if (menuData.items) setMenuItems(menuData.items);
+      if (menuData?.items) setMenuItems(menuData.items);
     } catch (error) {
       console.error(error);
     }

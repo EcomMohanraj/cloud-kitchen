@@ -55,7 +55,7 @@ test('Checkout error handling simulates backend downtime', async ({ page }) => {
   await placeOrderBtn.click();
 
   console.log('Waiting for error message...');
-  const errorMsg = page.locator('text=Failed to place order. Please check your connection and try again.');
+  const errorMsg = page.locator('text=Order could not be placed: Could not reach the kitchen server');
   await expect(errorMsg).toBeVisible({ timeout: 5000 });
 
   console.log('SUCCESS: The correct error message appeared when backend failed!');
