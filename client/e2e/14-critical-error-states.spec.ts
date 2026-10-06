@@ -42,11 +42,11 @@ async function fillAndSubmitCheckout(page: Page) {
   await page.goto('/checkout', { waitUntil: 'domcontentloaded' });
   await page.getByPlaceholder('e.g. Anandan Kumar').fill('E2E Tester');
   await page.getByPlaceholder('10-digit mobile number').fill('9876543210');
-  // Use the saved address if the account has one, otherwise type a full address
+  // Saved addresses load async (swapping the address box and resetting the confirmation),
+  // so let the network settle before choosing between the saved address and typing one
+  await page.waitForLoadState('networkidle');
   const addressBox = page.getByPlaceholder('House/Door No, Street Name, Landmark, Area & Pincode');
   if (await addressBox.first().isVisible()) await addressBox.first().fill(ADDRESS);
-  // Saved addresses load async and reset the confirmation, so wait for the network to settle first
-  await page.waitForLoadState('networkidle');
   const confirm = page.getByRole('checkbox', { name: /I confirm that the above delivery address/ });
   await confirm.check();
   await expect(confirm).toBeChecked();
