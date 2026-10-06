@@ -108,227 +108,6 @@ export async function fetchApi(endpoint: string, options: RequestInit = {}) {
   return data;
 }
 
-// Fallback South Indian Menu Catalog
-const FALLBACK_MENU_ITEMS = [
-  // BREAKFAST
-  {
-    id: 'b1',
-    name: 'Chettinad Idli Platter',
-    nameTamil: 'செட்டிநாடு இட்லி பிளேட்டர்',
-    description: '4 Soft steaming Malligai Idlis served with 3 traditional chutneys & homemade sambar.',
-    price: 80,
-    slotCategory: 'BREAKFAST',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1589301760014-d929f3979dbc?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Rice, Urad Dal, Ghee, Coconut Chutney, Tomato Chutney, Sambar',
-    prepTimeMinutes: 15,
-    isVeg: true,
-  },
-  {
-    id: 'b2',
-    name: 'Crispy Ghee Podi Roast Dosa',
-    nameTamil: 'நெய் பொடி தோசை',
-    description: 'Golden crispy rice crepe sprinkled with hand-ground spicy podi and pure cow ghee.',
-    price: 110,
-    slotCategory: 'BREAKFAST',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Fermented Batter, Cow Ghee, Gunpowder Podi, Sambar, Coconut Chutney',
-    prepTimeMinutes: 20,
-    isVeg: true,
-  },
-  {
-    id: 'b3',
-    name: 'Medhu Vada Platter (2 Pcs)',
-    nameTamil: 'மெது வடை பிளேட்டர்',
-    description: 'Crispy golden lentil fritters spiced with black pepper, ginger, and green chillies.',
-    price: 50,
-    slotCategory: 'BREAKFAST',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1630383249896-424e482df921?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Urad Dal, Black Pepper, Ginger, Curry Leaves, Coconut Chutney',
-    prepTimeMinutes: 10,
-    isVeg: true,
-  },
-  {
-    id: 'b4',
-    name: 'Traditional Rava Kichadi',
-    nameTamil: 'ரவா கிச்சடி',
-    description: 'Semolina cooked with fresh vegetables, cashews, mustard seeds, and pure ghee.',
-    price: 75,
-    slotCategory: 'BREAKFAST',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1630383249896-424e482df921?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Rava, Vegetables, Cashews, Ghee, Mustard, Tomato Chutney',
-    prepTimeMinutes: 15,
-    isVeg: true,
-  },
-
-  // SNACKS
-  {
-    id: 's1',
-    name: 'Madurai Kara Murukku & Filter Coffee',
-    nameTamil: 'கார முறுக்கு & டிகிரி காபி',
-    description: 'Crunchy rice flour spiraled savouries paired with aromatic Kumbakonam filter coffee.',
-    price: 90,
-    slotCategory: 'SNACKS',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Rice Flour, Butter, Spices, Pure Milk Coffee Extract',
-    prepTimeMinutes: 10,
-    isVeg: true,
-  },
-  {
-    id: 's2',
-    name: 'Crispy Onion Pakoda',
-    nameTamil: 'வெங்காய பகோடா',
-    description: 'Thin sliced shallots fried golden in spiced chickpea batter served with mint chutney.',
-    price: 60,
-    slotCategory: 'SNACKS',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Onions, Besan, Rice Flour, Chillies, Mint Chutney',
-    prepTimeMinutes: 12,
-    isVeg: true,
-  },
-
-  // LUNCH
-  {
-    id: 'l1',
-    name: 'Kongu Naattu Kozhi Briyani',
-    nameTamil: 'கொங்கு நாட்டுக்கோழி பிரியாணி',
-    description: 'Fragrant Seeraga Samba rice cooked with free-range country chicken and ground spices.',
-    price: 240,
-    slotCategory: 'LUNCH',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1563379091339-03b21ab4a4f8?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Seeraga Samba Rice, Country Chicken, Cow Ghee, Onion Pachadi',
-    prepTimeMinutes: 30,
-    isVeg: false,
-  },
-  {
-    id: 'l2',
-    name: 'Traditional Tamil Nadu Meals Thali',
-    nameTamil: 'தமிழ்நாடு பாரம்பரிய சாப்பாடு',
-    description: 'Steamed Ponni rice served with Paruppu, Sambar, Rasam, Vatha Kuzhambu, Kootu, Poriyal, Appalam, & Payasam.',
-    price: 160,
-    slotCategory: 'LUNCH',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1610192244261-3f33de3f55e4?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Ponni Rice, Sambar, Rasam, Vatha Kuzhambu, Poriyal, Kootu, Appalam, Curd',
-    prepTimeMinutes: 20,
-    isVeg: true,
-  },
-  {
-    id: 'l3',
-    name: 'Chettinad Fish Curry Meal',
-    nameTamil: 'செட்டிநாடு மீன் குழம்பு',
-    description: 'Spicy tangy seer fish curry cooked in authentic earthen pots with shallots and tamarind.',
-    price: 260,
-    slotCategory: 'LUNCH',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1512058564366-18510be2db19?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Seer Fish, Tamarind, Shallots, Chettinad Spices, Steamed Rice',
-    prepTimeMinutes: 25,
-    isVeg: false,
-  },
-
-  // DINNER
-  {
-    id: 'd1',
-    name: 'Kothu Parotta Deluxe',
-    nameTamil: 'கொத்து பரோட்டா',
-    description: 'Flaky shredded parottas tossed on hot iron griddle with eggs, chicken gravy, onions, and green chilies.',
-    price: 150,
-    slotCategory: 'DINNER',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Parotta, Eggs, Chicken Salna, Onions, Green Chilies, Pepper',
-    prepTimeMinutes: 20,
-    isVeg: false,
-  },
-  {
-    id: 'd2',
-    name: 'Madurai Bun Parotta (2 Pcs)',
-    nameTamil: 'மதுரை பன் பரோட்டா',
-    description: 'Thick, fluffy, soft bun-shaped golden fried parottas served with rich spicy Salna gravy.',
-    price: 120,
-    slotCategory: 'DINNER',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1601050690597-df0568f70950?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Flour, Milk, Ghee, Spicy Salna Gravy, Onion Raitha',
-    prepTimeMinutes: 20,
-    isVeg: true,
-  },
-  {
-    id: 'd3',
-    name: 'Kal Dosa with Meen Kuzhambu / Sambar',
-    nameTamil: 'கல் தோசை',
-    description: 'Soft sponge-like thick dosas cooked on heavy iron tawa served with rich curry.',
-    price: 100,
-    slotCategory: 'DINNER',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1668236543090-82eba5ee5976?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Dosa Batter, Fish Gravy / Sambar, Coconut Chutney',
-    prepTimeMinutes: 15,
-    isVeg: true,
-  },
-
-  // VEGETABLES
-  {
-    id: 'v1',
-    name: 'Fresh Farm Country Tomatoes (1 Kg)',
-    nameTamil: 'நாட்டு தக்காளி (1 கிலோ)',
-    description: 'Juicy, naturally ripened farm-fresh country tomatoes hand-picked from local organic farms.',
-    price: 45,
-    slotCategory: 'VEGETABLES',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Fresh Country Tomatoes (100% Organic)',
-    prepTimeMinutes: 10,
-    isVeg: true,
-  },
-  {
-    id: 'v2',
-    name: 'Organic Small Onions / Sambar Shallots (500g)',
-    nameTamil: 'சின்ன வெங்காயம் (500 கிராம்)',
-    description: 'Cleaned, premium grade aromatic small shallots essential for authentic South Indian sambar.',
-    price: 55,
-    slotCategory: 'VEGETABLES',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1618512496248-a07fe83aa8cb?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Small Onions / Shallots',
-    prepTimeMinutes: 10,
-    isVeg: true,
-  },
-  {
-    id: 'v3',
-    name: 'Fresh Ooty Carrots (500g)',
-    nameTamil: 'ஊட்டி கேரட் (500 கிராம்)',
-    description: 'Crisp, sweet mountain-grown tender orange carrots rich in beta-carotene.',
-    price: 40,
-    slotCategory: 'VEGETABLES',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1598170845058-32b9d6a5c317?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Farm Fresh Carrots',
-    prepTimeMinutes: 10,
-    isVeg: true,
-  },
-  {
-    id: 'v4',
-    name: 'Country Ladies Finger / Bhindi (500g)',
-    nameTamil: 'நாட்டு வெண்டைக்காய் (500 கிராம்)',
-    description: 'Tender, crisp green okra ideal for traditional poriyal and tangy puli kuzhambu.',
-    price: 35,
-    slotCategory: 'VEGETABLES',
-    isAvailable: true,
-    imageUrl: 'https://images.unsplash.com/photo-1425543103986-22abb7d7e8d2?w=600&auto=format&fit=crop&q=80',
-    ingredients: 'Fresh Ladies Finger (Okra)',
-    prepTimeMinutes: 10,
-    isVeg: true,
-  },
-];
-
 // Helper to get local stored orders
 function getStoredOrders(): any[] {
   if (typeof window === 'undefined') return [];
@@ -357,22 +136,11 @@ export const ScheduleService = {
 };
 
 export const MenuService = {
+  // Throws on failure so callers can show a real error state (no fake fallback menu)
   getMenuItems: async (slot?: string, all = false) => {
     const formattedSlot = slot ? slot.toUpperCase() : '';
-    try {
-      const data = await fetchApi(`/menu?${formattedSlot ? `slot=${formattedSlot}&` : ''}${all ? 'all=true' : ''}`);
-      if (data && data.items && data.items.length > 0) {
-        return data;
-      }
-    } catch (error) {
-      console.warn('API fetch for menu failed, using fallback South Indian Catalog:', error);
-    }
-
-    const filtered = formattedSlot
-      ? FALLBACK_MENU_ITEMS.filter((item) => item.slotCategory.toUpperCase() === formattedSlot)
-      : FALLBACK_MENU_ITEMS;
-
-    return { items: filtered };
+    const data = await fetchApi(`/menu?${formattedSlot ? `slot=${formattedSlot}&` : ''}${all ? 'all=true' : ''}`);
+    return { ...data, items: Array.isArray(data?.items) ? data.items : [] };
   },
   createMenuItem: (data: any) => fetchApi('/menu', { method: 'POST', body: JSON.stringify(data) }),
   updateMenuItem: (data: any) => fetchApi('/menu', { method: 'PUT', body: JSON.stringify(data) }),
@@ -455,40 +223,26 @@ export const OrderService = {
     return { orders: result, fetchFailed };
   },
 
+  // Throws with the server's real error message on failure — never fabricates a local order
   createOrder: async (orderData: any) => {
-    let createdOrder: any = null;
+    let data: any;
     try {
-      const data = await fetchApi('/orders', { method: 'POST', body: JSON.stringify(orderData) });
-      if (data && data.order) createdOrder = data.order;
-    } catch (error) {
-      console.warn('Backend Express createOrder failed, saving order locally:', error);
+      data = await fetchApi('/orders', { method: 'POST', body: JSON.stringify(orderData) });
+    } catch (error: any) {
+      // Network failure (TypeError) or non-JSON gateway error page (SyntaxError) from a down/waking server
+      if (error instanceof TypeError || error instanceof SyntaxError) {
+        throw new Error('Could not reach the kitchen server. Please check your connection and try again.');
+      }
+      throw error;
     }
 
+    const createdOrder = data?.order;
     if (!createdOrder) {
-      createdOrder = {
-        id: `ord_${Math.random().toString(36).substring(2, 10)}`,
-        orderNumber: `ORD-YZH-${Math.floor(1000 + Math.random() * 9000)}`,
-        customerName: orderData.customerName,
-        customerPhone: orderData.customerPhone,
-        deliveryAddress: orderData.deliveryAddress,
-        bookingDate: orderData.bookingDate,
-        slotType: orderData.slotType,
-        totalAmount: orderData.items?.reduce((sum: number, i: any) => sum + (i.unitPrice * i.quantity), 0) || 160,
-        paymentMethod: orderData.paymentMethod || 'COD',
-        paymentStatus: 'PENDING',
-        orderStatus: 'PENDING',
-        items: orderData.items?.map((i: any, index: number) => ({
-          id: `item_${index}`,
-          menuItemName: i.menuItemName,
-          quantity: i.quantity,
-          totalPrice: i.unitPrice * i.quantity,
-        })) || [],
-        createdAt: new Date().toISOString(),
-      };
+      throw new Error('The server did not confirm your order. Please try again.');
     }
 
     // Only save to local store if order is confirmed (not PAYMENT_PENDING or PAYMENT_FAILED)
-    if (createdOrder && createdOrder.orderStatus !== 'PAYMENT_PENDING' && createdOrder.orderStatus !== 'PAYMENT_FAILED') {
+    if (createdOrder.orderStatus !== 'PAYMENT_PENDING' && createdOrder.orderStatus !== 'PAYMENT_FAILED') {
       const stored = getStoredOrders();
       saveStoredOrders([createdOrder, ...stored]);
     }

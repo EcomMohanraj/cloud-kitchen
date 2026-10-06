@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { prisma } from '../config/db';
 import { emitScheduleUpdated } from '../socket';
+import { getBookedCountsFrom } from '../services/slotCapacityService';
 
 const SLOT_TYPES = ['BREAKFAST', 'LUNCH', 'SNACKS', 'DINNER', 'VEGETABLES'];
 
@@ -92,6 +93,7 @@ export const getSchedule = async (req: Request, res: Response) => {
       },
       orderBy: [{ date: 'asc' }, { slotType: 'asc' }],
     });
+    const bookedCounts = await getBookedCountsFrom(todayStr);
 
     const dateMap: Record<
       string,
@@ -113,6 +115,7 @@ export const getSchedule = async (req: Request, res: Response) => {
       dateMap[item.date].slots[item.slotType] = {
         ...item,
         isAvailable: Boolean(item.isAvailable && item.isActive),
+        bookedOrders: bookedCounts.get(`${item.date}|${item.slotType}`) ?? 0,
       };
     });
 
@@ -197,6 +200,7 @@ export const updateSchedule = async (req: Request, res: Response) => {
       },
       orderBy: [{ date: 'asc' }, { slotType: 'asc' }],
     });
+    const bookedCounts = await getBookedCountsFrom(todayStr);
 
     const dateMap: Record<string, any> = {};
     schedules.forEach((item) => {
@@ -210,6 +214,7 @@ export const updateSchedule = async (req: Request, res: Response) => {
       dateMap[item.date].slots[item.slotType] = {
         ...item,
         isAvailable: Boolean(item.isAvailable && item.isActive),
+        bookedOrders: bookedCounts.get(`${item.date}|${item.slotType}`) ?? 0,
       };
     });
 

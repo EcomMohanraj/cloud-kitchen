@@ -14,7 +14,7 @@ import { useCartStore } from '@/store/cartStore';
 import { useSearchParams } from 'next/navigation';
 import { ScheduleService, MenuService, ReviewService } from '@/services/api';
 import { getSocket } from '@/services/socket';
-import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle, Star, Quote, BadgeCheck, X, Maximize2 } from 'lucide-react';
+import { Sparkles, Utensils, ShieldCheck, Flame, HeartHandshake, Lock, ShoppingBag, ArrowRight, ChefHat, CheckCircle2, Circle, Star, Quote, BadgeCheck, X, Maximize2, AlertCircle, RefreshCw } from 'lucide-react';
 import { MEAL_SLOTS } from '@/lib/constants';
 
 import { isSlotBookingClosed, getFirstValidUpcomingSlot } from '@/utils/slotTiming';
@@ -48,6 +48,7 @@ function StorefrontPageContent() {
 
   const [menuItems, setMenuItems] = useState<MenuItemProps[]>([]);
   const [menuLoading, setMenuLoading] = useState(true);
+  const [menuError, setMenuError] = useState(false);
 
   const [testimonials, setTestimonials] = useState<any[]>([]);
 
@@ -124,13 +125,14 @@ function StorefrontPageContent() {
   // Fetch Menu Items when selectedSlot changes
   const fetchMenu = async (slot: string) => {
     setMenuLoading(true);
+    setMenuError(false);
     try {
       const data = await MenuService.getMenuItems(slot);
-      if (data.items) {
-        setMenuItems(data.items);
-      }
+      setMenuItems(data.items);
     } catch (error) {
       console.error('Error fetching menu:', error);
+      setMenuItems([]);
+      setMenuError(true);
     } finally {
       setMenuLoading(false);
     }
@@ -360,6 +362,21 @@ function StorefrontPageContent() {
               {Array.from({ length: 6 }).map((_, i) => (
                 <div key={i} className="h-80 bg-slate-200/70 rounded-3xl animate-pulse"></div>
               ))}
+            </div>
+          ) : menuError ? (
+            <div role="alert" className="bg-white border border-rose-200 rounded-3xl p-12 text-center space-y-3 shadow-sm">
+              <AlertCircle className="w-12 h-12 text-rose-400 mx-auto" />
+              <h4 className="text-base font-extrabold text-slate-800">Unable to load menu, please try again</h4>
+              <p className="text-xs text-slate-500 font-medium max-w-sm mx-auto">
+                We couldn&apos;t reach the kitchen right now. Check your connection and retry.
+              </p>
+              <button
+                onClick={() => fetchMenu(selectedSlot)}
+                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md transition-all"
+              >
+                <RefreshCw className="w-4 h-4" />
+                Try Again
+              </button>
             </div>
           ) : menuItems.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">

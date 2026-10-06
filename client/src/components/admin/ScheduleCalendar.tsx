@@ -296,7 +296,8 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleList
                     isDateOpen && Boolean(slotData && slotData.isActive && (slotData.isAvailable ?? true));
                   const slotKey = `${item.date}-${slot.id}`;
 
-                  const bookedOrders = slotData?.bookedOrders || (isSlotAvailable ? Math.floor(hashSeed(slotKey) * 35) : 0);
+                  // Real count of orders occupying this slot (computed server-side from the Order table)
+                  const bookedOrders = slotData?.bookedOrders ?? 0;
                   const maxCapacity = slotData?.maxOrders || slotData?.maxCapacity || 40;
                   const capacityPercent = Math.min(100, Math.round((bookedOrders / maxCapacity) * 100));
 
@@ -374,7 +375,7 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleList
                         <div className="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden p-0.5">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${progressColorClass}`}
-                            style={{ width: `${isSlotAvailable ? capacityPercent : 0}%` }}
+                            style={{ width: `${capacityPercent}%` }}
                           ></div>
                         </div>
                       </div>
@@ -401,12 +402,3 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({ scheduleList
     </div>
   );
 };
-
-function hashSeed(str: string) {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i);
-    hash |= 0;
-  }
-  return (Math.abs(hash) % 100) / 100;
-}

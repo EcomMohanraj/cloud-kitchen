@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, CreditCard, Banknote, MapPin, Phone, User, ShieldCheck, AlertCircle, Navigation, Loader2, Pencil, Save } from 'lucide-react';
 import { useCartStore } from '@/store/cartStore';
 import { OrderService, AddressService, PaymentService, SettingsService, AuthService } from '@/services/api';
@@ -56,6 +56,12 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE'>('COD');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const errorRef = useRef<HTMLDivElement>(null);
+
+  // Bring the error into view — the Place Order button sits at the bottom of a long modal
+  useEffect(() => {
+    if (errorMsg) errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, [errorMsg]);
   const [capturedCoords, setCapturedCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locating, setLocating] = useState(false);
   const [locationError, setLocationError] = useState<{ message: string; code?: number; targetField: 'EDIT' | 'MAIN' } | null>(null);
@@ -440,8 +446,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
         throw new Error('Failed to create order. Please try again.');
       }
     } catch (err: any) {
+      // Keep the cart intact and stay on checkout so the customer can fix the issue and retry
       console.error('Backend Express API call failed during order creation:', err);
-      setErrorMsg(err?.message || 'Failed to place order. Please check your connection and try again.');
+      setErrorMsg(`Order could not be placed: ${err?.message || 'Please check your connection and try again.'}`);
       setLoading(false);
       return;
     }
@@ -553,7 +560,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
         {/* Error Alert */}
         {errorMsg && (
-          <div className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold">
+          <div ref={errorRef} role="alert" className="mx-6 mt-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center gap-2 font-bold">
             <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMsg}</span>
           </div>
